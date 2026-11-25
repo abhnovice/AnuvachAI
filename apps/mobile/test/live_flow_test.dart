@@ -52,7 +52,7 @@ void main() {
           break;
         }
         if (find.text('Report detail').evaluate().isNotEmpty &&
-            find.text('Status: in_review').evaluate().isNotEmpty) {
+            find.text('Status: in review').evaluate().isNotEmpty) {
           break;
         }
       }
@@ -75,7 +75,9 @@ void main() {
       await tester.tap(find.text('Refresh status'));
       for (
         var i = 0;
-        i < 40 && find.text('Status: in_review').evaluate().isEmpty;
+        i < 40 &&
+            (find.byType(LinearProgressIndicator).evaluate().isNotEmpty ||
+                find.text('Status: in review').evaluate().isEmpty);
         i++
       ) {
         await tester.runAsync(
@@ -84,13 +86,16 @@ void main() {
         await tester.pump(const Duration(milliseconds: 100));
       }
       expect(
-        find.text('Status: in_review'),
+        find.text('Status: in review'),
         findsOneWidget,
         reason: tester.allWidgets
             .whereType<Text>()
             .map((w) => w.data)
             .join(' | '),
       );
+      await tester.pumpWidget(const SizedBox.shrink());
+      api.client.close();
+      await tester.pump();
       expect(tester.takeException(), null);
     },
     skip: !const bool.fromEnvironment('LIVE_E2E'),

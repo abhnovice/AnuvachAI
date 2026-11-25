@@ -101,3 +101,28 @@ Application source, tests, native Android/iOS scaffolds, configuration, document
 - `services/api/test/api.test.ts`
 - `services/api/test/live-flow.ts`
 - `services/api/tsconfig.json`
+
+## Interface refresh additions
+
+- `apps/mobile/lib/design.dart`
+- `apps/mobile/assets/fonts/NotoSans.ttf`
+- `apps/mobile/assets/fonts/OFL.txt`
+- `apps/admin/src/Icon.tsx`
+- `apps/admin/public/fonts/NotoSans.woff2`
+- `apps/admin/public/fonts/OFL.txt`
+- `docs/design-refresh.md`
+
+## Incident analytics additions
+
+- `apps/admin/src/AnalyticsOverview.tsx`
+- `apps/admin/src/analytics.css`
+- `apps/admin/src/queue-layout.css`
+- `services/api/src/analytics.ts`
+- `services/api/src/demo-data.ts`
+- `services/api/test/analytics.test.ts`
+- `docs/dashboard-metrics.md`
+
+## Size optimization additions
+
+- `tools/build-mobile.mjs`
+- `docs/size-optimization.md`

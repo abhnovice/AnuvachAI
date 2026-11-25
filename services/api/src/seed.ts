@@ -1,4 +1,5 @@
 import { buildApp } from "./app.js";
+import { seedDemo } from "./demo-data.js";
 const app = await buildApp();
 for (const [key, incidentType, description] of [
   [
@@ -28,3 +29,4 @@ for (const [key, incidentType, description] of [
   console.log(response.json().id);
 }
 await app.close();
+console.log(await seedDemo(process.env.DB_PATH ?? "anuvach.sqlite"));

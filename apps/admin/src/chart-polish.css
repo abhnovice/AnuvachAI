@@ -1,0 +1,120 @@
+/* Align chart headings, visual areas and legends without clipping disclosures. */
+.chart-card {
+  gap: 8px;
+}
+.chart-heading {
+  flex: none;
+  min-height: 26px;
+  align-items: flex-start;
+}
+.chart-heading h2 {
+  line-height: 1.4;
+}
+.chart-body {
+  flex: 1 0 auto;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 0;
+}
+.chart-legend {
+  min-height: 22px;
+  margin: 0;
+  align-items: center;
+}
+.trend-chart {
+  max-width: 100%;
+}
+.chart-data {
+  margin-top: auto;
+}
+.monthly-chart {
+  margin: 0;
+}
+.mix-visual {
+  width: 100%;
+}
+.mix-legend button {
+  align-items: center;
+  transition: none;
+}
+.chart-card :is(.trend-chart circle[tabindex], .bar[tabindex]) {
+  cursor: pointer;
+  transition:
+    filter 160ms ease,
+    stroke-width 160ms ease;
+}
+.chart-card
+  .trend-chart
+  circle[tabindex]:is(:hover, :focus-visible, [data-selected="true"]) {
+  stroke-width: 4;
+  fill: #d4f4e8;
+}
+.chart-card .bar[tabindex]:is(:hover, :focus-visible, [data-selected="true"]) {
+  outline: 2px solid #185f4c;
+  outline-offset: 2px;
+  filter: brightness(0.9);
+}
+.chart-card :is(.heat-cell, .mix-legend button):focus-visible {
+  outline: 3px solid #996500;
+  outline-offset: 2px;
+}
+.mix-legend button:is(:hover, .active, [aria-pressed="true"]) {
+  background: #d8eee4;
+  color: #174936;
+}
+.mix-legend button[aria-pressed="true"] {
+  box-shadow: inset 3px 0 #006b60;
+  font-weight: 600;
+}
+.mix-legend button[aria-pressed="true"] small {
+  color: #315f4b;
+}
+[data-theme="dark"]
+  .mix-legend
+  button:is(:hover, .active, [aria-pressed="true"]) {
+  background: #31594a;
+  color: #effff5 !important;
+}
+[data-theme="dark"] .mix-legend button[aria-pressed="true"] {
+  box-shadow: inset 3px 0 #9ce6d1;
+}
+[data-theme="dark"]
+  .mix-legend
+  button:is(:hover, .active, [aria-pressed="true"])
+  small {
+  color: #d1f1df !important;
+}
+[data-theme="dark"]
+  .chart-card
+  .trend-chart
+  circle[tabindex]:is(:hover, :focus-visible, [data-selected="true"]) {
+  fill: #c5fae5;
+  stroke: #9ce6d1;
+  stroke-width: 4;
+}
+[data-theme="dark"]
+  .chart-card
+  .bar[tabindex]:is(:hover, :focus-visible, [data-selected="true"]) {
+  outline-color: #c5fae5;
+  filter: brightness(1.2);
+}
+[data-theme="dark"] .paired-bars b {
+  color: #d0e8d9;
+}
+@media (min-width: 1260px) {
+  .page-dashboard .chart-card {
+    gap: 6px;
+  }
+  .page-dashboard .chart-heading {
+    min-height: 24px;
+  }
+  .page-dashboard .chart-body {
+    height: auto;
+    min-height: 160px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chart-card :is(.trend-chart circle[tabindex], .bar[tabindex]) {
+    transition: none;
+  }
+}

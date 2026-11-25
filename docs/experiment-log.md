@@ -39,3 +39,21 @@ Installed ignored workspace Flutter 3.38.5 (Dart 3.10.4) and Temurin JDK 17.0.21
 Only demo identities, seeded narratives and placeholder branding are simulated. HTTP transport, report persistence, administrator changes and audit events are implemented. Voice, policy retrieval, AI severity and automated triage are inactive, with explicit UI labels.
 
 iOS compilation, signing, device settings and local-network prompts need macOS/Xcode. Human screen-reader/text-scaling tests and production access controls remain outside this synthetic iteration. No real employee information was used.
+
+## Interface refresh — 2026-11-25
+
+Reworked mobile and dashboard around the supplied Dhalam reference: mint/teal tokens, bundled Noto Sans, rounded cards, mobile navigation and a sidebar-based administrator desk. See [design-refresh.md](design-refresh.md) for sources and decisions.
+
+Flutter analysis, unit tests and APK build passed. API/dashboard tests, TypeScript checking and Vite build passed. The real shared-API flow passed after fixing an existing test race: a refresh request must finish even when an administrator update was already visible from the initial load. Browser checks covered desktop/narrow detail layouts, sidebar filters, no page overflow and no JavaScript errors. One early browser check incorrectly assumed the local in-review queue was empty; it was corrected to validate the filter against the actual synthetic data. Android welcome/Home were visually checked using software rendering on the emulator. Application rendering defaults and native check behavior were not changed.
+
+## Distribution size audit — 2026-11-25
+
+Inspected the existing 185,128,524-byte debug APK. Built architecture-specific optimized release APKs at 16.18 / 18.59 / 20.02 MB. A 50.53 MB universal release failed the strict 50 MB budget; the documented distribution script now builds separate architecture APKs and enforces the budget. Kept all architectures, app features, demo connectivity and existing signing identity. Removed the rejected universal build artifact.
+
+Compressed the complete web font to WOFF2 (2,049,096 → 889,484 bytes) and removed obsolete summary styles and an already-hidden placeholder. Desktop/detail/narrow screenshots had zero changed pixels. TypeScript checks, API/dashboard tests, production builds, live shared-API flow and browser chart interactions passed. The release APK installed and loaded API history on the emulator. See [size-optimization.md](size-optimization.md) for measurements, commands and limitations.
+
+## Visual incident analytics — 2026-11-25
+
+Added the requested six-panel overview: incoming trend, incident mix, received/closed activity, closure/turnaround, status matrix and historical open/closed workload. Added UTC reporting windows, category drill-downs, queue pagination and assignment visibility. Preserved the existing theme and externally updated base stylesheet; chart styles live in separate files.
+
+Added a computed dashboard endpoint and 48 historical synthetic cases without resetting the original cases or administrator edits. API tests passed for closure/reopening/no-op semantics, empty denominators, scope reconciliation, input validation and idempotent fixture seeding. Existing dashboard mutation and escalation-confirmation tests passed. Chromium verified six rendered charts, API/KPI agreement, filters, accessible values and a narrow layout without page overflow or JavaScript errors. See dashboard-metrics.md for definitions and fixture limitations.

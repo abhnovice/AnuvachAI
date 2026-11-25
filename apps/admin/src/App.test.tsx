@@ -2,12 +2,14 @@ import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { App } from "./App";
+import { buildDashboard } from "../../../services/api/src/analytics";
+import type { Report } from "../../../services/api/src/contracts";
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
 });
 it("loads a ticket, persists a status change and confirms escalation separately", async () => {
-  let report = {
+  let report: Report & { audit: [] } = {
     id: "ANV-demo",
     status: "submitted",
     createdAt: new Date().toISOString(),
@@ -15,6 +17,8 @@ it("loads a ticket, persists a status change and confirms escalation separately"
     version: 1,
     assignment: null,
     facts: {
+      employeeId: "demo-employee",
+      confirmed: true,
       description: "Synthetic support call",
       incidentType: "support_call",
       language: "english",
@@ -40,15 +44,21 @@ it("loads a ticket, persists a status change and confirms escalation separately"
       return {
         ok: true,
         json: async () =>
-          path.includes("?view=admin") || options.method !== "GET"
-            ? report
-            : [report],
+          path.includes("/dashboard")
+            ? buildDashboard([report], [], new Date())
+            : path.includes("?view=admin") || options.method !== "GET"
+              ? report
+              : [report],
       };
     }),
   );
   const user = userEvent.setup();
   render(<App />);
   await user.click(await screen.findByRole("button", { name: "ANV-demo" }));
+  expect(
+    screen.queryByRole("img", { name: "Weekly incoming report counts" }),
+  ).toBeNull();
+  expect(screen.getByRole("region", { name: "Report detail" })).toBeTruthy();
   await user.selectOptions(
     await screen.findByLabelText("New status"),
     "in_review",

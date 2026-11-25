@@ -1,0 +1,50 @@
+.chart-heading h2 {
+  cursor: help;
+}
+.chart-help-mark {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
+}
+.chart-hover-value {
+  position: fixed;
+  z-index: 30;
+  pointer-events: none;
+  width: max-content;
+  max-width: 235px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: #173e30;
+  color: #f0fff7;
+  box-shadow: 0 8px 22px #0003;
+  font-size: 11px;
+  line-height: 1.5;
+}
+[data-theme="dark"] .chart-hover-value {
+  background: #d0f1e2;
+  color: #163b2b;
+}
+.report-subnav {
+  display: grid;
+  gap: 4px;
+  margin-left: 22px;
+  padding-left: 10px;
+  border-left: 1px solid var(--line);
+}
+.report-subnav .nav-item {
+  font-size: 11px;
+  width: 100%;
+  min-height: 40px;
+}
+.sidebar.collapsed .report-subnav {
+  margin-left: 0;
+  padding-left: 0;
+  border: 0;
+}
+@media (max-width: 760px) {
+  .report-subnav {
+    display: flex;
+    margin-left: 0;
+    padding-left: 8px;
+  }
+}

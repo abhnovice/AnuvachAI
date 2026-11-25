@@ -29,12 +29,16 @@ Report: `id` (ANV-prefixed UUID), `facts`, `createdAt`, `updatedAt`, `status`, `
 
 ## Reads
 
-- `GET /reports`: report array, newest first. Optional `employeeId=demo-employee`, `status`, `incidentType` exact filters.
+- `GET /reports`: report array, newest first. Optional `employeeId=demo-employee`, `status`, `incidentType` exact filters, plus optional `days=30|90|180` for a UTC receipt window. Omit days to preserve full history.
 - `GET /reports/:id`: employee report view.
 - `GET /reports/:id?view=admin`: adds `audit`, `policyCitations: null`, `aiSeverity: null`.
 - `GET /health` lives outside the v1 prefix and identifies the synthetic unauthenticated mode.
 
 Admin notes are represented as note events in audit. Employee views exclude them. No pagination in this small local demo.
+
+## Administrator overview
+
+`GET /dashboard?days=90&incidentType=support_call` supplies computed dashboard analytics. days defaults to 90 and accepts 30, 90 or 180; incidentType is optional. The response includes `scope`, `metrics`, `weekly`, `monthly`, `incidentMix`, `statusCounts`, `statusMatrix`, `turnaround` and `assignments`. Missing duration/ratio denominators return null rather than fabricated zeroes. Status filtering belongs to the queue, not this endpoint. See [dashboard-metrics.md](dashboard-metrics.md) for population, time-window, comparison and closure definitions.
 
 ## Administrator mutations
 

@@ -1,0 +1,92 @@
+.continuous-workspace .reports-page {
+  display: block;
+  padding-top: 48px;
+  margin-top: 32px;
+  border-top: 1px solid var(--line);
+  scroll-margin-top: 24px;
+}
+.continuous-workspace .dashboard-page {
+  display: block;
+  scroll-margin-top: 24px;
+}
+.continuous-workspace .chart-card:has(.status-heatmap) .chart-body {
+  height: auto;
+  min-height: 160px;
+}
+.continuous-workspace .heatmap-scroll {
+  overflow: visible;
+  max-height: none;
+}
+.continuous-workspace .status-heatmap {
+  min-width: 0;
+}
+.continuous-workspace .heatmap-scale {
+  margin: 6px 0;
+}
+.metric-card {
+  display: block;
+  text-align: left;
+  color: inherit;
+  font-weight: inherit;
+  white-space: normal;
+}
+.metric-card:hover {
+  background: #e5f3ed;
+  border-color: var(--teal);
+  transform: translateY(-2px);
+}
+[data-theme="dark"] .metric-card:hover {
+  background: #294c40;
+}
+select {
+  accent-color: var(--teal);
+}
+option {
+  background: #f4f9f7;
+  color: #263f32;
+  padding: 10px 14px;
+}
+option:checked {
+  background: #d2ede5;
+  color: #00564d;
+}
+[data-theme="dark"] option {
+  background: #213a30;
+  color: #dcece3;
+}
+@supports (appearance: base-select) {
+  select,
+  select::picker(select) {
+    appearance: base-select;
+  }
+  select::picker(select) {
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 6px;
+    background: #f4f9f7;
+    box-shadow: 0 12px 35px #142d2320;
+  }
+  option {
+    border-radius: 8px;
+    min-height: 40px;
+  }
+  option:hover,
+  option:focus {
+    background: #d2ede5;
+    color: #00564d;
+  }
+  [data-theme="dark"] select::picker(select) {
+    background: #192a23;
+  }
+  [data-theme="dark"] option:checked,
+  [data-theme="dark"] option:hover,
+  [data-theme="dark"] option:focus {
+    background: #285448;
+    color: #b7f1df;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .metric-card:hover {
+    transform: none;
+  }
+}

@@ -1,4 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
+import { usePageScroll } from "./usePageScroll";
+import { AnalyticsOverview, type DashboardData } from "./AnalyticsOverview";
+import { Icon } from "./Icon";
+import { TicketJourney } from "./TicketJourney";
+import { ThemePicker } from "./ThemePicker";
+import { MaterialNavIcon } from "./MaterialNavIcon";
 export type Report = {
   id: string;
   status: string;
@@ -43,6 +50,17 @@ const statuses = [
   "closed",
 ];
 const label = (s: string) => s.replaceAll("_", " ");
+const elapsedSince = (createdAt: string) => {
+  const minutes = Math.max(
+    0,
+    Math.floor((Date.now() - Date.parse(createdAt)) / 60000),
+  );
+  return minutes < 60
+    ? minutes + " min"
+    : minutes < 1440
+      ? (minutes / 60).toFixed(1) + " h"
+      : (minutes / 1440).toFixed(1) + " d";
+};
 export async function request<T>(
   path: string,
   method = "GET",
@@ -62,6 +80,71 @@ export async function request<T>(
   return response.json();
 }
 export function App() {
+  const [collapsed, setCollapsed] = useState(false);
+  const [reportsExpanded, setReportsExpanded] = useState(true);
+  const [page, setPage] = useState(() =>
+    location.hash === "#dashboard" ? "dashboard" : "reports",
+  );
+  useEffect(() => {
+    const sync = () => {
+      setPage(location.hash === "#dashboard" ? "dashboard" : "reports");
+      window.scrollTo({ top: 0, behavior: "instant" });
+    };
+    window.addEventListener("hashchange", sync);
+    return () => window.removeEventListener("hashchange", sync);
+  }, []);
+  const transitionBusy = useRef(false);
+  async function navigate(next: string) {
+    if (transitionBusy.current) return;
+    const commit = () => {
+      flushSync(() => setPage(next));
+      if (location.hash !== "#" + next) history.pushState(null, "", "#" + next);
+      window.scrollTo({ top: 0, behavior: "instant" });
+    };
+    if (
+      next === page ||
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+    ) {
+      commit();
+      return;
+    }
+    transitionBusy.current = true;
+    const root = document.documentElement;
+    root.dataset.flow = next === "reports" ? "forward" : "back";
+    root.dataset.transitioning = "true";
+    try {
+      const api = document as Document & {
+        startViewTransition?: (update: () => void) => {
+          finished: Promise<void>;
+        };
+      };
+      if (api.startViewTransition) {
+        await api.startViewTransition(commit).finished;
+      } else {
+        const surface = document.getElementById("workspace");
+        const direction = next === "reports" ? 1 : -1;
+        await surface?.animate(
+          [
+            { opacity: 1, transform: "translateY(0)" },
+            { opacity: 0, transform: "translateY(" + -direction * 32 + "px)" },
+          ],
+          { duration: 180, easing: "ease-in", fill: "none" },
+        ).finished;
+        commit();
+        await surface?.animate(
+          [
+            { opacity: 0, transform: "translateY(" + direction * 32 + "px)" },
+            { opacity: 1, transform: "translateY(0)" },
+          ],
+          { duration: 420, easing: "cubic-bezier(.16,1,.3,1)" },
+        ).finished;
+      }
+    } finally {
+      transitionBusy.current = false;
+      delete root.dataset.transitioning;
+    }
+  }
+  usePageScroll(page, navigate);
   const [reports, setReports] = useState<Report[]>([]),
     [detail, setDetail] = useState<Report | null>(null);
   const [status, setStatus] = useState(""),
@@ -77,23 +160,60 @@ export function App() {
     [reason, setReason] = useState(""),
     [confirm, setConfirm] = useState(false);
   const [message, setMessage] = useState("");
+  const [days, setDays] = useState("90");
+  const [overview, setOverview] = useState<DashboardData | null>(null);
+  const [overviewLoading, setOverviewLoading] = useState(true);
+  const [queuePage, setQueuePage] = useState(0);
+  const requestGeneration = useRef(0);
+  const pageSize = 10;
+  const effectivePage = Math.min(
+    queuePage,
+    Math.max(0, Math.ceil(reports.length / pageSize) - 1),
+  );
+  const visibleReports = reports.slice(
+    effectivePage * pageSize,
+    (effectivePage + 1) * pageSize,
+  );
   async function load() {
+    const generation = ++requestGeneration.current;
     setLoading(true);
+    setOverviewLoading(true);
+    setOverview(null);
     setError("");
     try {
-      const q = new URLSearchParams();
-      if (status) q.set("status", status);
+      const q = new URLSearchParams({ days });
+      if (status && status !== "open") q.set("status", status);
       if (type) q.set("incidentType", type);
-      setReports(await request<Report[]>("/reports?" + q));
+      const metricsQuery = new URLSearchParams({ days });
+      if (type) metricsQuery.set("incidentType", type);
+      const [rows, metrics] = await Promise.all([
+        request<Report[]>("/reports?" + q),
+        request<DashboardData>("/dashboard?" + metricsQuery),
+      ]);
+      if (generation !== requestGeneration.current) return;
+      setReports(
+        status === "open"
+          ? rows.filter((row) => row.status !== "closed")
+          : rows,
+      );
+      setOverview(metrics);
     } catch (e) {
-      setError((e as Error).message);
+      if (generation === requestGeneration.current) {
+        setError((e as Error).message);
+        setReports([]);
+      }
     } finally {
-      setLoading(false);
+      if (generation === requestGeneration.current) {
+        setLoading(false);
+        setOverviewLoading(false);
+      }
     }
   }
   useEffect(() => {
+    setDetail(null);
+    setQueuePage(0);
     void load();
-  }, [status, type]);
+  }, [status, type, days]);
   async function open(id: string) {
     setLoading(true);
     setError("");
@@ -140,291 +260,547 @@ export function App() {
   }
   return (
     <>
-      <header>
-        <div className="brand">
-          <span aria-hidden="true" className="logo">
-            A
+      <aside
+        className={"sidebar" + (collapsed ? " collapsed" : "")}
+        aria-label="Workspace navigation"
+      >
+        <button
+          className="nav-toggle"
+          aria-expanded={!collapsed}
+          aria-controls="workspace-navigation"
+          onClick={() => setCollapsed(!collapsed)}
+          aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
+        >
+          {collapsed ? "☰" : "←"}
+        </button>
+        <a
+          className="brand"
+          href="#reports"
+          aria-label="Anuvach.AI incident desk"
+        >
+          <span className="logo">
+            <Icon name="message" size={24} />
           </span>
-          <div>
-            Anuvach.AI<small>INCIDENT DESK · STAGES 1–2</small>
+          <span>
+            Anuvach<span className="brand-dot">.AI</span>
+            <small>SOCIAL ENGINEERING</small>
+          </span>
+        </a>
+        <p className="nav-label">WORKSPACE</p>
+        <nav id="workspace-navigation" aria-label="Report views">
+          <button
+            className={page === "dashboard" ? "nav-item active" : "nav-item"}
+            aria-current={page === "dashboard" ? "page" : undefined}
+            aria-label="Dashboard"
+            title="Dashboard"
+            onClick={() => navigate("dashboard")}
+          >
+            <MaterialNavIcon name="dashboard" />
+            <span>Dashboard</span>
+          </button>
+          <div className="report-nav-row">
+            <button
+              className={
+                page === "reports" && status === ""
+                  ? "nav-item active"
+                  : "nav-item"
+              }
+              aria-current={
+                page === "reports" && status === "" ? "page" : undefined
+              }
+              onClick={() => {
+                navigate("reports");
+                setStatus("");
+              }}
+            >
+              <MaterialNavIcon name="reports" />
+              <span>All reports</span>
+            </button>
+            <button
+              className="report-group-toggle"
+              aria-label={
+                reportsExpanded
+                  ? "Collapse report views"
+                  : "Expand report views"
+              }
+              aria-expanded={reportsExpanded}
+              aria-controls="report-subnav"
+              onClick={() => setReportsExpanded(!reportsExpanded)}
+            >
+              {reportsExpanded ? "⌃" : "⌄"}
+            </button>
           </div>
+          <div
+            id="report-subnav"
+            hidden={!reportsExpanded}
+            className="report-subnav"
+            role="group"
+            aria-label="All reports views"
+          >
+            <button
+              className={
+                page === "reports" && status === "in_review"
+                  ? "nav-item active"
+                  : "nav-item"
+              }
+              aria-current={
+                page === "reports" && status === "in_review"
+                  ? "page"
+                  : undefined
+              }
+              onClick={() => {
+                navigate("reports");
+                setStatus("in_review");
+              }}
+            >
+              <MaterialNavIcon name="review" />
+              <span>In review</span>
+            </button>
+            <button
+              className={
+                page === "reports" && status === "escalated"
+                  ? "nav-item active"
+                  : "nav-item"
+              }
+              aria-current={
+                page === "reports" && status === "escalated"
+                  ? "page"
+                  : undefined
+              }
+              onClick={() => {
+                navigate("reports");
+                setStatus("escalated");
+              }}
+            >
+              <MaterialNavIcon name="escalations" />
+              <span>Escalations</span>
+            </button>
+          </div>
+        </nav>
+        <div className="sidebar-note">
+          <span className="note-icon">
+            <Icon name="shield" size={23} />
+          </span>
+          <h3>
+            People first.
+            <br />
+            Facts before conclusions.
+          </h3>
+          <p>
+            Track suspicious calls, impersonation and deceptive requests. Keep
+            reported facts separate from device observations.
+          </p>
         </div>
-        <span className="badge">Synthetic demo · No authentication</span>
-      </header>
-      <main>
+        <ThemePicker />
+        <div className="sidebar-footer">
+          <span className="demo-dot" />
+          Local demonstration<small>Synthetic data · No authentication</small>
+        </div>
+      </aside>
+
+      <main
+        id="workspace"
+        className="page-dashboard isolated-workspace"
+        data-view={page}
+      >
         <div className="intro">
           <div>
-            <p className="eyebrow">SECURITY OPERATIONS</p>
-            <h1>Listen. Review. Respond.</h1>
-            <p>Employee reports, with facts kept separate from conclusions.</p>
+            <p className="eyebrow">YOUR INCIDENT WORKSPACE</p>
+            <h1 className="page-heading">Social engineering incidents</h1>
           </div>
-          <button onClick={() => void load()} disabled={loading}>
+          <button
+            className="refresh-button"
+            onClick={() => void load()}
+            disabled={loading}
+          >
+            <Icon name="refresh" size={18} />
             Refresh queue
           </button>
         </div>
-        {error && (
-          <div role="alert" className="error">
-            {error}{" "}
-            <button
-              onClick={() => (detail ? void open(detail.id) : void load())}
-            >
-              Retry / refresh
-            </button>
-          </div>
-        )}
-        {message && <p role="status">{message}</p>}
-        <div className="workspace">
-          <section className="panel">
-            <h2>
-              Report queue <span className="count">{reports.length}</span>
-            </h2>
-            <div className="filters">
-              <label>
-                Status
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value)}
-                >
-                  <option value="">All statuses</option>
-                  {statuses.map((s) => (
-                    <option key={s}>{s}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Incident type
-                <select value={type} onChange={(e) => setType(e.target.value)}>
-                  <option value="">All types</option>
-                  {types.map((t) => (
-                    <option key={t}>{t}</option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            {loading && <p role="status">Loading reports…</p>}
-            {!loading && !reports.length && !error && (
-              <p>No reports match these filters.</p>
-            )}
-            <div className="table-scroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Ticket / received</th>
-                    <th>Type</th>
-                    <th>Status</th>
-                    <th>Elapsed</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {reports.map((r) => (
-                    <tr key={r.id}>
-                      <td>
-                        <button
-                          className="ticket"
-                          onClick={() => void open(r.id)}
-                        >
-                          {r.id}
-                        </button>
-                        <small>{new Date(r.createdAt).toLocaleString()}</small>
-                      </td>
-                      <td>{label(r.facts.incidentType)}</td>
-                      <td>
-                        <span className="badge">{label(r.status)}</span>
-                      </td>
-                      <td>
-                        {Math.max(
-                          0,
-                          Math.floor(
-                            (Date.now() - Date.parse(r.createdAt)) / 60000,
-                          ),
-                        )}{" "}
-                        min
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-          <section className="panel detail" aria-label="Report detail">
-            {!detail ? (
-              <>
-                <h2>Review a report</h2>
-                <p>
-                  Select a ticket to read the submitted facts and decide a next
-                  step.
-                </p>
-                <p>
-                  Policy citations: not available in this stage.
-                  <br />
-                  AI-assigned severity: not available in this stage.
-                </p>
-              </>
-            ) : (
-              <>
-                <div className="detail-top">
-                  <h2>Report detail</h2>
-                  <button onClick={() => void open(detail.id)} disabled={busy}>
-                    Refresh detail
-                  </button>
-                </div>
-                <p className="id">{detail.id}</p>
-                <p>
-                  <span className="badge">{label(detail.status)}</span>
-                </p>
-                <small>
-                  Received {new Date(detail.createdAt).toLocaleString()}
-                  <br />
-                  Updated {new Date(detail.updatedAt).toLocaleString()}
-                </small>
-                <h3>Employee statements</h3>
-                <p className="statement">{detail.facts.description}</p>
-                <dl>
-                  <dt>Report language</dt>
-                  <dd>{detail.facts.language}</dd>
-                  <dt>Incident type</dt>
-                  <dd>{label(detail.facts.incidentType)}</dd>
-                  <dt>App name</dt>
-                  <dd>{detail.facts.appName || "Not supplied"}</dd>
-                  <dt>Evidence notes</dt>
-                  <dd>{detail.facts.evidenceNotes || "Not supplied"}</dd>
-                </dl>
-                <h3>Device observations</h3>
-                {!detail.facts.observations.length ? (
-                  <p>No automatic checks supplied.</p>
-                ) : (
-                  detail.facts.observations.map((o, i) => (
-                    <p key={i}>
-                      {label(o.check)}:{" "}
-                      {o.value ? "configured" : "not configured"}
-                      <br />
-                      <small>
-                        {o.platform} · {o.source} · {o.checkedAt}
-                      </small>
-                    </p>
-                  ))
-                )}
-                <p className="muted">
-                  Client-reported observations do not establish remote access,
-                  compromise, or permission use.
-                </p>
-                <p>
-                  Policy citations: <strong>not available in this stage</strong>
-                  <br />
-                  AI-assigned severity:{" "}
-                  <strong>not available in this stage</strong>
-                </p>
-                <fieldset disabled={busy}>
-                  <legend>Administrator actions · Demo administrator</legend>
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      void mutate("status", { status: newStatus });
-                    }}
-                  >
-                    <label>
-                      New status
-                      <select
-                        value={newStatus}
-                        onChange={(e) => setNewStatus(e.target.value)}
-                      >
-                        {statuses
-                          .filter((s) => s !== "escalated")
-                          .map((s) => (
-                            <option key={s}>{s}</option>
-                          ))}
-                      </select>
-                    </label>
-                    <button>Save status</button>
-                  </form>
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      void mutate("assignment", { team, reviewer });
-                    }}
-                  >
-                    <label>
-                      Responsible team
-                      <select
-                        value={team}
-                        onChange={(e) => setTeam(e.target.value)}
-                      >
-                        <option value="security">Security</option>
-                        <option value="data_protection">Data protection</option>
-                      </select>
-                    </label>
-                    <label>
-                      Reviewer
-                      <input
-                        maxLength={100}
-                        value={reviewer}
-                        onChange={(e) => setReviewer(e.target.value)}
-                      />
-                    </label>
-                    <button>Save assignment</button>
-                  </form>
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      void mutate("notes", { text: note });
-                    }}
-                  >
-                    <label>
-                      Administrator note
-                      <textarea
-                        required
-                        maxLength={5000}
-                        value={note}
-                        onChange={(e) => setNote(e.target.value)}
-                      />
-                    </label>
-                    <button>Add note</button>
-                  </form>
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      setConfirm(true);
-                    }}
-                  >
-                    <label>
-                      Escalation decision
-                      <select
-                        value={decision}
-                        onChange={(e) => setDecision(e.target.value)}
-                      >
-                        <option value="escalate">Escalate for review</option>
-                        <option value="do_not_escalate">Do not escalate</option>
-                      </select>
-                    </label>
-                    <label>
-                      Decision reason
-                      <textarea
-                        required
-                        minLength={3}
-                        maxLength={5000}
-                        value={reason}
-                        onChange={(e) => setReason(e.target.value)}
-                      />
-                    </label>
-                    <button>Review escalation decision</button>
-                  </form>
-                </fieldset>
-                <h3>Administrator notes and audit history</h3>
-                <ol className="audit">
-                  {detail.audit?.map((a) => (
-                    <li key={a.sequence}>
-                      <strong>{label(a.action)}</strong> · {a.actor}
-                      <small>{new Date(a.at).toLocaleString()}</small>
-                      {a.action !== "created" && (
-                        <pre>{JSON.stringify(a.data, null, 2)}</pre>
-                      )}
-                    </li>
-                  ))}
-                </ol>
-              </>
-            )}
-          </section>
+        <div
+          id="dashboard"
+          className="dashboard-page"
+          hidden={page !== "dashboard"}
+          inert={page !== "dashboard"}
+        >
+          <button
+            className="dashboard-reports-link"
+            onClick={() => {
+              setStatus("");
+              navigate("reports");
+            }}
+          >
+            View reports <Icon name="arrow" size={16} />
+          </button>
+          <AnalyticsOverview
+            data={overview}
+            loading={overviewLoading}
+            days={days}
+            type={type}
+            onDays={setDays}
+            onType={setType}
+            onStatus={(next, category) => {
+              navigate("reports");
+              setStatus(next);
+              if (category) setType(category);
+            }}
+          />
         </div>
+        <div
+          id="reports"
+          className="reports-page"
+          hidden={page !== "reports"}
+          inert={page !== "reports"}
+        >
+          <div className="analytics-section-title">
+            <h2>Reports requiring review</h2>
+          </div>
+          {error && (
+            <div role="alert" className="error">
+              {error}{" "}
+              <button
+                onClick={() => (detail ? void open(detail.id) : void load())}
+              >
+                Retry / refresh
+              </button>
+            </div>
+          )}
+          {message && <p role="status">{message}</p>}
+          <div
+            className={
+              "workspace analytics-workspace" + (detail ? " has-detail" : "")
+            }
+          >
+            <section className="panel queue" id="report-queue">
+              <h2>
+                Report queue <span className="count">{reports.length}</span>
+              </h2>
+              <p className="section-description">
+                Reports received in the selected window. The status filter below
+                applies to this queue only.
+              </p>
+              <div className="filters">
+                <label>
+                  Status
+                  <select
+                    aria-label="Status"
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                  >
+                    <option value="">All statuses</option>
+                    <option value="open">All open</option>
+                    {statuses.map((s) => (
+                      <option key={s} value={s}>
+                        {label(s)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Incident type
+                  <select
+                    aria-label="Incident type"
+                    value={type}
+                    onChange={(e) => setType(e.target.value)}
+                  >
+                    <option value="">All types</option>
+                    {types.map((t) => (
+                      <option key={t} value={t}>
+                        {label(t)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              {(status || type) && (
+                <p className="queue-scope-note">
+                  Showing {status ? label(status) : "all statuses"} ·{" "}
+                  {type ? label(type) : "all types"}
+                  <button
+                    className="queue-reset"
+                    onClick={() => {
+                      setStatus("");
+                      setType("");
+                    }}
+                  >
+                    Clear filters
+                  </button>
+                </p>
+              )}
+              {loading && <p role="status">Loading reports…</p>}
+              {!loading && !reports.length && !error && (
+                <p>No reports match these filters.</p>
+              )}
+              <div className="table-scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th title="Receipt times use your browser’s local time zone">
+                        Ticket / received
+                      </th>
+                      <th>Type</th>
+                      <th>Status</th>
+                      <th>Assignment</th>
+                      <th>Elapsed</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visibleReports.map((r) => (
+                      <tr
+                        key={r.id}
+                        className={detail?.id === r.id ? "selected" : undefined}
+                      >
+                        <td>
+                          <button
+                            className="ticket"
+                            aria-label={r.id}
+                            title={r.id}
+                            onClick={() => void open(r.id)}
+                          >
+                            <span className="ticket-icon">
+                              <Icon name="reports" size={16} />
+                            </span>{" "}
+                            ANV-…{r.id.slice(-8)}
+                          </button>
+                          <small>
+                            {new Date(r.createdAt).toLocaleString()}
+                          </small>
+                        </td>
+                        <td>{label(r.facts.incidentType)}</td>
+                        <td>
+                          <span className={"badge status-" + r.status}>
+                            {label(r.status)}
+                          </span>
+                        </td>
+                        <td>
+                          {r.assignment?.team
+                            ? label(r.assignment.team)
+                            : "Unassigned"}
+                          <small>
+                            {r.assignment?.reviewer || "No reviewer"}
+                          </small>
+                        </td>
+                        <td>
+                          <span title="Time since receipt, including time after closure">
+                            {elapsedSince(r.createdAt)}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {reports.length > 0 && (
+                <div className="queue-pagination">
+                  <span>
+                    Showing {effectivePage * pageSize + 1}–
+                    {Math.min((effectivePage + 1) * pageSize, reports.length)}{" "}
+                    of {reports.length}
+                  </span>
+                  <div>
+                    <button
+                      aria-label="Previous reports"
+                      disabled={effectivePage === 0}
+                      onClick={() => setQueuePage(effectivePage - 1)}
+                    >
+                      ← Previous
+                    </button>
+                    <button
+                      aria-label="Next reports"
+                      disabled={
+                        (effectivePage + 1) * pageSize >= reports.length
+                      }
+                      onClick={() => setQueuePage(effectivePage + 1)}
+                    >
+                      Next →
+                    </button>
+                  </div>
+                </div>
+              )}
+            </section>
+            <section className="panel detail" aria-label="Report detail">
+              {detail && (
+                <>
+                  <div className="detail-top">
+                    <h2>Report detail</h2>
+                    <button
+                      onClick={() => void open(detail.id)}
+                      disabled={busy}
+                    >
+                      Refresh detail
+                    </button>
+                  </div>
+                  <p className="id">{detail.id}</p>
+                  <p>
+                    <span className={"badge status-" + detail.status}>
+                      {label(detail.status)}
+                    </span>
+                  </p>
+                  <small>
+                    Received {new Date(detail.createdAt).toLocaleString()}
+                    <br />
+                    Updated {new Date(detail.updatedAt).toLocaleString()}
+                  </small>
+                  <TicketJourney report={detail} />
+                  <h3>
+                    <Icon name="message" size={18} />
+                    Employee statements
+                  </h3>
+                  <p className="statement">{detail.facts.description}</p>
+                  <dl>
+                    <dt>Report language</dt>
+                    <dd>{detail.facts.language}</dd>
+                    <dt>Incident type</dt>
+                    <dd>{label(detail.facts.incidentType)}</dd>
+                    <dt>App name</dt>
+                    <dd>{detail.facts.appName || "Not supplied"}</dd>
+                    <dt>Evidence notes</dt>
+                    <dd>{detail.facts.evidenceNotes || "Not supplied"}</dd>
+                  </dl>
+                  <h3>
+                    <Icon name="shield" size={18} />
+                    Device observations
+                  </h3>
+                  {!detail.facts.observations.length ? (
+                    <p>No automatic checks supplied.</p>
+                  ) : (
+                    detail.facts.observations.map((o, i) => (
+                      <p key={i}>
+                        {label(o.check)}:{" "}
+                        {o.value ? "configured" : "not configured"}
+                        <br />
+                        <small>
+                          {o.platform} · {o.source} · {o.checkedAt}
+                        </small>
+                      </p>
+                    ))
+                  )}
+                  <p className="muted">
+                    Client-reported observations do not establish remote access,
+                    compromise, or permission use.
+                  </p>
+                  <p>
+                    Policy citations:{" "}
+                    <strong>not available in this stage</strong>
+                    <br />
+                    AI-assigned severity:{" "}
+                    <strong>not available in this stage</strong>
+                  </p>
+                  <fieldset disabled={busy}>
+                    <legend>Administrator actions · Demo administrator</legend>
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        void mutate("status", { status: newStatus });
+                      }}
+                    >
+                      <label>
+                        New status
+                        <select
+                          aria-label="New status"
+                          value={newStatus}
+                          onChange={(e) => setNewStatus(e.target.value)}
+                        >
+                          {statuses
+                            .filter((s) => s !== "escalated")
+                            .map((s) => (
+                              <option key={s} value={s}>
+                                {label(s)}
+                              </option>
+                            ))}
+                        </select>
+                      </label>
+                      <button>Save status</button>
+                    </form>
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        void mutate("assignment", { team, reviewer });
+                      }}
+                    >
+                      <label>
+                        Responsible team
+                        <select
+                          aria-label="Responsible team"
+                          value={team}
+                          onChange={(e) => setTeam(e.target.value)}
+                        >
+                          <option value="security">Security</option>
+                          <option value="data_protection">
+                            Data protection
+                          </option>
+                        </select>
+                      </label>
+                      <label>
+                        Reviewer
+                        <input
+                          maxLength={100}
+                          value={reviewer}
+                          onChange={(e) => setReviewer(e.target.value)}
+                        />
+                      </label>
+                      <button>Save assignment</button>
+                    </form>
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        void mutate("notes", { text: note });
+                      }}
+                    >
+                      <label>
+                        Administrator note
+                        <textarea
+                          required
+                          maxLength={5000}
+                          value={note}
+                          onChange={(e) => setNote(e.target.value)}
+                        />
+                      </label>
+                      <button>Add note</button>
+                    </form>
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        setConfirm(true);
+                      }}
+                    >
+                      <label>
+                        Escalation decision
+                        <select
+                          aria-label="Escalation decision"
+                          value={decision}
+                          onChange={(e) => setDecision(e.target.value)}
+                        >
+                          <option value="escalate">Escalate for review</option>
+                          <option value="do_not_escalate">
+                            Do not escalate
+                          </option>
+                        </select>
+                      </label>
+                      <label>
+                        Decision reason
+                        <textarea
+                          required
+                          minLength={3}
+                          maxLength={5000}
+                          value={reason}
+                          onChange={(e) => setReason(e.target.value)}
+                        />
+                      </label>
+                      <button>Review escalation decision</button>
+                    </form>
+                  </fieldset>
+                </>
+              )}
+            </section>
+          </div>
+        </div>
+
+        <footer className="workspace-footer">
+          <Icon name="shield" size={15} />
+          Security and data protection are separate role concepts. This demo
+          does not enforce access controls.
+        </footer>
       </main>
       {confirm && detail && (
         <div className="modal-backdrop">

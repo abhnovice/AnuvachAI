@@ -1,4 +1,5 @@
 import Fastify from "fastify";
+import { buildDashboard, windowStart, type AuditRow } from "./analytics.js";
 import cors from "@fastify/cors";
 import { DatabaseSync } from "node:sqlite";
 import { randomUUID } from "node:crypto";
@@ -16,6 +17,7 @@ import {
 
 export async function buildApp(
   filename = process.env.DB_PATH ?? "anuvach.sqlite",
+  now: () => Date = () => new Date(),
 ) {
   const db = new DatabaseSync(filename);
   db.exec(`PRAGMA journal_mode=WAL;
@@ -71,7 +73,7 @@ export async function buildApp(
   function audit(id: string, actor: string, action: string, data: unknown) {
     db.prepare(
       "INSERT INTO audit(report_id,actor,action,at,data) VALUES(?,?,?,?,?)",
-    ).run(id, actor, action, new Date().toISOString(), JSON.stringify(data));
+    ).run(id, actor, action, now().toISOString(), JSON.stringify(data));
   }
   app.get("/health", async () => ({
     ok: true,
@@ -94,12 +96,12 @@ export async function buildApp(
           return fail(409, "Retry key belongs to a different payload");
         return get(previous.id as string);
       }
-      const now = new Date().toISOString();
+      const timestamp = now().toISOString();
       const report: Report = {
         id: "ANV-" + randomUUID(),
         facts,
-        createdAt: now,
-        updatedAt: now,
+        createdAt: timestamp,
+        updatedAt: timestamp,
         status: "submitted",
         assignment: null,
         version: 1,
@@ -115,25 +117,55 @@ export async function buildApp(
       return report;
     });
   });
+  function allReports(): Report[] {
+    return db
+      .prepare("SELECT data FROM reports ORDER BY rowid DESC")
+      .all()
+      .map((r) => JSON.parse(r.data as string) as Report);
+  }
+  const dayRange = z.enum(["30", "90", "180"]).transform(Number);
+  app.get("/api/v1/dashboard", async (req) => {
+    const q = z
+      .object({
+        days: dayRange.default(90),
+        incidentType: z.enum(incidentTypes).optional(),
+      })
+      .strict()
+      .parse(req.query);
+    const rows = db
+      .prepare(
+        "SELECT report_id,action,at,sequence,data FROM audit ORDER BY sequence",
+      )
+      .all()
+      .map((row) => ({
+        ...row,
+        data: JSON.parse(row.data as string),
+      })) as AuditRow[];
+    return buildDashboard(allReports(), rows, now(), q.days, q.incidentType);
+  });
   app.get("/api/v1/reports", async (req) => {
     const q = z
       .object({
         employeeId: z.literal("demo-employee").optional(),
         status: z.enum(statuses).optional(),
         incidentType: z.enum(incidentTypes).optional(),
+        days: dayRange.optional(),
       })
       .strict()
       .parse(req.query);
-    return db
-      .prepare("SELECT data FROM reports ORDER BY rowid DESC")
-      .all()
-      .map((r) => JSON.parse(r.data as string) as Report)
+    const current = now(),
+      since = q.days ? windowStart(q.days, current).getTime() : null;
+    return allReports()
       .filter(
         (r) =>
           (!q.employeeId || r.facts.employeeId === q.employeeId) &&
           (!q.status || r.status === q.status) &&
-          (!q.incidentType || r.facts.incidentType === q.incidentType),
-      );
+          (!q.incidentType || r.facts.incidentType === q.incidentType) &&
+          (since === null ||
+            (Date.parse(r.createdAt) >= since &&
+              Date.parse(r.createdAt) <= current.getTime())),
+      )
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   });
   app.get("/api/v1/reports/:id", async (req) => {
     const { id } = req.params as { id: string };
@@ -184,7 +216,7 @@ export async function buildApp(
           escalationChange.parse(change).decision === "escalate"
         )
           report.status = "escalated";
-        report.updatedAt = new Date().toISOString();
+        report.updatedAt = now().toISOString();
         report.version++;
         db.prepare("UPDATE reports SET data=? WHERE id=?").run(
           JSON.stringify(report),

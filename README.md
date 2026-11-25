@@ -1,6 +1,38 @@
 # Anuvach.AI
 
-Employee incident reporting for Flutter Android/iOS and a React administrator desk, backed by a local SQLite API. **Synthetic demonstration data only. No authentication.**
+A social engineering incident tracker that helps employees report suspicious human interactions and gives security teams a clear, auditable place to follow up.
+
+An employee receives a call from someone claiming to be IT support. The caller asks them to install remote-access software or share a verification code. The employee is unsure whether the request was legitimate, but can record what happened without needing to diagnose the incident.
+
+In Anuvach.AI, they describe the call, review the exact facts they intend to share, and explicitly confirm before a ticket is created. The security team sees the same ticket in its dashboard, reviews the employee's account alongside any optional device observation, and records an assignment, status update or escalation decision. The employee can return to the app to see the current status.
+
+**This is an unauthenticated local demonstration for synthetic data only. Do not enter real employee information, passwords or verification codes.**
+
+## The incident journey
+
+1. **Notice and describe.** The employee chooses a category, writes what happened in English, Hindi or a mix, and optionally adds an app name or evidence notes. Suspicious calls, messages and mistaken reports can all be recorded.
+2. **Review and confirm.** The app shows exactly what will be submitted. A ticket is created only after explicit confirmation; an unfinished draft is retained if the API is unavailable.
+3. **Review the facts.** An administrator opens the queue and sees employee statements separately from any device observation. On Android, an optional, consented public API check reports whether a secure screen lock is configured; it does not establish that a permission was used or that a device was compromised. iOS provides manual guidance.
+4. **Decide and follow up.** The administrator can assign a security or data-protection team, add notes, change status and explicitly confirm an escalation decision. Creation and administrator changes are recorded in an append-only local audit trail. The employee can refresh their report to see the updated status.
+
+The dashboard uses synthetic scenarios and visualizes report volume, categories and workflow. A weekly brush highlights corresponding weeks and overlapping whole months; category hover links the mix and status matrix. The brush highlights data without changing totals.
+
+## What is built
+
+- **Employee app:** Flutter for Android and iOS, with reporting, confirmation, draft recovery, ticket history and an optional Android device review.
+- **Administrator dashboard:** React, TypeScript and Vite, with an interactive overview, report queue, ticket journey and audited review actions.
+- **Local API:** TypeScript and SQLite, with input validation, persistent reports and audit events. The seed provides two initial cases and 48 synthetic historical scenarios.
+
+A live voice conversation, policy-grounded retrieval, AI-assigned severity and automated triage are future stages; they do not operate in this iteration. The future voice adapter will populate the existing draft and use the [report creation and history contracts](docs/api-contract.md#stage-3-consumers), with employee review and confirmation still required.
+
+## Repository layout
+
+| Path           | Purpose                                            |
+| -------------- | -------------------------------------------------- |
+| `apps/mobile`  | Flutter employee app and Android/iOS projects      |
+| `apps/admin`   | React administrator dashboard                      |
+| `services/api` | Local TypeScript API and SQLite storage            |
+| `docs`         | Architecture, API, platform limits and experiments |
 
 ## Toolchain
 
@@ -40,7 +72,7 @@ In a second terminal, from the root:
 npm run dev:admin
 ```
 
-Open http://localhost:5173. Vite proxies `/api` to http://127.0.0.1:3000. API defaults to loopback. SQLite defaults to `services/api/anuvach.sqlite` when started through the npm workspace scripts. Seed is repeatable and creates two synthetic cases, never duplicate seed tickets.
+Open http://localhost:5173. Vite proxies `/api` to http://127.0.0.1:3000. API defaults to loopback. SQLite defaults to `services/api/anuvach.sqlite` when started through the npm workspace scripts. Seed is repeatable: it preserves the original two synthetic cases and adds 48 historical demonstration scenarios. Re-running it does not duplicate fixtures or overwrite administrator edits.
 
 In a third terminal:
 
@@ -71,6 +103,30 @@ flutter run -d IOS_SIMULATOR_ID --dart-define=API_BASE_URL=http://localhost:3000
 ```
 
 iOS native validation is pending on macOS with Xcode. Debug iOS builds use a separate plist for local HTTP; release/profile do not. Local network access on physical iOS may trigger the working feature's system prompt.
+
+## Small Android APKs
+
+Use release APKs for installation/sharing. Debug APKs include the development runtime and are much larger.
+
+From the root:
+
+```bash
+npm run build:mobile
+adb shell getprop ro.product.cpu.abi
+adb install -r apps/mobile/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+```
+
+Choose the matching artifact: `arm64-v8a` for most current Android phones, `armeabi-v7a` for older 32-bit ARM devices, or `x86_64` for the emulator used here. Each includes the complete app, theme and features. The command uses release compilation, shrinking and per-architecture packaging, and fails if any output exceeds 50 MB (50,000,000 bytes). Outputs are in `apps/mobile/build/app/outputs/flutter-apk/`.
+
+The default API URL is the Android emulator's `http://10.0.2.2:3000`. For a physical device, build with:
+
+```bash
+API_BASE_URL=http://HOST_LAN_IP:3000 npm run build:mobile
+```
+
+The script explicitly enables local HTTP for an HTTP API URL; ordinary release builds keep cleartext disabled. These synthetic demo APKs retain the project's existing debug signing key. Production signing, HTTPS and access control must be configured before real deployment. `FLUTTER_BIN` can select a Flutter executable; otherwise the script uses the local SDK when present, then Flutter on PATH.
+
+See [size measurements and verification](docs/size-optimization.md).
 
 ## Verify
 
@@ -110,6 +166,8 @@ flutter test integration_test/device_review_test.dart -d emulator-5554
 - [Platform limitations](docs/platform-limitations.md)
 - [Experiment log](docs/experiment-log.md)
 - [Created file inventory](docs/file-inventory.md)
+- [Dhalam-inspired UI refresh](docs/design-refresh.md)
+- [Dashboard metrics and synthetic history](docs/dashboard-metrics.md)
 - [Your confirmation exercise](docs/confirmation-exercise.md)
 
 No voice, transcript, policy retrieval, AI severity, triage, authentication provider, cloud deployment, Gemini, or AlloyDB is implemented. The logo is a replaceable placeholder. UI copy is English; report language supports English, Hindi and mixed.

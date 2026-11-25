@@ -4,7 +4,7 @@ Android device review uses a Dart interface and Kotlin MethodChannel. Only an ex
 
 Reference: [Android KeyguardManager](<https://developer.android.com/reference/android/app/KeyguardManager#isDeviceSecure()>).
 
-Android settings opens ACTION_APPLICATION_DETAILS_SETTINGS for this app. It does not change permissions or settings. The debug manifest permits local cleartext HTTP; production network configuration does not. The demo is intended for debug builds and has no release signing setup.
+Android settings opens ACTION_APPLICATION_DETAILS_SETTINGS for this app. It does not change permissions or settings. The debug manifest permits local cleartext HTTP. Ordinary release builds disable it; `npm run build:mobile` explicitly enables it when building for an HTTP demo API. Optimized demo APKs retain debug-key signing; production release signing is not configured.
 
 iOS uses manual guidance for device review. No automatic observation is manufactured. A Swift channel opens the app's Settings page with UIApplication.openSettingsURLString; opening may fail and is reported. A separate debug Info.plist permits local HTTP and includes a local-network explanation. Release/profile retain the normal transport policy.
 

@@ -14,8 +14,9 @@
     "test:live": "tsx services/api/test/live-flow.ts",
     "check": "npm run check --workspaces",
     "build": "npm run build --workspaces",
-    "format": "prettier --write services apps/admin docs README.md package.json",
-    "format:check": "prettier --check services apps/admin docs README.md package.json"
+    "build:mobile": "node tools/build-mobile.mjs",
+    "format": "prettier --write services apps/admin tools docs README.md package.json",
+    "format:check": "prettier --check services apps/admin tools docs README.md package.json"
   },
   "devDependencies": {
     "prettier": "^3.6.2"

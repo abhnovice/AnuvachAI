@@ -1,0 +1,85 @@
+.brush-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin: 8px 0 12px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.brush-controls > span {
+  font-weight: 650;
+}
+.brush-controls label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.brush-controls select {
+  width: auto;
+  min-height: 34px;
+  padding: 5px 10px;
+  margin: 0;
+}
+.brush-controls button {
+  min-height: 34px;
+  padding: 6px 12px;
+  background: #e5f2eb;
+  color: #17533f;
+}
+.brush-controls small {
+  flex-basis: 100%;
+  font-size: 10px;
+  line-height: 1.4;
+}
+[data-theme="dark"] .brush-controls button {
+  background: #31594a;
+  color: #e5fff1;
+}
+.brush-band {
+  fill: #31a383;
+  opacity: 0.16;
+  pointer-events: none;
+}
+.trend-chart {
+  touch-action: pan-y;
+}
+.brush-match {
+  opacity: 1;
+}
+.trend-chart circle.brush-match {
+  stroke-width: 4;
+  r: 4.5;
+}
+.brush-dim,
+.category-dim {
+  opacity: 0.3;
+}
+.category-match {
+  opacity: 1;
+}
+.status-heatmap tr.category-match th {
+  font-weight: 700;
+  color: var(--teal);
+}
+.status-heatmap tr.category-match .heat-cell {
+  outline: 2px solid var(--teal);
+  outline-offset: -2px;
+}
+.mix-legend button.category-match {
+  box-shadow: inset 3px 0 var(--teal);
+  background: #d8eee4;
+  color: #174936;
+}
+[data-theme="dark"] .mix-legend button.category-match {
+  background: #31594a;
+  color: #effff5 !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .brush-match,
+  .brush-dim,
+  .category-match,
+  .category-dim {
+    transition: none;
+  }
+}

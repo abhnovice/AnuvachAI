@@ -1,0 +1,22 @@
+{
+  "name": "@anuvach/api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "seed": "tsx src/seed.ts",
+    "test": "tsx --test test/*.test.ts",
+    "check": "tsc --noEmit",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "fastify": "^5.12.8",
+    "@fastify/cors": "^11.1.0",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0",
+    "@types/node": "^26.0.0"
+  }
+}

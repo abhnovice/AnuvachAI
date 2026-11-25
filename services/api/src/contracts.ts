@@ -1,0 +1,70 @@
+import { z } from "zod";
+export const incidentTypes = [
+  "support_call",
+  "suspicious_message",
+  "mistaken_report",
+  "other",
+] as const;
+export const statuses = [
+  "submitted",
+  "in_review",
+  "awaiting_employee",
+  "escalated",
+  "closed",
+] as const;
+export type Role = "security" | "data_protection";
+export const observation = z
+  .object({
+    check: z.literal("secure_screen_lock"),
+    platform: z.literal("android"),
+    value: z.boolean(),
+    checkedAt: z.iso.datetime(),
+    source: z.literal("client_public_api"),
+  })
+  .strict();
+export const createReport = z
+  .object({
+    employeeId: z.literal("demo-employee"),
+    description: z.string().trim().min(10).max(5000),
+    language: z.enum(["english", "hindi", "mixed"]),
+    incidentType: z.enum(incidentTypes),
+    appName: z.string().trim().max(200).default(""),
+    evidenceNotes: z.string().trim().max(5000).default(""),
+    observations: z.array(observation).max(10).default([]),
+    confirmed: z.literal(true),
+  })
+  .strict();
+export type SubmittedFacts = z.infer<typeof createReport>;
+export type Report = {
+  id: string;
+  facts: SubmittedFacts;
+  createdAt: string;
+  updatedAt: string;
+  status: (typeof statuses)[number];
+  assignment: { team: Role; reviewer: string } | null;
+  version: number;
+};
+export const adminChange = z.object({
+  expectedVersion: z.number().int().positive(),
+});
+export const assignmentChange = adminChange
+  .extend({
+    team: z.enum(["security", "data_protection"]),
+    reviewer: z.string().trim().max(100).default(""),
+  })
+  .strict();
+export const statusChange = adminChange
+  .extend({
+    status: z.enum(["submitted", "in_review", "awaiting_employee", "closed"]),
+  })
+  .strict();
+export const noteChange = adminChange
+  .extend({ text: z.string().trim().min(1).max(5000) })
+  .strict();
+export const escalationChange = adminChange
+  .extend({
+    confirmed: z.literal(true),
+    decision: z.enum(["escalate", "do_not_escalate"]),
+    reason: z.string().trim().min(3).max(5000),
+  })
+  .strict();

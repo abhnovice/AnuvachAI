@@ -1,0 +1,23 @@
+{
+  "name": "anuvach-ai",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "services/api",
+    "apps/admin"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev -w services/api",
+    "dev:admin": "npm run dev -w apps/admin",
+    "seed": "npm run seed -w services/api",
+    "test": "npm run test --workspaces",
+    "test:live": "tsx services/api/test/live-flow.ts",
+    "check": "npm run check --workspaces",
+    "build": "npm run build --workspaces",
+    "format": "prettier --write services apps/admin docs README.md package.json",
+    "format:check": "prettier --check services apps/admin docs README.md package.json"
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2"
+  }
+}

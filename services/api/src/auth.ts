@@ -3,7 +3,9 @@ import { getAuth } from "firebase-admin/auth";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 
 export type Identity = { uid: string; role: "employee" | "admin" };
-export type Access = (token: string) => Promise<Identity | null>;
+export type Access = (
+  token: string,
+) => Promise<{ uid: string; role: Identity["role"] | "both" } | null>;
 
 export function firebaseApp() {
   const projectId = process.env.FIREBASE_PROJECT_ID;
@@ -22,8 +24,7 @@ export function firebaseAccess(): Access {
   const auth = getAuth(firebaseApp());
   return async (token) => {
     const { uid } = await auth.verifyIdToken(token, true);
-    if (uid === employee) return { uid, role: "employee" };
-    if (uid === admin) return { uid, role: "admin" };
+    if (uid === employee || uid === admin) return { uid, role: "both" };
     return null;
   };
 }
@@ -45,8 +46,9 @@ export function registerAccess(app: FastifyInstance, access?: Access) {
       request.headers.authorization ?? "",
     )?.[1];
     if (!token) return reply.code(401).send({ error: "Sign in to continue" });
+    let grant: Awaited<ReturnType<Access>>;
     try {
-      request.identity = await access(token);
+      grant = await access(token);
     } catch {
       return reply.code(401).send({ error: "Invalid or expired sign-in" });
     }
@@ -60,10 +62,11 @@ export function registerAccess(app: FastifyInstance, access?: Access) {
       (route === "/api/v1/reports/:id" && query.view === "admin") ||
       route.startsWith("/api/v1/reports/:id/");
     const required = adminAction ? "admin" : "employee";
-    if (request.identity?.role !== required)
+    if (grant?.role !== required && grant?.role !== "both")
       return reply
         .code(403)
         .send({ error: "This account cannot perform this action" });
+    request.identity = { uid: grant.uid, role: required };
   });
 }
 

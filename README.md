@@ -191,10 +191,10 @@ configuration from `apps/admin/.env.local` or CI.
 
 The API stores reports, scoped idempotency records, audit events and triage
 state in Firestore. The private developer workbench can keep its separate
-scratch database at `/tmp/agents.sqlite`. When signed in, use the intended
-employee account on the APK and the intended administrator account on the
-website. Use only synthetic reports until both accounts and durable storage have
-passed deployment verification.
+scratch database at `/tmp/agents.sqlite`. Both configured accounts can sign in
+to the employee APK and the administrator website. The employee view shows only
+reports submitted by the signed-in account. Use only synthetic reports until
+both accounts and durable storage have passed deployment verification.
 
 ## Verify
 

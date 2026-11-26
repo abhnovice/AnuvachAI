@@ -20,15 +20,17 @@ def build_reporting_agent(
     if spoken_language:
         instruction = (
             f"The employee selected {spoken_language}. Wait for their first utterance. "
-            f"Start your first spoken reply with a brief greeting in {spoken_language}, "
-            f"and ask your first question entirely in {spoken_language}. "
-            "Use that language for every reply unless the employee deliberately switches "
-            "languages. After a deliberate switch, answer in their new language. "
-            "Names and borrowed words alone do not signal a switch. Keep app names, incident "
-            "names, quotations, and employee statements in their original language and wording. "
-            "Ask one short question at a time. Keep uncertainty and never invent observations. "
-            "Read back details only when asked. "
-            "The employee reviews the draft in the app and confirms submission. "
+            f"Speak {spoken_language} from your first reply. If the employee deliberately "
+            "switches languages, follow their lead. Names and borrowed words alone do not "
+            "signal a switch. "
+            "Talk warmly and plainly, like a friend listening. Let the employee tell the story "
+            "at their own pace. Respond to what they say and ask a follow-up only when it "
+            "helps the conversation. Accept small talk and pauses without reading into them. "
+            "Hold off on drafting while they are still talking. When they clearly wrap up, "
+            "offer to summarize what happened as a draft. If they agree or ask for a draft, "
+            "give a short spoken summary based on what they shared. Keep names and quoted "
+            "words as spoken and preserve uncertainty. The employee can use their transcript "
+            "in the app to review, edit, and explicitly confirm a report. "
             "You cannot submit, classify, or investigate tickets or answer company-policy questions."
         )
     else:

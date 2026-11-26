@@ -30,7 +30,7 @@ class Api {
     final endpoint = Uri.parse('$base/api/v1/reporting/voice/stream');
     final uri = endpoint.replace(
       scheme: endpoint.scheme == 'https' ? 'wss' : 'ws',
-      queryParameters: {'language': language},
+      queryParameters: {'language': language, 'ticketDraft': '1'},
     );
     final headers = {
       if (credential != null) 'Authorization': 'Bearer $credential',
@@ -141,6 +141,52 @@ class Draft extends ChangeNotifier {
     reviewed = null;
     confirmed = false;
     notifyListeners();
+  }
+
+  Future<void> applyVoiceDraft(Json proposal, String language) async {
+    if (locked || busy) {
+      throw StateError(
+        'Finish the pending submission before adding a voice draft.',
+      );
+    }
+    final previous = (fields['description'] as String).trim();
+    final description = proposal['description'] as String;
+    final combined = previous.isEmpty || previous == description
+        ? description
+        : '$previous\n$description';
+    if (combined.length > 5000) {
+      throw StateError(
+        'Shorten the existing draft before adding the voice draft.',
+      );
+    }
+    final previousReporting = fields['reporting'] as Json?;
+    final unknowns = {
+      ...?previousReporting?['unknowns'] as List?,
+      ...proposal['unknowns'] as List,
+    }.take(12).toList();
+    fields = {
+      ...fields,
+      'description': combined,
+      if (previous.isEmpty) 'incidentType': proposal['incident_type'],
+      if ((fields['appName'] as String).trim().isEmpty)
+        'appName': proposal['app_name'],
+      if ((fields['evidenceNotes'] as String).trim().isEmpty)
+        'evidenceNotes': proposal['evidence_notes'],
+      'language': switch (language) {
+        'en' => 'english',
+        'hi' => 'hindi',
+        _ => language,
+      },
+      'reporting': {
+        'language': language,
+        'transcript': previousReporting?['transcript'] ?? <Json>[],
+        'unknowns': unknowns,
+      },
+    };
+    reviewed = null;
+    confirmed = false;
+    notifyListeners();
+    await save();
   }
 
   Future<void> askAgent(String language) async {

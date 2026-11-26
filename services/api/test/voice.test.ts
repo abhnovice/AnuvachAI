@@ -13,15 +13,36 @@ test(
     await peer.register(websocket);
     const languages: string[] = [];
     const input: unknown[] = [];
+    const draft = {
+      description: "Someone asked for my ExampleApp pairing code.",
+      app_name: "ExampleApp",
+      evidence_notes: "",
+      incident_type: "support_call",
+      unknowns: ["Caller identity"],
+    };
     peer.get("/api/live", { websocket: true }, (socket, req) => {
-      const query = req.query as { language: string; preview: string };
+      const query = req.query as {
+        language: string;
+        preview: string;
+        ticket_draft?: string;
+      };
       assert.equal(query.preview, "1");
       languages.push(query.language);
       socket.send(
         JSON.stringify({ type: "state", state: "Microphone stream open" }),
       );
       socket.on("message", (data) => {
-        input.push(JSON.parse(data.toString()));
+        const message = JSON.parse(data.toString());
+        input.push(message);
+        if (message.type === "audio_end" && query.ticket_draft === "1") {
+          socket.send(
+            JSON.stringify({
+              type: "ticket_draft",
+              draft: { ...draft, private: true },
+            }),
+          );
+          return;
+        }
         socket.send(
           JSON.stringify({
             type: "state",
@@ -49,9 +70,12 @@ test(
         /403/,
       );
       for (let i = 0; i < 2; i++) {
-        const socket = await app.injectWS(url, {
-          headers: { authorization: "Bearer employee" },
-        });
+        const socket = await app.injectWS(
+          i === 1 ? url + "&ticketDraft=1" : url,
+          {
+            headers: { authorization: "Bearer employee" },
+          },
+        );
         const [ready] = await once(socket, "message");
         assert.deepEqual(JSON.parse(ready.toString()), {
           type: "state",
@@ -66,7 +90,13 @@ test(
         });
         const ended = once(socket, "message");
         socket.send("end");
-        await ended;
+        const [endEvent] = await ended;
+        assert.deepEqual(
+          JSON.parse(endEvent.toString()),
+          i === 1
+            ? { type: "ticket_draft", draft }
+            : { type: "state", state: "interrupted" },
+        );
         const closed = once(socket, "close");
         socket.close();
         await closed;

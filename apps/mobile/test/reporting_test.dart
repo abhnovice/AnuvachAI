@@ -11,6 +11,35 @@ import 'package:anuvach_mobile/l10n/app_localizations.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() => SharedPreferences.setMockInitialValues({}));
+  test('voice fills an editable draft without submitting a ticket', () async {
+    var calls = 0;
+    final draft = Draft(
+      await SharedPreferences.getInstance(),
+      Api(
+        client: MockClient((request) async {
+          calls++;
+          return http.Response('{}', 201);
+        }),
+      ),
+    );
+    await draft.applyVoiceDraft({
+      'description': 'Someone asked for a code over chat.',
+      'app_name': 'ExampleApp',
+      'evidence_notes': 'The employee has a screenshot.',
+      'incident_type': 'suspicious_message',
+      'unknowns': ['Sender identity'],
+    }, 'ta');
+    expect(draft.fields['incidentType'], 'suspicious_message');
+    expect(draft.fields['language'], 'ta');
+    expect(draft.fields['appName'], 'ExampleApp');
+    expect(draft.fields['evidenceNotes'], 'The employee has a screenshot.');
+    expect((draft.fields['reporting'] as Json)['unknowns'], [
+      'Sender identity',
+    ]);
+    draft.review();
+    await expectLater(draft.submit(), throwsStateError);
+    expect(calls, 0);
+  });
   test(
     'confirmation binds to review; offline retries retain payload and key across restart',
     () async {

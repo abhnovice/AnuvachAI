@@ -8,7 +8,7 @@ import time
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any, Literal
 from urllib.parse import urlsplit
 
 import httpx
@@ -145,6 +145,14 @@ SCENARIOS = {
         "text": "IT support என்று சொன்னவர் pairing code கேட்டார்.",
     },
 }
+
+
+class VoiceTicketDraft(RequestModel):
+    description: str = Field(min_length=10, max_length=5000)
+    app_name: str = Field(max_length=200)
+    evidence_notes: str = Field(max_length=5000)
+    incident_type: Literal["support_call", "suspicious_message", "mistaken_report", "other"]
+    unknowns: list[Annotated[str, Field(max_length=500)]] = Field(max_length=12)
 
 
 def _identity(role: str) -> IdentityContext:
@@ -714,9 +722,29 @@ def create_app(
             if service is None:
                 service = InMemorySessionService()
                 app.state.reporting_sessions["live_service"] = service
+        voice_ticket_enabled = preview and websocket.query_params.get("ticket_draft") == "1"
+
+        def prepare_ticket(
+            description: str, app_name: str, evidence_notes: str,
+            incident_type: str, unknowns: list[str],
+        ) -> dict:
+            """Prepare an editable ticket draft when the employee explicitly asks for it."""
+            try:
+                draft = VoiceTicketDraft(
+                    description=description.strip(), app_name=app_name.strip(),
+                    evidence_notes=evidence_notes.strip(), incident_type=incident_type,
+                    unknowns=unknowns,
+                )
+            except ValidationError:
+                return {"error": "Provide a description and use the supported draft fields."}
+            return {"draft": draft.model_dump(mode="json")}
+
         runner = Runner(
             app_name=app_name,
-            agent=build_reporting_agent(spoken_language=LANGUAGE_NAMES[language]),
+            agent=build_reporting_agent(
+                spoken_language=LANGUAGE_NAMES[language],
+                draft_tool=prepare_ticket if voice_ticket_enabled else None,
+            ),
             artifact_service=InMemoryArtifactService(),
             session_service=service,
         )
@@ -733,6 +761,12 @@ def create_app(
             save_live_blob=False,
             save_input_blobs_as_artifacts=False,
             session_resumption=types.SessionResumptionConfig(),
+            realtime_input_config=types.RealtimeInputConfig(
+                automatic_activity_detection=types.AutomaticActivityDetection(
+                    start_of_speech_sensitivity=types.StartSensitivity.START_SENSITIVITY_LOW,
+                    prefix_padding_ms=120,
+                )
+            ) if voice_ticket_enabled else None,
             # Automatic transcription follows deliberate language switches within the call.
             input_audio_transcription=types.AudioTranscriptionConfig(),
             output_audio_transcription=types.AudioTranscriptionConfig(),
@@ -794,6 +828,12 @@ def create_app(
                         payload["draft"] = draft.model_dump(mode="json")
                         payload["turn_id"] = draft.transcript[-1].turn_id
                     await websocket.send_json(payload)
+                if voice_ticket_enabled:
+                    for response in event.get_function_responses():
+                        if response.name == "prepare_ticket" and response.response and "draft" in response.response:
+                            await websocket.send_json({
+                                "type": "ticket_draft", "draft": response.response["draft"],
+                            })
                 if event.turn_complete:
                     await websocket.send_json({"type": "state", "state": "listening"})
 

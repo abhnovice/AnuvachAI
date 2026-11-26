@@ -37,6 +37,7 @@ void main() {
               messages: messages,
               api: api,
               sessionId: 'c5a6866b-69ed-4d14-baf3-32d43093dfa0',
+              reviewVoiceTicket: (_, _) async {},
               reviewStatement: (statement) async {
                 used.add(statement);
               },
@@ -81,6 +82,7 @@ void main() {
             messages: [],
             api: api,
             sessionId: 'c5a6866b-69ed-4d14-baf3-32d43093dfa0',
+            reviewVoiceTicket: (_, _) async {},
             reviewStatement: (_) async {},
           ),
         ),

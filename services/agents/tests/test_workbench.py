@@ -179,3 +179,35 @@ def test_language_switch_and_required_synthetic_scenarios(tmp_path) -> None:
 
     limited = client.post("/api/scenarios/limited-observation", json={}).json()["draft"]
     assert all(fact["source"] == "employee_statement" for fact in limited["facts"])
+
+def test_voice_ticket_tool_returns_a_draft_without_creating_a_ticket(tmp_path, monkeypatch) -> None:
+    from google.adk.events import Event
+    from google.adk.runners import Runner
+    from google.genai import types
+
+    async def run_live(runner, **kwargs):
+        tool, = runner.agent.tools
+        assert tool.__name__ == "prepare_ticket"
+        payload = tool(
+            "Someone asked for an ExampleApp code over chat.",
+            "ExampleApp", "", "suspicious_message", ["Sender identity"],
+        )
+        yield Event(
+            author=runner.agent.name,
+            content=types.Content(
+                role="user",
+                parts=[types.Part.from_function_response(name=tool.__name__, response=payload)],
+            ),
+        )
+        await kwargs["live_request_queue"].get()
+
+    monkeypatch.setenv("GOOGLE_API_KEY", "fixture")
+    monkeypatch.setattr(Runner, "run_live", run_live)
+    client = TestClient(create_app(SQLiteFakeAdapters(tmp_path / "voice-ticket.sqlite")))
+    with client.websocket_connect("/api/live?preview=1&ticket_draft=1") as websocket:
+        assert websocket.receive_json()["state"] == "Microphone stream open"
+        event = websocket.receive_json()
+        assert event["type"] == "ticket_draft"
+        assert event["draft"]["app_name"] == "ExampleApp"
+        assert event["draft"]["unknowns"] == ["Sender identity"]
+    assert client.get("/api/tickets").json() == []

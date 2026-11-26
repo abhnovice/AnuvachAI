@@ -261,6 +261,11 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
     if (mounted) await startReport();
   }
 
+  Future<void> reviewVoiceTicket(Json proposal, String language) async {
+    await draft.applyVoiceDraft(proposal, language);
+    if (mounted) await startReport();
+  }
+
   Future<void> startReport() async {
     await Navigator.push(
       context,
@@ -418,6 +423,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                     api: widget.api,
                     sessionId: checkSessionId,
                     reviewStatement: reviewCheckStatement,
+                    reviewVoiceTicket: reviewVoiceTicket,
                   )
                 : AccessTab(
                     key: const ValueKey('access'),
@@ -725,30 +731,13 @@ class _ReportFormState extends State<ReportForm> {
     super.dispose();
   }
 
-  void useVoiceStatement(String text) {
-    final previous = description.text.trim();
-    final combined = previous.isEmpty ? text : '$previous\n$text';
-    if (combined.length > 5000) {
-      setState(
-        () => error = 'Shorten the draft before adding another statement.',
-      );
-      return;
-    }
-    description.text = combined;
-    draft.update('description', combined);
-    final earlier = draft.fields['reporting'] as Json?;
-    final transcript = [
-      ...?earlier?['transcript'] as List?,
-      {'speaker': 'employee', 'text': text},
-    ];
-    draft.update('reporting', {
-      'language': reportLanguage,
-      'transcript': transcript
-          .skip(transcript.length > 12 ? transcript.length - 12 : 0)
-          .toList(),
-      'unknowns': earlier?['unknowns'] ?? <String>[],
-    });
-    save();
+  int voiceDraftRevision = 0;
+
+  Future<void> useVoiceDraft(Json proposal, String language) async {
+    await draft.applyVoiceDraft(proposal, language);
+    if (!mounted) return;
+    description.text = draft.fields['description'] as String;
+    setState(() => voiceDraftRevision++);
   }
 
   String? error;
@@ -793,7 +782,9 @@ class _ReportFormState extends State<ReportForm> {
             Padding(
               padding: const EdgeInsets.only(bottom: 16),
               child: TextFormField(
-                key: ValueKey(spec.$1),
+                key: spec.$1 == 'description'
+                    ? const ValueKey('description')
+                    : ValueKey((spec.$1, voiceDraftRevision)),
                 controller: spec.$1 == 'description' ? description : null,
                 initialValue: spec.$1 == 'description'
                     ? null
@@ -816,6 +807,7 @@ class _ReportFormState extends State<ReportForm> {
               ),
             ),
           DropdownButtonFormField<String>(
+            key: ValueKey(('language', voiceDraftRevision)),
             initialValue: draft.fields['language'],
             decoration: InputDecoration(
               labelText: AppLocalizations.of(context)!.reportLanguageLabel,
@@ -850,6 +842,7 @@ class _ReportFormState extends State<ReportForm> {
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
+            key: ValueKey(('incidentType', voiceDraftRevision)),
             initialValue: draft.fields['incidentType'],
             decoration: InputDecoration(
               labelText: AppLocalizations.of(context)!.incidentTypeLabel,
@@ -891,7 +884,7 @@ class _ReportFormState extends State<ReportForm> {
       api: draft.api,
       language: reportLanguage,
       enabled: !draft.locked && !reviewing,
-      useStatement: useVoiceStatement,
+      reviewTicket: useVoiceDraft,
     ),
     ListenableBuilder(
       listenable: draft,

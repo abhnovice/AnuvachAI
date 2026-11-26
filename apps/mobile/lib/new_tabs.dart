@@ -16,6 +16,7 @@ class CheckTab extends StatefulWidget {
     required this.api,
     required this.sessionId,
     required this.reviewStatement,
+    required this.reviewVoiceTicket,
   });
 
   final String language;
@@ -23,6 +24,7 @@ class CheckTab extends StatefulWidget {
   final Api api;
   final String sessionId;
   final Future<void> Function(String) reviewStatement;
+  final Future<void> Function(Json, String) reviewVoiceTicket;
 
   @override
   State<CheckTab> createState() => _CheckTabState();
@@ -120,7 +122,7 @@ class _CheckTabState extends State<CheckTab> {
                 api: widget.api,
                 language: widget.language,
                 enabled: !reviewing,
-                useStatement: (statement) => unawaited(review(statement)),
+                reviewTicket: widget.reviewVoiceTicket,
               ),
               for (final message in widget.messages)
                 Align(

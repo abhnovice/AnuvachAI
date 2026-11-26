@@ -43,8 +43,8 @@ internal class VoicePlayback(
         override fun run() {
             try {
                 pumpAudio()
-            } catch (_: Exception) {
-                fail()
+            } catch (error: Exception) {
+                fail(error.message ?: error.javaClass.simpleName)
             }
         }
     }
@@ -54,8 +54,8 @@ internal class VoicePlayback(
         worker.post {
             if (generation.get() != epoch) return@post
             // Gemini can send several seconds of PCM before the phone can play it.
-            if (pendingBytes + pcm.size > 8000 * bytesPerMs) {
-                fail()
+            if (pendingBytes + pcm.size > 20000 * bytesPerMs) {
+                fail("reply buffer exceeded")
                 return@post
             }
             if (track == null) primeUntil = SystemClock.elapsedRealtime() + 100
@@ -73,7 +73,7 @@ internal class VoicePlayback(
         while (queue.isNotEmpty()) {
             val chunk = queue.first
             val count = audio.write(chunk, offset, chunk.size - offset, AudioTrack.WRITE_NON_BLOCKING)
-            check(count >= 0 && count % 2 == 0)
+            check(count >= 0 && count % 2 == 0) { "AudioTrack write returned $count" }
             if (count == 0) break
             if (writtenFrames == 0) firstWriteAt = SystemClock.elapsedRealtime()
             writtenFrames += count / 2
@@ -102,7 +102,7 @@ internal class VoicePlayback(
             lastHead = head
             lastProgressAt = now
         }
-        check(!started || head >= writtenFrames || now - lastProgressAt < 3000)
+        check(!started || head >= writtenFrames || now - lastProgressAt < 3000) { "playback head stalled" }
         if (started && head > 0 && !playing) {
             if (trace) Log.i("VoicePreview", "playback_started_ms=${SystemClock.elapsedRealtime()} track_start_delay_ms=${SystemClock.elapsedRealtime() - firstWriteAt}")
             setPlaying(true)
@@ -147,7 +147,8 @@ internal class VoicePlayback(
         postCurrent { onPlaying(value) }
     }
 
-    private fun fail() {
+    private fun fail(reason: String) {
+        Log.w("VoicePreview", reason)
         resetTrack()
         postCurrent(onError)
     }

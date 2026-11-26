@@ -3,6 +3,19 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { agentLanguage } from "./agents.js";
 
+const voiceDraft = z.object({
+  description: z.string().trim().min(10).max(5000),
+  app_name: z.string().max(200),
+  evidence_notes: z.string().max(5000),
+  incident_type: z.enum([
+    "support_call",
+    "suspicious_message",
+    "mistaken_report",
+    "other",
+  ]),
+  unknowns: z.array(z.string().max(500)).max(12),
+});
+
 export function registerVoice(app: FastifyInstance, agentBase?: string) {
   let activeStreams = 0;
   app.get(
@@ -23,10 +36,17 @@ export function registerVoice(app: FastifyInstance, agentBase?: string) {
         return;
       }
       activeStreams++;
-      const { language } = request.query as { language: string };
+      const { language, ticketDraft } = request.query as {
+        language: string;
+        ticketDraft?: string;
+      };
       const url = new URL("/api/live", agentBase);
       url.protocol = "ws:";
-      url.search = new URLSearchParams({ language, preview: "1" }).toString();
+      url.search = new URLSearchParams({
+        language,
+        preview: "1",
+        ...(ticketDraft === "1" ? { ticket_draft: "1" } : {}),
+      }).toString();
       const agent = new WebSocket(url);
       const started = performance.now();
       let firstUpload: number | undefined;
@@ -94,10 +114,16 @@ export function registerVoice(app: FastifyInstance, agentBase?: string) {
             data: audio,
             message,
             input_to_audio_ms,
+            draft,
           } = JSON.parse(data);
           if (type === "state" && state === "Microphone stream open") {
             ready = true;
             client.send(JSON.stringify({ type: "state", state: "ready" }));
+          } else if (type === "ticket_draft") {
+            const parsed = voiceDraft.safeParse(draft);
+            if (ticketDraft === "1" && parsed.success) {
+              client.send(JSON.stringify({ type, draft: parsed.data }));
+            }
           } else {
             if (type === "audio" && firstUpload !== undefined && !sawAudio) {
               client.send(

@@ -14,7 +14,7 @@ void main() {
     tester,
   ) async {
     final calls = <String>[];
-    final used = <String>[];
+    final used = <Json>[];
     final played = <int>[];
     final messenger =
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
@@ -38,6 +38,7 @@ void main() {
       voiceConnector: (uri, headers) async {
         expect(uri.path, '/api/v1/reporting/voice/stream');
         expect(headers['Authorization'], 'Bearer fixture-token');
+        expect(uri.queryParameters['ticketDraft'], '1');
         languages.add(uri.queryParameters['language']);
         final connection = VoiceSocketFixture();
         sockets.add(connection);
@@ -51,7 +52,10 @@ void main() {
             api: api,
             language: 'ta',
             enabled: true,
-            useStatement: used.add,
+            reviewTicket: (draft, language) async {
+              expect(language, 'ta');
+              used.add(draft);
+            },
           ),
         ),
       ),
@@ -107,14 +111,32 @@ void main() {
     await tester.pump();
     expect(calls, containsAllInOrder(['playVoice', 'clearVoice']));
     expect(find.text('Listening'), findsOneWidget);
-    expect(find.text('Use in draft'), findsOneWidget);
+    expect(find.text('Use in draft'), findsNothing);
+    expect(find.text('Review ticket draft'), findsNothing);
+    await native('voicePlaybackError', null);
+    await tester.pump();
+    expect(find.textContaining('Still listening'), findsOneWidget);
+    await native('voicePcm', Uint8List(640));
+    expect(socket.sent, hasLength(2));
+    final proposal = {
+      'description': 'ஒருவர் ExampleApp குறியீட்டைக் கேட்டார்.',
+      'app_name': 'ExampleApp',
+      'evidence_notes': '',
+      'incident_type': 'support_call',
+      'unknowns': <String>[],
+    };
+    socket.emit({'type': 'ticket_draft', 'draft': proposal});
+    socket.emit({'type': 'ticket_draft', 'draft': proposal});
+    await tester.pump();
+    expect(find.text('Review ticket draft'), findsOneWidget);
     expect(used, isEmpty);
     await socket.close();
     await tester.pump();
     expect(find.textContaining('Voice disconnected'), findsOneWidget);
     expect(calls, contains('stopMic'));
-    await tester.tap(find.text('Use in draft'));
-    expect(used, ['ஒருவர் ExampleApp குறியீட்டைக் கேட்டார்.']);
+    await tester.tap(find.text('Review ticket draft'));
+    await tester.pump();
+    expect(used, [proposal]);
     await tester.tap(find.text('Start voice'));
     await tester.pump();
     expect(languages, ['ta', 'ta']);

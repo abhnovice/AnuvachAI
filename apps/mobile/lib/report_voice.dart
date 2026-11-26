@@ -15,12 +15,12 @@ class ReportVoice extends StatefulWidget {
     required this.api,
     required this.language,
     required this.enabled,
-    required this.useStatement,
+    required this.reviewTicket,
   });
   final Api api;
   final String language;
   final bool enabled;
-  final void Function(String) useStatement;
+  final Future<void> Function(Json, String) reviewTicket;
 
   @override
   State<ReportVoice> createState() => _ReportVoiceState();
@@ -32,7 +32,11 @@ class _ReportVoiceState extends State<ReportVoice>
   bool get wantKeepAlive => true;
   static const channel = LocalFeatures.channel;
   static const trace = bool.fromEnvironment('VOICE_TRACE');
-  final statements = <String>[];
+  Json? ticketDraft;
+  String? ticketLanguage;
+  bool openingDraft = false;
+  bool suppressReplyAudio = false;
+  bool serverTurnComplete = true;
   final clock = Stopwatch();
   WebSocket? socket;
   StreamSubscription<dynamic>? subscription;
@@ -83,6 +87,8 @@ class _ReportVoiceState extends State<ReportVoice>
       starting = true;
       finishing = false;
       output = agentPartial = partial = '';
+      suppressReplyAudio = false;
+      serverTurnComplete = true;
       status = 'Connecting to voice…';
     });
     deadline = Timer(const Duration(seconds: 12), () {
@@ -149,7 +155,7 @@ class _ReportVoiceState extends State<ReportVoice>
         });
         if (!active && finishAfterDrain) scheduleFinish();
       } else if (call.method == 'voicePlaybackError') {
-        unawaited(stop('Audio playback unavailable. Continue with text.'));
+        playbackFailed();
       } else if (call.method == 'voiceFocusLost' ||
           (call.method == 'voiceMicStopped' && !finishing)) {
         unawaited(
@@ -202,6 +208,8 @@ class _ReportVoiceState extends State<ReportVoice>
           case 'ready':
             if (!preparingMic && !startedMic) unawaited(startMic(current));
           case 'interrupted':
+            suppressReplyAudio = false;
+            serverTurnComplete = true;
             interruptions++;
             lastAudioMs = null;
             finishDelay?.cancel();
@@ -212,12 +220,19 @@ class _ReportVoiceState extends State<ReportVoice>
               if (!finishing) status = 'Listening';
             });
           case 'listening':
+            suppressReplyAudio = false;
+            serverTurnComplete = true;
             lastAudioMs = null;
             if (finishing) {
               finishAfterDrain = true;
               if (!playing) scheduleFinish();
             }
         }
+      case 'ticket_draft':
+        setState(() {
+          ticketDraft = event['draft'] as Json;
+          ticketLanguage = widget.language;
+        });
       case 'transcript':
         final text = event['text'] as String;
         setState(() {
@@ -233,12 +248,11 @@ class _ReportVoiceState extends State<ReportVoice>
             partial += text;
           } else {
             partial = '';
-            if (text.trim().isNotEmpty && !statements.contains(text)) {
-              statements.add(text);
-            }
           }
         });
       case 'audio':
+        if (suppressReplyAudio) return;
+        serverTurnComplete = false;
         final mime = event['mime_type'] as String;
         if (!RegExp(
           r'^audio/pcm(?:;\s*rate=24000)?$',
@@ -266,8 +280,34 @@ class _ReportVoiceState extends State<ReportVoice>
       await channel.invokeMethod<void>('playVoice', {'pcm': pcm});
     } catch (_) {
       if (attempt == current) {
-        await stop('Audio playback unavailable. Continue with text.');
+        playbackFailed();
       }
+    }
+  }
+
+  void playbackFailed() {
+    suppressReplyAudio = !serverTurnComplete;
+    setState(() {
+      playing = false;
+      if (!finishing) status = 'Reply audio stopped. Still listening…';
+    });
+    if (finishAfterDrain) scheduleFinish();
+  }
+
+  Future<void> openDraft() async {
+    final proposal = ticketDraft;
+    final language = ticketLanguage;
+    if (proposal == null || language == null) return;
+    setState(() => openingDraft = true);
+    try {
+      await stop('Voice stopped. Review your ticket draft.');
+      await widget.reviewTicket(proposal, language);
+      if (mounted && ticketDraft == proposal)
+        setState(() => ticketDraft = null);
+    } catch (error) {
+      if (mounted) setState(() => status = error.toString());
+    } finally {
+      if (mounted) setState(() => openingDraft = false);
     }
   }
 
@@ -384,21 +424,10 @@ class _ReportVoiceState extends State<ReportVoice>
           ),
         if (partial.isNotEmpty) Text('Live preview: $partial'),
         if (output.isNotEmpty) Text('Assistant: $output'),
-        for (final statement in statements)
-          ListTile(
-            title: Text(
-              statement,
-              textDirection: widget.language == 'ur' ? TextDirection.rtl : null,
-            ),
-            trailing: TextButton(
-              onPressed: widget.enabled
-                  ? () {
-                      widget.useStatement(statement);
-                      setState(() => statements.remove(statement));
-                    }
-                  : null,
-              child: const Text('Use in draft'),
-            ),
+        if (ticketDraft != null)
+          OutlinedButton(
+            onPressed: widget.enabled && !openingDraft ? openDraft : null,
+            child: const Text('Review ticket draft'),
           ),
       ],
     );

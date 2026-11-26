@@ -56,6 +56,38 @@ flutter doctor -v
 
 Install Android SDK platforms/build tools requested by Gradle through Android Studio SDK Manager. Install Android command-line tools there if doctor reports them missing. Accept SDK licenses with `flutter doctor --android-licenses`. SDK/Gradle may download NDK and other build dependencies on the first build.
 
+## Firebase configuration
+
+For the admin dashboard, copy `apps/admin/.env.example` to
+`apps/admin/.env.local` and populate the listed `VITE_FIREBASE_*` values.
+CI must supply these variables before the Vite build. They are embedded in the
+client bundle; keep the populated environment file out of Git.
+
+Before running mobile builds, copy `apps/mobile/.env.firebase.example.json` to
+`apps/mobile/.env.firebase.json` and fill every value from your existing Firebase
+Android and iOS app configuration. Flutter reads these build-time environment
+values via `--dart-define-from-file`; it does not load shell environment variables
+automatically. The JSON example lists all required variable names.
+
+Android also requires the matching local file at
+`apps/mobile/android/app/google-services.json`. Retrieve it with
+`npx -y firebase-tools@latest apps:sdkconfig ANDROID <APP_ID> --project <PROJECT_ID>`
+and save the returned JSON there. These populated files and FlutterFire's local
+`apps/mobile/firebase.json` metadata are ignored. Do not commit generated
+configuration or service-account credentials.
+
+In CI, restore these files from the CI secret store before building. The mobile
+packaging script defaults to the local JSON; set `FIREBASE_CONFIG_FILE` to an
+alternate absolute path or a path relative to the repository root. Direct Flutter
+run/build commands must include `--dart-define-from-file=.env.firebase.json` from
+`apps/mobile`.
+
+Previously committed values remain in Git history. Review API-key restrictions
+and replace exposed keys where necessary in the Firebase/Google Cloud project.
+Build-time configuration can be extracted from distributed apps; Firebase client
+keys are not a substitute for backend access controls. Never embed service-account
+private keys in an app.
+
 ## Run locally
 
 From the repository root:
@@ -81,7 +113,7 @@ export PATH="$PWD/.tooling/flutter/bin:$PATH"
 cd apps/mobile
 flutter pub get
 flutter devices
-flutter run --dart-define=API_BASE_URL=http://10.0.2.2:3000
+flutter run --dart-define-from-file=.env.firebase.json --dart-define=API_BASE_URL=http://10.0.2.2:3000
 ```
 
 Use `-d DEVICE_ID` if multiple devices are available.
@@ -98,8 +130,8 @@ On macOS install Flutter and Xcode, then run from `apps/mobile`:
 
 ```bash
 flutter pub get
-flutter build ios --simulator --debug
-flutter run -d IOS_SIMULATOR_ID --dart-define=API_BASE_URL=http://localhost:3000
+flutter build ios --simulator --debug --dart-define-from-file=.env.firebase.json
+flutter run --dart-define-from-file=.env.firebase.json -d IOS_SIMULATOR_ID --dart-define=API_BASE_URL=http://localhost:3000
 ```
 
 iOS native validation is pending on macOS with Xcode. Debug iOS builds use a separate plist for local HTTP; release/profile do not. Local network access on physical iOS may trigger the working feature's system prompt.
@@ -148,7 +180,7 @@ From `apps/mobile` with Flutter on PATH:
 dart format --output=none --set-exit-if-changed lib test
 flutter analyze
 flutter test
-flutter build apk --debug
+flutter build apk --debug --dart-define-from-file=.env.firebase.json
 ```
 
 Manual demonstration: accept welcome disclosure → report synthetic support call → optional consented device check → review → tick confirmation → submit → record ticket ID → refresh dashboard queue → open matching ID → save `in_review` → refresh mobile detail. Stop API while drafting to verify useful errors and draft recovery. A pending submission is locked to its reviewed payload until retry resolves it.

@@ -22,10 +22,18 @@ const localFlutter = resolve(root, ".tooling/flutter/bin/flutter");
 const flutter =
   process.env.FLUTTER_BIN ??
   (existsSync(localFlutter) ? localFlutter : "flutter");
+const firebaseConfig = resolve(
+  root,
+  process.env.FIREBASE_CONFIG_FILE ?? "apps/mobile/.env.firebase.json",
+);
+if (!existsSync(firebaseConfig)) {
+  throw new Error("Missing Firebase configuration. See README Firebase setup.");
+}
 const args = [
   "build",
   "apk",
   "--release",
+  "--dart-define-from-file=" + firebaseConfig,
   "--split-per-abi",
   "--dart-define=API_BASE_URL=" + api,
 ];

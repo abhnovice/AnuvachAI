@@ -387,11 +387,11 @@ export function LocalizationProvider({ children }: { children: ReactNode }) {
         const app = getApps().length
           ? getApp()
           : initializeApp({
-              apiKey: "AIzaSyBSc3X4cQvO332JizmcVj_wjbsLABLadZQ",
-              authDomain: "anuvachai.firebaseapp.com",
-              projectId: "anuvachai",
-              appId: "1:425459156696:web:b7f8faf7e72995dc7579ad",
-              messagingSenderId: "425459156696",
+              apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+              authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+              projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+              appId: import.meta.env.VITE_FIREBASE_APP_ID,
+              messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
             });
         const config = getRemoteConfig(app);
         config.settings.minimumFetchIntervalMillis = 12 * 60 * 60 * 1000;

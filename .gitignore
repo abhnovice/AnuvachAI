@@ -18,3 +18,11 @@ apps/mobile/.flutter-plugins-dependencies
 **/Pods/
 **/.symlinks/
 **/Flutter/ephemeral/
+
+# Local Firebase and service-account configuration
+**/google-services.json
+**/GoogleService-Info.plist
+apps/mobile/firebase.json
+**/*service-account*.json
+**/*serviceAccount*.json
+!apps/mobile/.env.firebase.example.json

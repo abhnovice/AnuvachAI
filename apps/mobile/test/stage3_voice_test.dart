@@ -1,4 +1,4 @@
-import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:anuvach_mobile/local_features.dart';
 import 'package:anuvach_mobile/report_voice.dart';
@@ -6,8 +6,7 @@ import 'package:anuvach_mobile/reporting.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
-import 'package:http/testing.dart';
+import 'voice_socket_fixture.dart';
 
 void main() {
   testWidgets('voice preview, interruption, disconnect and restart', (
@@ -30,59 +29,25 @@ void main() {
     addTearDown(
       () => messenger.setMockMethodCallHandler(LocalFeatures.channel, null),
     );
-    var starts = 0;
-    var poll = 0;
+    final sockets = <VoiceSocketFixture>[];
+    final languages = <String?>[];
     final api = Api(
-      client: MockClient((request) async {
-        if (request.method == 'DELETE') return http.Response('', 204);
-        if (request.url.path.endsWith('/voice')) {
-          starts++;
-          return http.Response(jsonEncode({'id': 'session-$starts'}), 200);
-        }
-        final events = starts != 1
-            ? []
-            : switch (poll++) {
-                0 => [
-                  {
-                    'type': 'audio',
-                    'data': 'AAAAAA==',
-                    'mime_type': 'audio/pcm;rate=24000',
-                  },
-                  {
-                    'type': 'transcript',
-                    'role': 'employee',
-                    'text': 'discard partial',
-                    'partial': true,
-                  },
-                ],
-                1 => [
-                  {'type': 'state', 'state': 'interrupted'},
-                  {
-                    'type': 'transcript',
-                    'role': 'employee',
-                    'text': 'A caller asked for a code.',
-                    'partial': false,
-                  },
-                  {
-                    'type': 'transcript',
-                    'role': 'employee',
-                    'text': 'A caller asked for a code.',
-                    'partial': false,
-                  },
-                ],
-                _ => [
-                  {'type': 'error', 'message': 'closed'},
-                ],
-              };
-        return http.Response(jsonEncode({'events': events}), 200);
-      }),
+      token: () async => 'fixture-token',
+      voiceConnector: (uri, headers) async {
+        expect(uri.path, '/api/v1/reporting/voice/stream');
+        expect(headers['Authorization'], 'Bearer fixture-token');
+        languages.add(uri.queryParameters['language']);
+        final connection = VoiceSocketFixture();
+        sockets.add(connection);
+        return connection;
+      },
     );
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           body: ReportVoice(
             api: api,
-            language: 'en',
+            language: 'ta',
             enabled: true,
             useStatement: used.add,
           ),
@@ -92,21 +57,52 @@ void main() {
     expect(calls, isEmpty);
     await tester.tap(find.text('Start voice'));
     await tester.pump();
+    final socket = sockets.single;
+    await messenger.handlePlatformMessage(
+      LocalFeatures.channel.name,
+      const StandardMethodCodec().encodeMethodCall(
+        MethodCall('voicePcm', Uint8List(640)),
+      ),
+      (_) {},
+    );
+    expect(socket.sent.single, hasLength(640));
+    socket.emit({
+      'type': 'audio',
+      'data': 'AAAAAA==',
+      'mime_type': 'audio/pcm;rate=24000',
+    });
+    socket.emit({
+      'type': 'transcript',
+      'role': 'employee',
+      'text': 'partial',
+      'partial': true,
+    });
+    await tester.pump();
     expect(calls, containsAllInOrder(['startVoice', 'playVoice']));
     expect(find.textContaining('Live preview:'), findsOneWidget);
     expect(find.text('Use in draft'), findsNothing);
-    await tester.pump(const Duration(milliseconds: 70));
+    socket.emit({'type': 'state', 'state': 'interrupted'});
+    for (var i = 0; i < 2; i++) {
+      socket.emit({
+        'type': 'transcript',
+        'role': 'employee',
+        'text': 'ஒருவர் ExampleApp குறியீட்டைக் கேட்டார்.',
+        'partial': false,
+      });
+    }
+    await tester.pump();
     expect(calls, containsAllInOrder(['playVoice', 'clearVoice']));
     expect(find.text('Use in draft'), findsOneWidget);
     expect(used, isEmpty);
-    await tester.pump(const Duration(milliseconds: 70));
+    await socket.close();
+    await tester.pump();
     expect(find.textContaining('Voice disconnected'), findsOneWidget);
     expect(calls, contains('stopMic'));
     await tester.tap(find.text('Use in draft'));
-    expect(used, ['A caller asked for a code.']);
+    expect(used, ['ஒருவர் ExampleApp குறியீட்டைக் கேட்டார்.']);
     await tester.tap(find.text('Start voice'));
     await tester.pump();
-    expect(starts, 2);
+    expect(languages, ['ta', 'ta']);
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(milliseconds: 100));
   });

@@ -4,6 +4,132 @@ import { z } from "zod";
 import { agentLanguage } from "./agents.js";
 
 export function registerVoice(app: FastifyInstance, agentBase?: string) {
+  let activeStreams = 0;
+  app.get(
+    "/api/v1/reporting/voice/stream",
+    {
+      websocket: true,
+      preValidation: async (request, reply) => {
+        agentLanguage.parse((request.query as { language?: string }).language);
+        if (!agentBase || activeStreams >= 8)
+          return reply
+            .code(503)
+            .send({ error: "Voice unavailable. Continue with text." });
+      },
+    },
+    (client, request) => {
+      if (activeStreams >= 8) {
+        client.close(1013);
+        return;
+      }
+      activeStreams++;
+      const { language } = request.query as { language: string };
+      const url = new URL("/api/live", agentBase);
+      url.protocol = "ws:";
+      url.search = new URLSearchParams({ language, preview: "1" }).toString();
+      const agent = new WebSocket(url);
+      const started = performance.now();
+      let firstUpload: number | undefined;
+      let sawAudio = false;
+      let ready = false;
+      let ended = false;
+      let closed = false;
+      let idle: NodeJS.Timeout | undefined;
+      const expiry = setTimeout(() => close(4001), 240_000);
+      function close(code = 1011) {
+        if (closed) return;
+        closed = true;
+        activeStreams--;
+        clearTimeout(expiry);
+        clearTimeout(idle);
+        agent.close();
+        client.close(code);
+      }
+      function touch() {
+        clearTimeout(idle);
+        idle = setTimeout(() => close(4001), 25_000);
+      }
+      touch();
+      client.on("close", () => close(1000));
+      client.on("error", () => close());
+      agent.addEventListener("close", () => close());
+      agent.addEventListener("error", () => close());
+      client.on("message", (data, binary) => {
+        if (!ready || ended || agent.bufferedAmount > 32_000) return close();
+        if (!Buffer.isBuffer(data)) return close(1003);
+        if (
+          binary &&
+          data.length > 0 &&
+          data.length <= 3200 &&
+          data.length % 2 === 0
+        ) {
+          firstUpload ??= performance.now() - started;
+          agent.send(
+            JSON.stringify({ type: "audio", data: data.toString("base64") }),
+          );
+        } else if (!binary && data.toString() === "end") {
+          ended = true;
+          agent.send(JSON.stringify({ type: "audio_end" }));
+        } else {
+          return close(1003);
+        }
+        touch();
+      });
+      agent.addEventListener("message", ({ data }) => {
+        if (closed) return;
+        if (
+          typeof data !== "string" ||
+          data.length > 256_000 ||
+          client.bufferedAmount > 256_000
+        )
+          return close();
+        try {
+          const {
+            type,
+            state,
+            role,
+            text,
+            partial,
+            mime_type,
+            data: audio,
+            message,
+            input_to_audio_ms,
+          } = JSON.parse(data);
+          if (type === "state" && state === "Microphone stream open") {
+            ready = true;
+            client.send(JSON.stringify({ type: "state", state: "ready" }));
+          } else {
+            if (type === "audio" && firstUpload !== undefined && !sawAudio) {
+              client.send(
+                JSON.stringify({
+                  type: "timing",
+                  input_to_audio_ms,
+                  proxy_first_upload_ms: Math.round(firstUpload),
+                  proxy_first_audio_ms: Math.round(performance.now() - started),
+                }),
+              );
+              sawAudio = true;
+            }
+            client.send(
+              JSON.stringify({
+                type,
+                state,
+                role,
+                text,
+                partial,
+                mime_type,
+                data: audio,
+                message,
+              }),
+            );
+          }
+          touch();
+        } catch {
+          close();
+        }
+      });
+    },
+  );
   const sessions = new Map<
     string,
     { socket: WebSocket; events: unknown[]; touched: number; owner?: string }

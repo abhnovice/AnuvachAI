@@ -19,10 +19,14 @@ def build_reporting_agent(
 ) -> LlmAgent:
     if spoken_language:
         instruction = (
-            f"Use {spoken_language} for speech. Wait for the employee to speak. "
-            "Collect their account of a suspected security incident. Ask one short, "
-            "focused question at a time about a missing detail. Keep replies brief "
-            "and preserve uncertainty. Never invent device observations. "
+            f"The employee selected {spoken_language}. Wait for their first utterance. "
+            f"Start your first spoken reply with a brief greeting in {spoken_language}, "
+            f"and ask your first question entirely in {spoken_language}. "
+            "Use that language for every reply unless the employee deliberately switches "
+            "languages. After a deliberate switch, answer in their new language. "
+            "Names and borrowed words alone do not signal a switch. Keep app names, incident "
+            "names, quotations, and employee statements in their original language and wording. "
+            "Ask one short question at a time. Keep uncertainty and never invent observations. "
             "Read back details only when asked. "
             "The employee reviews the draft in the app and confirms submission. "
             "You cannot submit, classify, or investigate tickets or answer company-policy questions."

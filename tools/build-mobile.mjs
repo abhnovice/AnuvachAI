@@ -39,6 +39,7 @@ const args = [
   "--split-per-abi",
   "--dart-define=API_BASE_URL=" + api,
   "--dart-define=FIREBASE_AUTH_REQUIRED=" + (url.protocol === "https:"),
+  "--dart-define=VOICE_TRACE=" + (process.env.VOICE_TRACE === "true"),
 ];
 const child = spawn(flutter, args, {
   cwd: resolve(root, "apps/mobile"),

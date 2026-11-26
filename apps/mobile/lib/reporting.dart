@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -7,7 +8,7 @@ import 'package:uuid/uuid.dart';
 typedef Json = Map<String, dynamic>;
 
 class Api {
-  Api({http.Client? client, String? base, this.token})
+  Api({http.Client? client, String? base, this.token, this.voiceConnector})
     : client = client ?? http.Client(),
       base =
           base ??
@@ -19,6 +20,29 @@ class Api {
   final http.Client client;
   final String base;
   final Future<String?> Function()? token;
+  final Future<WebSocket> Function(Uri, Map<String, String>)? voiceConnector;
+
+  Future<WebSocket> openVoice(String language) async {
+    final credential = await token?.call();
+    if (token != null && credential == null) {
+      throw StateError('Sign in to continue.');
+    }
+    final endpoint = Uri.parse('$base/api/v1/reporting/voice/stream');
+    final uri = endpoint.replace(
+      scheme: endpoint.scheme == 'https' ? 'wss' : 'ws',
+      queryParameters: {'language': language},
+    );
+    final headers = {
+      if (credential != null) 'Authorization': 'Bearer $credential',
+    };
+    return await (voiceConnector?.call(uri, headers) ??
+        WebSocket.connect(
+          uri.toString(),
+          headers: headers,
+          compression: CompressionOptions.compressionOff,
+        ));
+  }
+
   Future<dynamic> call(
     String path, {
     Json? body,

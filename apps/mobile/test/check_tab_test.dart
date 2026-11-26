@@ -1,3 +1,4 @@
+import 'voice_socket_fixture.dart';
 import 'dart:convert';
 
 import 'package:anuvach_mobile/l10n/app_localizations.dart';
@@ -69,15 +70,7 @@ void main() {
       return call.method == 'startVoice' ? true : null;
     });
     addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
-    final api = Api(
-      client: MockClient((request) async {
-        if (request.method == 'DELETE') return http.Response('', 204);
-        if (request.url.path.endsWith('/voice')) {
-          return http.Response('{"id":"fixture"}', 200);
-        }
-        return http.Response('{"events":[]}', 200);
-      }),
-    );
+    final api = Api(voiceConnector: (_, _) async => VoiceSocketFixture());
     await tester.pumpWidget(
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,

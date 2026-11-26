@@ -1,3 +1,4 @@
+import websocket from "@fastify/websocket";
 import Fastify from "fastify";
 import { registerVoice } from "./voice.js";
 import {
@@ -52,6 +53,7 @@ export async function buildApp(
     ],
     methods: ["GET", "HEAD", "POST", "PATCH"],
   });
+  await app.register(websocket, { options: { maxPayload: 4096 } });
   registerAccess(app, options.access);
   let worker: Promise<void> | undefined;
   let timer: ReturnType<typeof setInterval> | undefined;

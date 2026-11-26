@@ -706,10 +706,14 @@ def create_app(
             "responder": "Gemini responder", "model": model, "status": "connecting",
             "report_id": report_id, "language": language,
         })
-        service = app.state.reporting_sessions.get("live_service")
-        if service is None:
+        # Android preview reconnects start fresh and keep completed statements on-device.
+        if preview:
             service = InMemorySessionService()
-            app.state.reporting_sessions["live_service"] = service
+        else:
+            service = app.state.reporting_sessions.get("live_service")
+            if service is None:
+                service = InMemorySessionService()
+                app.state.reporting_sessions["live_service"] = service
         runner = Runner(
             app_name=app_name,
             agent=build_reporting_agent(spoken_language=LANGUAGE_NAMES[language]),
@@ -729,9 +733,8 @@ def create_app(
             save_live_blob=False,
             save_input_blobs_as_artifacts=False,
             session_resumption=types.SessionResumptionConfig(),
-            input_audio_transcription=types.AudioTranscriptionConfig(
-                language_codes=[f"{language.value}-IN"],
-            ),
+            # Automatic transcription follows deliberate language switches within the call.
+            input_audio_transcription=types.AudioTranscriptionConfig(),
             output_audio_transcription=types.AudioTranscriptionConfig(),
         )
 
@@ -749,12 +752,11 @@ def create_app(
                     usage.append(event.usage_metadata.model_dump(mode="json", exclude_none=True))
                 if event.interrupted:
                     await websocket.send_json({"type": "state", "state": "interrupted"})
-                if event.turn_complete:
-                    await websocket.send_json({"type": "state", "state": "listening"})
                 parts = event.content.parts if event.content and not event.interrupted else None
                 for part in parts or []:
                     if part.inline_data and part.inline_data.data:
-                        if first_audio is None and first_input is not None:
+                        first_audio_event = first_audio is None and first_input is not None
+                        if first_audio_event:
                             first_audio = (time.perf_counter() - first_input) * 1000
                             log_tool("first_audio", True, {
                                 "responder": "Gemini responder", "model": model,
@@ -770,6 +772,7 @@ def create_app(
                                 "type": "audio",
                                 "data": encoded,
                                 "mime_type": part.inline_data.mime_type or "audio/pcm;rate=24000",
+                                **({"input_to_audio_ms": round(first_audio)} if first_audio_event else {}),
                             }
                         )
 
@@ -791,6 +794,8 @@ def create_app(
                         payload["draft"] = draft.model_dump(mode="json")
                         payload["turn_id"] = draft.transcript[-1].turn_id
                     await websocket.send_json(payload)
+                if event.turn_complete:
+                    await websocket.send_json({"type": "state", "state": "listening"})
 
         async def receive_events() -> None:
             nonlocal first_input

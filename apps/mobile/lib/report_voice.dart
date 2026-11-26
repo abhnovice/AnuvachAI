@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+import 'dart:collection';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -26,175 +28,294 @@ class ReportVoice extends StatefulWidget {
 }
 
 class _ReportVoiceState extends State<ReportVoice>
-    with AutomaticKeepAliveClientMixin<ReportVoice> {
+    with AutomaticKeepAliveClientMixin<ReportVoice>, WidgetsBindingObserver {
   @override
   bool get wantKeepAlive => true;
   static const channel = LocalFeatures.channel;
-  static const path = '/reporting/voice';
-  final frames = <String>[];
-  final playback = <Uint8List>[];
+  static const trace = bool.fromEnvironment('VOICE_TRACE');
+  final playback = Queue<Uint8List>();
   final statements = <String>[];
-  String? session;
+  final clock = Stopwatch();
+  WebSocket? socket;
+  StreamSubscription<dynamic>? subscription;
+  Timer? retryWrite;
+  Timer? deadline;
+  Object? attempt;
+  bool writing = false;
+  bool starting = false;
+  bool finishing = false;
+  bool stopping = false;
+  bool closed = false;
+  bool startedMic = false;
+  bool preparingMic = false;
+  bool finishAfterDrain = false;
+  int playbackEpoch = 0;
+  int queuedBytes = 0;
+  int? lastAudioMs;
+  int maxArrivalGapMs = 0;
+  int interruptions = 0;
+  int? firstCaptureMs;
+  int? firstUploadMs;
   String status = '';
   String output = '';
   String partial = '';
-  bool starting = false;
-  bool finishing = false;
-  bool closed = false;
-  int rate = 24000;
+  String agentPartial = '';
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused && attempt != null) {
+      unawaited(stop('Voice paused. Start again or continue with text.'));
+    }
+  }
 
   Future<void> start() async {
+    final current = Object();
+    attempt = current;
     final language = widget.language;
+    clock
+      ..reset()
+      ..start();
+    firstCaptureMs = firstUploadMs = lastAudioMs = null;
+    maxArrivalGapMs = interruptions = 0;
     setState(() {
       starting = true;
       finishing = false;
-      output = '';
-      partial = '';
+      output = agentPartial = partial = '';
       status = 'Connecting to voice…';
     });
-    var opened = false;
+    deadline = Timer(const Duration(seconds: 12), () {
+      unawaited(stop('Voice connection timed out. Continue with text.'));
+    });
     try {
-      channel.setMethodCallHandler((call) async {
-        if (call.method == 'voicePcm' && frames.length < 8 && !finishing) {
-          frames.add(base64Encode(call.arguments as Uint8List));
-        }
-        if (call.method == 'voiceMicStopped' && !finishing && session != null) {
-          unawaited(
-            stop('Microphone stopped. Start again or continue with text.'),
-          );
-        }
-      });
-      final started =
-          await widget.api.call(path, body: {'language': language}) as Json;
-      final id = started['id'] as String;
-      if (closed || widget.language != language || !widget.enabled) {
-        await widget.api.call('$path/$id', method: 'DELETE');
+      final connected = await widget.api.openVoice(language);
+      if (attempt != current) {
+        unawaited(connected.close());
         return;
       }
-      session = id;
-      if (await channel.invokeMethod<bool>('startVoice', {
-            'language': language,
-          }) !=
-          true) {
-        await stop('Microphone permission unavailable. Continue with text.');
-        return;
-      }
-      if (closed || session != id) {
-        await channel.invokeMethod<void>('stopMic');
-        return;
-      }
-      opened = true;
-      unawaited(exchange(id));
+      socket = connected;
+      subscription = connected.listen(
+        (message) {
+          if (attempt != current) return;
+          try {
+            handleEvent(jsonDecode(message as String) as Json, current);
+          } catch (_) {
+            unawaited(
+              stop('Voice disconnected. Start again or continue with text.'),
+            );
+          }
+        },
+        onDone: () {
+          if (attempt == current) {
+            unawaited(
+              stop(
+                connected.closeCode == 4001
+                    ? 'Voice session expired. Start again or continue with text.'
+                    : 'Voice disconnected. Start again or continue with text.',
+              ),
+            );
+          }
+        },
+        onError: (Object _) {
+          if (attempt == current) {
+            unawaited(
+              stop('Voice disconnected. Start again or continue with text.'),
+            );
+          }
+        },
+        cancelOnError: true,
+      );
     } catch (_) {
-      await stop('Voice unavailable. Start again or continue with text.');
-    } finally {
-      if (mounted) {
-        setState(() {
-          starting = false;
-          if (opened && session != null) status = 'Listening';
-        });
+      if (attempt == current) {
+        await stop('Voice unavailable. Start again or continue with text.');
       }
     }
   }
 
-  Future<void> exchange(String id) async {
-    bool sentEnd = false;
-    DateTime? endAt;
+  Future<void> startMic(Object current) async {
+    deadline?.cancel();
+    channel.setMethodCallHandler((call) async {
+      if (attempt != current) return;
+      if (call.method == 'voicePcm' && !finishing) {
+        firstCaptureMs ??= clock.elapsedMilliseconds;
+        socket?.add(call.arguments as Uint8List);
+        firstUploadMs ??= clock.elapsedMilliseconds;
+      } else if (call.method == 'voiceFocusLost' ||
+          (call.method == 'voiceMicStopped' && !finishing)) {
+        unawaited(
+          stop('Microphone stopped. Start again or continue with text.'),
+        );
+      }
+    });
     try {
-      while (session == id) {
-        final chunk = List<String>.of(frames);
-        frames.clear();
-        final end = finishing && !sentEnd;
-        final response =
-            await widget.api.call(
-                  '$path/$id',
-                  body: {'frames': chunk, 'end': end},
-                )
-                as Json;
-        if (session != id || !mounted) return;
-        if (end) {
-          sentEnd = true;
-          endAt = DateTime.now().add(const Duration(seconds: 8));
+      preparingMic = true;
+      final ready = await channel.invokeMethod<bool>('startVoice', {
+        'language': widget.language,
+        'trace': trace,
+      });
+      if (attempt != current) {
+        if (ready == true) await channel.invokeMethod<void>('stopMic');
+        return;
+      }
+      if (ready != true) throw StateError('Microphone unavailable');
+      startedMic = true;
+      setState(() {
+        starting = false;
+        status = 'Listening';
+      });
+    } catch (_) {
+      if (attempt == current) {
+        await stop('Microphone unavailable. Continue with text.');
+      }
+    } finally {
+      preparingMic = false;
+      if (mounted && !closed) setState(() {});
+    }
+  }
+
+  void handleEvent(Json event, Object current) {
+    switch (event['type']) {
+      case 'timing':
+        if (trace) {
+          debugPrint(
+            'VOICE_TRACE proxy_upload_ms=${event['proxy_first_upload_ms']} '
+            'proxy_audio_ms=${event['proxy_first_audio_ms']} '
+            'gemini_input_to_audio_ms=${event['input_to_audio_ms']}',
+          );
         }
-        final events = (response['events'] as List).cast<Json>();
-        for (final event in events) {
-          switch (event['type']) {
-            case 'error':
-              await stop(
-                'Voice disconnected. Start again or continue with text.',
-              );
-              return;
-            case 'state':
-              if (event['state'] == 'interrupted') {
-                playback.clear();
-                await channel.invokeMethod<void>('clearVoice');
-                if (mounted) setState(() => status = 'Interrupted. Listening…');
-              }
-            case 'transcript':
-              if (!mounted) return;
-              final text = event['text'] as String;
-              setState(() {
-                if (event['role'] == 'agent') {
-                  output = event['partial'] == true ? output + text : text;
-                } else if (event['partial'] == true) {
-                  partial += text;
-                } else {
-                  partial = '';
-                  if (text.trim().isNotEmpty && !statements.contains(text)) {
-                    statements.add(text);
-                  }
-                }
-              });
-            case 'audio':
-              if (playback.length >= 24) {
-                await stop(
-                  'Audio playback fell behind. Continue with text or start again.',
-                );
-                return;
-              }
-              final mime = event['mime_type'] as String;
-              rate =
-                  int.tryParse(
-                    RegExp(r'rate=(\d+)').firstMatch(mime)?.group(1) ?? '',
-                  ) ??
-                  24000;
-              playback.add(base64Decode(event['data'] as String));
-          }
+      case 'error':
+        unawaited(
+          stop('Voice disconnected. Start again or continue with text.'),
+        );
+      case 'state':
+        switch (event['state']) {
+          case 'ready':
+            if (!preparingMic && !startedMic) unawaited(startMic(current));
+          case 'interrupted':
+            interruptions++;
+            lastAudioMs = null;
+            clearPlayback();
+            setState(() {
+              output = agentPartial = '';
+              status = 'Interrupted. Listening…';
+            });
+          case 'listening':
+            lastAudioMs = null;
+            if (finishing) {
+              finishAfterDrain = true;
+              if (playback.isEmpty && !writing) scheduleFinish();
+            }
         }
-        for (var i = 0; i < 8 && playback.isNotEmpty && session == id; i++) {
-          final pcm = playback.first;
-          final written =
-              await channel.invokeMethod<int>('playVoice', {
-                'pcm': pcm,
-                'rate': rate,
-              }) ??
-              -1;
-          if (session != id) return;
-          if (written < 0 || written > pcm.length) {
-            throw StateError('Invalid playback write');
-          }
-          if (written == pcm.length) {
-            playback.removeAt(0);
+      case 'transcript':
+        final text = event['text'] as String;
+        setState(() {
+          if (event['role'] == 'agent') {
+            if (event['partial'] == true) {
+              agentPartial += text;
+              output = agentPartial;
+            } else {
+              if (text.isNotEmpty) output = text;
+              agentPartial = '';
+            }
+          } else if (event['partial'] == true) {
+            partial += text;
           } else {
-            if (written > 0) playback[0] = Uint8List.sublistView(pcm, written);
-            break;
+            partial = '';
+            if (text.trim().isNotEmpty && !statements.contains(text)) {
+              statements.add(text);
+            }
           }
+        });
+      case 'audio':
+        final mime = event['mime_type'] as String;
+        if (!RegExp(
+          r'^audio/pcm(?:;\s*rate=24000)?$',
+          caseSensitive: false,
+        ).hasMatch(mime)) {
+          throw StateError('Unexpected output format');
         }
-        if (endAt != null && DateTime.now().isAfter(endAt)) {
-          await stop(
-            'Voice stopped. Review captured statements or continue with text.',
+        final pcm = base64Decode(event['data'] as String);
+        if (pcm.isEmpty || pcm.length.isOdd) throw StateError('Invalid PCM');
+        final now = clock.elapsedMilliseconds;
+        if (lastAudioMs case final last?) {
+          if (now - last > maxArrivalGapMs) maxArrivalGapMs = now - last;
+        } else if (trace) {
+          debugPrint('VOICE_TRACE response_audio_received_ms=$now');
+        }
+        lastAudioMs = now;
+        if (queuedBytes + pcm.length > 48 * 1024) {
+          unawaited(
+            stop(
+              'Audio playback fell behind. Continue with text or start again.',
+            ),
           );
           return;
         }
-        if (frames.isEmpty) {
-          await Future<void>.delayed(const Duration(milliseconds: 35));
+        queuedBytes += pcm.length;
+        playback.add(pcm);
+        if (retryWrite == null) unawaited(drainPlayback());
+    }
+  }
+
+  Future<void> drainPlayback() async {
+    if (writing) return;
+    writing = true;
+    try {
+      while (playback.isNotEmpty && attempt != null) {
+        final epoch = playbackEpoch;
+        final pcm = playback.first;
+        final written =
+            await channel.invokeMethod<int>('playVoice', {
+              'pcm': pcm,
+              'rate': 24000,
+            }) ??
+            -1;
+        if (epoch != playbackEpoch) continue;
+        if (written < 0 || written > pcm.length || written.isOdd) {
+          throw StateError('Invalid playback write');
+        }
+        queuedBytes -= written;
+        if (written == pcm.length) {
+          playback.removeFirst();
+        } else {
+          if (written > 0) {
+            playback.removeFirst();
+            playback.addFirst(Uint8List.sublistView(pcm, written));
+          }
+          retryWrite = Timer(const Duration(milliseconds: 12), () {
+            retryWrite = null;
+            unawaited(drainPlayback());
+          });
+          break;
         }
       }
     } catch (_) {
-      if (session == id) {
-        await stop('Voice disconnected. Start again or continue with text.');
+      if (attempt != null) {
+        unawaited(stop('Audio playback unavailable. Continue with text.'));
+      }
+    } finally {
+      writing = false;
+      if (finishAfterDrain && playback.isEmpty && attempt != null) {
+        scheduleFinish();
       }
     }
+  }
+
+  void scheduleFinish() {
+    deadline?.cancel();
+    // Let the native buffer finish playing before releasing the track.
+    deadline = Timer(const Duration(milliseconds: 350), () {
+      unawaited(
+        stop(
+          'Voice stopped. Review captured statements or continue with text.',
+        ),
+      );
+    });
   }
 
   Future<void> finish() async {
@@ -202,31 +323,64 @@ class _ReportVoiceState extends State<ReportVoice>
       finishing = true;
       status = 'Finishing the voice turn…';
     });
+    final current = attempt;
     try {
       await channel.invokeMethod<void>('stopMic');
+      if (attempt != current) return;
+      socket?.add('end');
+      deadline = Timer(const Duration(seconds: 12), () {
+        finishAfterDrain = true;
+        if (playback.isEmpty) scheduleFinish();
+      });
     } catch (_) {
       await stop('Microphone stopped. Continue with text.');
     }
   }
 
-  Future<void> stop(String message) async {
-    final id = session;
-    session = null;
-    frames.clear();
+  Future<void> clearPlayback() async {
+    playbackEpoch++;
+    retryWrite?.cancel();
+    retryWrite = null;
     playback.clear();
+    queuedBytes = 0;
+    try {
+      await channel.invokeMethod<void>('clearVoice');
+    } catch (_) {}
+  }
+
+  Future<void> stop(String message) async {
+    if (attempt == null) return;
+    attempt = null;
+    stopping = true;
+    deadline?.cancel();
+    final connected = socket;
+    socket = null;
+    unawaited(subscription?.cancel());
+    subscription = null;
+    unawaited(connected?.close());
+    channel.setMethodCallHandler(null);
+    if (trace) {
+      debugPrint(
+        'VOICE_TRACE capture_ms=$firstCaptureMs upload_ms=$firstUploadMs '
+        'max_arrival_gap_ms=$maxArrivalGapMs interruptions=$interruptions',
+      );
+    }
     if (mounted && !closed) {
       setState(() {
-        finishing = false;
-        partial = '';
+        starting = finishing = startedMic = finishAfterDrain = false;
+        partial = agentPartial = '';
         status = message;
       });
     }
     try {
       await channel.invokeMethod<void>('stopMic');
-      await channel.invokeMethod<void>('clearVoice');
-      if (id != null) await widget.api.call('$path/$id', method: 'DELETE');
+      await clearPlayback();
+      await channel.invokeMethod<void>('releaseVoice');
     } catch (_) {
-      // The API expires disconnected sessions.
+      // Android also releases audio on activity pause.
+    } finally {
+      stopping = false;
+      if (mounted && !closed) setState(() {});
     }
   }
 
@@ -234,15 +388,13 @@ class _ReportVoiceState extends State<ReportVoice>
   void didUpdateWidget(ReportVoice oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.language != widget.language) {
-      statements.clear();
       output = '';
-      partial = '';
       unawaited(
         stop(
           'Language changed. Start a new voice session or continue with text.',
         ),
       );
-    } else if (!widget.enabled && session != null) {
+    } else if (!widget.enabled && attempt != null) {
       unawaited(stop('Voice stopped. Continue with text or start again.'));
     }
   }
@@ -250,31 +402,31 @@ class _ReportVoiceState extends State<ReportVoice>
   @override
   void dispose() {
     closed = true;
-    channel.setMethodCallHandler(null);
-    if (session != null || starting) unawaited(stop(''));
+    WidgetsBinding.instance.removeObserver(this);
+    unawaited(stop(''));
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final limited = widget.language != 'en';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          limited
-              ? 'Voice is limited for this language. Text reporting is available.'
-              : 'Voice reporting. Review the transcript before using it.',
-        ),
+        const Text('Voice reporting. Review the transcript before using it.'),
         if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android)
           OutlinedButton(
-            onPressed: !widget.enabled || starting || finishing
+            onPressed:
+                !widget.enabled ||
+                    starting ||
+                    finishing ||
+                    stopping ||
+                    preparingMic
                 ? null
-                : session == null
+                : attempt == null
                 ? start
                 : finish,
-            child: Text(session == null ? 'Start voice' : 'Stop microphone'),
+            child: Text(attempt == null ? 'Start voice' : 'Stop microphone'),
           ),
         if (status.isNotEmpty) Text(status),
         if (partial.isNotEmpty) Text('Live preview: $partial'),

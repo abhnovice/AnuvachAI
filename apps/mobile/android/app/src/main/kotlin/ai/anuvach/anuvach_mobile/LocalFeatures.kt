@@ -5,7 +5,15 @@ import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.PackageInfo
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
 import android.media.AudioFormat
+import android.media.audiofx.AcousticEchoCanceler
+import android.os.Build
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
+import android.util.Log
 import android.media.AudioRecord
 import android.media.AudioTrack
 import android.media.AudioManager
@@ -18,20 +26,40 @@ import java.util.concurrent.Executors
 import java.util.Locale
 import android.content.res.Configuration
 
-/** Local features only; no audio or inventory leaves the device. */
+/** Android audio I/O and local device features exposed to Flutter. */
 class LocalFeatures(private val activity: FlutterActivity, private val channel: MethodChannel) {
     private val executor = Executors.newSingleThreadExecutor()
     @Volatile private var recorder: AudioRecord? = null
     private var streamMic = false
     private var player: AudioTrack? = null
     private var playerRate = 0
+    private val audioManager = activity.getSystemService(AudioManager::class.java)
+    private val handler = Handler(Looper.getMainLooper())
+    private val voiceAttributes = AudioAttributes.Builder()
+        .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
+        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+        .build()
+    private var focusRequest: AudioFocusRequest? = null
+    private var previousMode: Int? = null
+    private var echoCanceler: AcousticEchoCanceler? = null
+    private var trace = false
+    private var playbackStart: Runnable? = null
+    private val focusListener = AudioManager.OnAudioFocusChangeListener { change ->
+        if (change < 0) {
+            stopVoiceSession()
+            channel.invokeMethod("voiceFocusLost", null)
+        }
+    }
     private var permissionReply: MethodChannel.Result? = null
 
     init {
         channel.setMethodCallHandler { call, result ->
             when (call.method) {
                 "startMic" -> startMic(result, call.argument<String>("language") ?: "en", false)
-                "startVoice" -> startMic(result, call.argument<String>("language") ?: "en", true)
+                "startVoice" -> {
+                    trace = call.argument<Boolean>("trace") == true
+                    startMic(result, call.argument<String>("language") ?: "en", true)
+                }
                 "playVoice" -> {
                     try {
                         val bytes = call.argument<ByteArray>("pcm") ?: error("Missing PCM")
@@ -41,17 +69,30 @@ class LocalFeatures(private val activity: FlutterActivity, private val channel: 
                             stopPlayback()
                             val min = AudioTrack.getMinBufferSize(rate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT)
                             check(min > 0)
-                            @Suppress("DEPRECATION")
-                            val audio = AudioTrack(AudioManager.STREAM_MUSIC, rate, AudioFormat.CHANNEL_OUT_MONO,
-                                AudioFormat.ENCODING_PCM_16BIT, maxOf(min, rate / 2), AudioTrack.MODE_STREAM)
-                            if (audio.state != AudioTrack.STATE_INITIALIZED) { audio.release(); error("Audio output unavailable") }
+                            val audio = AudioTrack.Builder()
+                                .setAudioAttributes(voiceAttributes)
+                                .setAudioFormat(AudioFormat.Builder().setSampleRate(rate)
+                                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                                    .setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
+                                .setBufferSizeInBytes(maxOf(min, rate * 2 * 120 / 1000))
+                                .setTransferMode(AudioTrack.MODE_STREAM)
+                                .build()
+                            if (audio.state != AudioTrack.STATE_INITIALIZED) {
+                                audio.release()
+                                error("Audio output unavailable")
+                            }
+                            if (Build.VERSION.SDK_INT >= 31) {
+                                audio.setStartThresholdInFrames(minOf(audio.bufferSizeInFrames, rate * 20 / 1000))
+                            }
                             player = audio
                             playerRate = rate
                             audio.play()
+                            if (trace) watchPlaybackStart(audio)
                         }
                         result.success(player!!.write(bytes, 0, bytes.size, AudioTrack.WRITE_NON_BLOCKING))
                     } catch (_: Exception) { result.error("PLAYBACK_FAILED", "Audio playback unavailable", null) }
                 }
+                "releaseVoice" -> { stopVoiceSession(); result.success(null) }
                 "clearVoice" -> { stopPlayback(); result.success(null) }
                 "stopMic" -> { stopMic(); result.success(null) }
                 "listApps" -> executor.execute {
@@ -124,19 +165,33 @@ class LocalFeatures(private val activity: FlutterActivity, private val channel: 
     }
     private fun openMic(result: MethodChannel.Result) {
         try {
+            if (streamMic) acquireFocus()
             val size = AudioRecord.getMinBufferSize(16000, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
             if (size <= 0) throw IllegalStateException("Microphone format unavailable")
             @Suppress("MissingPermission")
             val audio = AudioRecord(if (streamMic) MediaRecorder.AudioSource.VOICE_COMMUNICATION else MediaRecorder.AudioSource.MIC, 16000, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, size)
             if (audio.state != AudioRecord.STATE_INITIALIZED) { audio.release(); throw IllegalStateException("Microphone unavailable") }
+            if (streamMic && AcousticEchoCanceler.isAvailable()) {
+                echoCanceler = runCatching {
+                    AcousticEchoCanceler.create(audio.audioSessionId)?.apply { enabled = true }
+                }.getOrNull()
+            }
             try { audio.startRecording() } catch (error: Exception) { audio.release(); throw error }
+            val traceCapture = streamMic && trace
+            val started = SystemClock.elapsedRealtime()
+            if (traceCapture) Log.i("VoicePreview", "capture_open_ms=$started aec_enabled=${echoCanceler?.enabled == true}")
             recorder = audio
             if (streamMic) Thread {
-                val buffer = ByteArray(3200)
+                val buffer = ByteArray(640)
+                var first = true
                 try {
                     while (recorder === audio) {
                         val count = audio.read(buffer, 0, buffer.size)
                         if (count <= 0) break
+                        if (first && traceCapture) {
+                            Log.i("VoicePreview", "first_pcm_ms=${SystemClock.elapsedRealtime()} capture_read_ms=${SystemClock.elapsedRealtime() - started} bytes=$count")
+                        }
+                        first = false
                         val packet = buffer.copyOf(count)
                         activity.runOnUiThread {
                             if (recorder === audio) channel.invokeMethod("voicePcm", packet)
@@ -150,10 +205,51 @@ class LocalFeatures(private val activity: FlutterActivity, private val channel: 
                 }
             }.start()
             result.success(true)
-        } catch (error: Exception) { result.error("MIC_FAILED", error.message, null) }
+        } catch (error: Exception) {
+            if (streamMic) stopVoiceSession()
+            result.error("MIC_FAILED", error.message, null)
+        }
     }
+    @Suppress("DEPRECATION")
+    private fun acquireFocus() {
+        if (previousMode != null) return
+        val grant = if (Build.VERSION.SDK_INT >= 26) {
+            val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+                .setAudioAttributes(voiceAttributes)
+                .setOnAudioFocusChangeListener(focusListener, handler)
+                .build()
+            focusRequest = request
+            audioManager.requestAudioFocus(request)
+        } else {
+            audioManager.requestAudioFocus(focusListener, AudioManager.STREAM_VOICE_CALL,
+                AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+        }
+        check(grant == AudioManager.AUDIOFOCUS_REQUEST_GRANTED)
+        previousMode = audioManager.mode
+        audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+    }
+
+    private fun watchPlaybackStart(audio: AudioTrack) {
+        val start = SystemClock.elapsedRealtime()
+        val sample = object : Runnable {
+            override fun run() {
+                if (player !== audio) return
+                if (audio.playbackHeadPosition > 0) {
+                    Log.i("VoicePreview", "playback_started_ms=${SystemClock.elapsedRealtime()} track_start_delay_ms=${SystemClock.elapsedRealtime() - start}")
+                } else handler.postDelayed(this, 10)
+            }
+        }
+        playbackStart = sample
+        handler.post(sample)
+    }
+
     fun stopPlayback() {
+        playbackStart?.let(handler::removeCallbacks)
+        playbackStart = null
         player?.let { audio ->
+            if (trace && Build.VERSION.SDK_INT >= 24) {
+                Log.i("VoicePreview", "playback_underruns=${audio.underrunCount}")
+            }
             try { audio.pause(); audio.flush() } catch (_: IllegalStateException) {}
             audio.release()
         }
@@ -163,11 +259,27 @@ class LocalFeatures(private val activity: FlutterActivity, private val channel: 
     fun stopMic() {
         val audio = recorder
         recorder = null
+        echoCanceler?.release()
+        echoCanceler = null
         if (audio != null) {
             try { audio.stop() } catch (_: IllegalStateException) {}
             audio.release()
             if (streamMic) channel.invokeMethod("voiceMicStopped", null)
         }
     }
-    fun dispose() { stopMic(); stopPlayback(); executor.shutdownNow() }
+    @Suppress("DEPRECATION")
+    fun stopVoiceSession() {
+        stopMic()
+        stopPlayback()
+        previousMode?.let { audioManager.mode = it }
+        if (Build.VERSION.SDK_INT >= 26) {
+            focusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
+        } else if (previousMode != null) {
+            audioManager.abandonAudioFocus(focusListener)
+        }
+        focusRequest = null
+        previousMode = null
+    }
+
+    fun dispose() { stopVoiceSession(); executor.shutdownNow() }
 }

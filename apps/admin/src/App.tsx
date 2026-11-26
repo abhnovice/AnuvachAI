@@ -241,6 +241,38 @@ export function App() {
     setQueuePage(0);
     void load();
   }, [status, type, days]);
+  const pendingTriageId =
+    detail?.triage?.status === "pending" ? detail.id : undefined;
+  useEffect(() => {
+    if (!pendingTriageId || busy) return;
+    let active = true;
+    let checking = false;
+    const timer = window.setInterval(async () => {
+      if (checking) return;
+      checking = true;
+      try {
+        const updated = await request<Report>(
+          "/reports/" + pendingTriageId + "?view=admin",
+        );
+        if (active) {
+          setDetail((current) =>
+            current?.id === updated.id && current.version < updated.version
+              ? updated
+              : current,
+          );
+        }
+      } catch {
+        // The existing manual refresh remains available during a network failure.
+      } finally {
+        checking = false;
+      }
+    }, 3000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [pendingTriageId, busy]);
+
   async function open(id: string) {
     setLoading(true);
     setError("");

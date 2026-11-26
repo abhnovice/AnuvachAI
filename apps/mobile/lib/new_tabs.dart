@@ -1,185 +1,163 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'report_voice.dart';
+import 'reporting.dart';
 import 'language.dart';
 import 'local_features.dart';
 import 'l10n/app_localizations.dart';
 import 'device_review.dart';
 
 class CheckTab extends StatefulWidget {
-  const CheckTab({super.key, required this.language, required this.messages});
+  const CheckTab({
+    super.key,
+    required this.language,
+    required this.messages,
+    required this.api,
+    required this.sessionId,
+    required this.reviewStatement,
+  });
+
   final String language;
-  final List<String> messages;
+  final List<Json> messages;
+  final Api api;
+  final String sessionId;
+  final Future<void> Function(String) reviewStatement;
+
   @override
   State<CheckTab> createState() => _CheckTabState();
 }
 
-class _CheckTabState extends State<CheckTab> with WidgetsBindingObserver {
-  final features = LocalFeatures();
+class _CheckTabState extends State<CheckTab> {
   final controller = TextEditingController();
-  bool active = false;
+  final scroll = ScrollController();
   bool busy = false;
+  bool reviewing = false;
   String? error;
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state != AppLifecycleState.resumed && active) {
-      features.stopMicrophone();
-      setState(() => active = false);
-    }
-  }
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    features.stopMicrophone();
     controller.dispose();
+    scroll.dispose();
     super.dispose();
   }
 
-  Future<void> toggle() async {
-    if (busy) return;
+  void scrollToLatest() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && scroll.hasClients) {
+        scroll.jumpTo(scroll.position.maxScrollExtent);
+      }
+    });
+  }
+
+  Future<void> send(String value) async {
+    final text = value.trim();
+    if (text.isEmpty || busy) return;
     setState(() {
+      widget.messages.add({'speaker': 'employee', 'text': text});
       busy = true;
       error = null;
+      controller.clear();
     });
+    scrollToLatest();
     try {
-      if (active) {
-        await features.stopMicrophone();
-        if (mounted) setState(() => active = false);
-      } else {
-        final started = await features.startMicrophone(widget.language);
-        if (!mounted) {
-          if (started) await features.stopMicrophone();
-          return;
-        }
-        setState(() => active = started);
-        if (!started) {
-          setState(() => error = AppLocalizations.of(context)!.micDenied);
-        }
-      }
-    } on PlatformException {
+      final response =
+          await widget.api.call(
+                '/reporting/turns',
+                body: {
+                  'sessionId': widget.sessionId,
+                  'language': widget.language,
+                  'text': text,
+                },
+              )
+              as Json;
       if (mounted) {
-        setState(() => error = AppLocalizations.of(context)!.micUnavailable);
+        setState(
+          () => widget.messages.add({
+            'speaker': 'agent',
+            'text': response['reply'],
+          }),
+        );
+        scrollToLatest();
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => error =
+              'Reporting assistant unavailable. You can still use your statement in a report.',
+        );
       }
     } finally {
       if (mounted) setState(() => busy = false);
     }
   }
 
+  Future<void> review(String statement) async {
+    if (reviewing) return;
+    setState(() => reviewing = true);
+    try {
+      await widget.reviewStatement(statement);
+    } catch (e) {
+      if (mounted) setState(() => error = e.toString());
+    } finally {
+      if (mounted) setState(() => reviewing = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final strings = AppLocalizations.of(context)!;
     return Column(
       children: [
         Expanded(
-          child: Stack(
+          child: ListView(
+            controller: scroll,
+            padding: const EdgeInsets.all(20),
             children: [
-              ListView.builder(
-                padding: const EdgeInsets.all(20),
-                itemCount: widget.messages.length,
-                itemBuilder: (context, index) => Align(
-                  alignment: AlignmentDirectional.centerEnd,
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 18,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: scheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(22),
-                    ),
-                    child: Text(
-                      widget.messages[index],
-                      style: TextStyle(color: scheme.onPrimaryContainer),
-                    ),
-                  ),
-                ),
+              const Text('Reporting assistant'),
+              ReportVoice(
+                api: widget.api,
+                language: widget.language,
+                enabled: !reviewing,
+                useStatement: (statement) => unawaited(review(statement)),
               ),
-              if (widget.messages.isEmpty)
-                Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton.filled(
-                        tooltip: (active
-                            ? AppLocalizations.of(context)!.stop
-                            : AppLocalizations.of(context)!.start),
-                        onPressed: busy ? null : toggle,
-                        iconSize: 38,
-                        padding: const EdgeInsets.all(25),
-                        icon: Icon(
-                          active ? Icons.stop_rounded : Icons.mic_rounded,
-                        ),
+              for (final message in widget.messages)
+                Align(
+                  alignment: message['speaker'] == 'agent'
+                      ? AlignmentDirectional.centerStart
+                      : AlignmentDirectional.centerEnd,
+                  child: Card(
+                    color: message['speaker'] == 'agent'
+                        ? scheme.surfaceContainer
+                        : scheme.primaryContainer,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (message['speaker'] == 'agent')
+                            const Text('Reporting assistant'),
+                          Text(message['text'] as String),
+                          if (message['speaker'] == 'employee')
+                            TextButton(
+                              onPressed: reviewing
+                                  ? null
+                                  : () => review(message['text'] as String),
+                              child: const Text('Use in report'),
+                            ),
+                        ],
                       ),
-                      const SizedBox(height: 12),
-                      Text(
-                        active
-                            ? AppLocalizations.of(context)!.local
-                            : AppLocalizations.of(context)!.soon,
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
+                    ),
                   ),
                 ),
+              if (busy) const LinearProgressIndicator(),
+              if (error != null)
+                Text(error!, style: TextStyle(color: scheme.error)),
             ],
           ),
         ),
-        if (widget.messages.isNotEmpty)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(
-                onPressed: busy ? null : toggle,
-                tooltip: (active
-                    ? AppLocalizations.of(context)!.stop
-                    : AppLocalizations.of(context)!.start),
-                icon: Icon(active ? Icons.stop_circle : Icons.mic),
-              ),
-              Flexible(
-                child: Text(
-                  active
-                      ? AppLocalizations.of(context)!.local
-                      : AppLocalizations.of(context)!.soon,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ),
-            ],
-          ),
-        if (error != null)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(error!, style: TextStyle(color: scheme.error)),
-                ),
-                TextButton(
-                  onPressed: () async {
-                    try {
-                      await PlatformDeviceReview().openSettings();
-                    } catch (e) {
-                      if (mounted) {
-                        setState(
-                          () => error = AppLocalizations.of(
-                            context,
-                          )!.settingsUnavailable,
-                        );
-                      }
-                    }
-                  },
-                  child: Text(AppLocalizations.of(context)!.openSettings),
-                ),
-              ],
-            ),
-          ),
         SafeArea(
           top: false,
           child: Padding(
@@ -189,16 +167,18 @@ class _CheckTabState extends State<CheckTab> with WidgetsBindingObserver {
                 Expanded(
                   child: TextField(
                     controller: controller,
+                    maxLength: 5000,
                     decoration: InputDecoration(
-                      labelText: AppLocalizations.of(context)!.message,
+                      labelText: strings.message,
+                      counterText: '',
                     ),
                     onSubmitted: send,
                   ),
                 ),
                 const SizedBox(width: 8),
                 IconButton.filled(
-                  onPressed: () => send(controller.text),
-                  tooltip: AppLocalizations.of(context)!.send,
+                  onPressed: busy ? null : () => send(controller.text),
+                  tooltip: strings.send,
                   icon: const Icon(Icons.arrow_upward),
                 ),
               ],
@@ -207,13 +187,6 @@ class _CheckTabState extends State<CheckTab> with WidgetsBindingObserver {
         ),
       ],
     );
-  }
-
-  void send(String value) {
-    final text = value.trim();
-    if (text.isEmpty) return;
-    setState(() => widget.messages.add(text));
-    controller.clear();
   }
 }
 

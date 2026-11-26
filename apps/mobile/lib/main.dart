@@ -5,6 +5,7 @@ import 'firebase_options.dart';
 import 'remote_localization_service.dart';
 import 'remote_app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
 import 'reporting.dart';
 import 'report_voice.dart';
 import 'device_review.dart';
@@ -129,7 +130,8 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
   String? error;
   bool loading = false;
   int tab = 0;
-  final chatMessages = <String>[];
+  final chatMessages = <Json>[];
+  final String checkSessionId = const Uuid().v4();
   late bool consent = widget.prefs.getBool('consent') ?? false;
   @override
   void initState() {
@@ -163,6 +165,32 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
     } finally {
       if (mounted) setState(() => loading = false);
     }
+  }
+
+  Future<void> reviewCheckStatement(String statement) async {
+    if (draft.locked) {
+      throw StateError(
+        'Finish the pending submission before adding to this report.',
+      );
+    }
+    final current = (draft.fields['description'] as String).trim();
+    final combined = current.isEmpty || current == statement
+        ? statement
+        : '$current\n$statement';
+    if (combined.length > 5000) {
+      throw StateError(
+        'Shorten the current report draft before adding this statement.',
+      );
+    }
+    draft.update('description', combined);
+    final code = widget.language;
+    draft.update('language', switch (code) {
+      'en' => 'english',
+      'hi' => 'hindi',
+      _ => code,
+    });
+    await draft.save();
+    if (mounted) await startReport();
   }
 
   Future<void> startReport() async {
@@ -319,6 +347,9 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                     key: const ValueKey('check'),
                     language: widget.language,
                     messages: chatMessages,
+                    api: widget.api,
+                    sessionId: checkSessionId,
+                    reviewStatement: reviewCheckStatement,
                   )
                 : AccessTab(
                     key: const ValueKey('access'),

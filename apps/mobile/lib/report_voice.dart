@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:collection';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -33,15 +32,14 @@ class _ReportVoiceState extends State<ReportVoice>
   bool get wantKeepAlive => true;
   static const channel = LocalFeatures.channel;
   static const trace = bool.fromEnvironment('VOICE_TRACE');
-  final playback = Queue<Uint8List>();
   final statements = <String>[];
   final clock = Stopwatch();
   WebSocket? socket;
   StreamSubscription<dynamic>? subscription;
-  Timer? retryWrite;
+  Timer? finishDelay;
   Timer? deadline;
   Object? attempt;
-  bool writing = false;
+  bool playing = false;
   bool starting = false;
   bool finishing = false;
   bool stopping = false;
@@ -49,8 +47,6 @@ class _ReportVoiceState extends State<ReportVoice>
   bool startedMic = false;
   bool preparingMic = false;
   bool finishAfterDrain = false;
-  int playbackEpoch = 0;
-  int queuedBytes = 0;
   int? lastAudioMs;
   int maxArrivalGapMs = 0;
   int interruptions = 0;
@@ -145,6 +141,15 @@ class _ReportVoiceState extends State<ReportVoice>
         firstCaptureMs ??= clock.elapsedMilliseconds;
         socket?.add(call.arguments as Uint8List);
         firstUploadMs ??= clock.elapsedMilliseconds;
+      } else if (call.method == 'voicePlayback') {
+        final active = call.arguments == true;
+        setState(() {
+          playing = active;
+          if (!finishing) status = active ? 'Speaking' : 'Listening';
+        });
+        if (!active && finishAfterDrain) scheduleFinish();
+      } else if (call.method == 'voicePlaybackError') {
+        unawaited(stop('Audio playback unavailable. Continue with text.'));
       } else if (call.method == 'voiceFocusLost' ||
           (call.method == 'voiceMicStopped' && !finishing)) {
         unawaited(
@@ -199,16 +204,18 @@ class _ReportVoiceState extends State<ReportVoice>
           case 'interrupted':
             interruptions++;
             lastAudioMs = null;
-            clearPlayback();
+            finishDelay?.cancel();
+            unawaited(channel.invokeMethod<void>('clearVoice'));
             setState(() {
               output = agentPartial = '';
-              status = 'Interrupted. Listening…';
+              playing = false;
+              if (!finishing) status = 'Listening';
             });
           case 'listening':
             lastAudioMs = null;
             if (finishing) {
               finishAfterDrain = true;
-              if (playback.isEmpty && !writing) scheduleFinish();
+              if (!playing) scheduleFinish();
             }
         }
       case 'transcript':
@@ -248,73 +255,26 @@ class _ReportVoiceState extends State<ReportVoice>
           debugPrint('VOICE_TRACE response_audio_received_ms=$now');
         }
         lastAudioMs = now;
-        if (queuedBytes + pcm.length > 48 * 1024) {
-          unawaited(
-            stop(
-              'Audio playback fell behind. Continue with text or start again.',
-            ),
-          );
-          return;
-        }
-        queuedBytes += pcm.length;
-        playback.add(pcm);
-        if (retryWrite == null) unawaited(drainPlayback());
+        finishDelay?.cancel();
+        playing = true;
+        unawaited(playAudio(pcm, current));
     }
   }
 
-  Future<void> drainPlayback() async {
-    if (writing) return;
-    writing = true;
+  Future<void> playAudio(Uint8List pcm, Object current) async {
     try {
-      while (playback.isNotEmpty && attempt != null) {
-        final epoch = playbackEpoch;
-        final pcm = playback.first;
-        final written =
-            await channel.invokeMethod<int>('playVoice', {
-              'pcm': pcm,
-              'rate': 24000,
-            }) ??
-            -1;
-        if (epoch != playbackEpoch) continue;
-        if (written < 0 || written > pcm.length || written.isOdd) {
-          throw StateError('Invalid playback write');
-        }
-        queuedBytes -= written;
-        if (written == pcm.length) {
-          playback.removeFirst();
-        } else {
-          if (written > 0) {
-            playback.removeFirst();
-            playback.addFirst(Uint8List.sublistView(pcm, written));
-          }
-          retryWrite = Timer(const Duration(milliseconds: 12), () {
-            retryWrite = null;
-            unawaited(drainPlayback());
-          });
-          break;
-        }
-      }
+      await channel.invokeMethod<void>('playVoice', {'pcm': pcm});
     } catch (_) {
-      if (attempt != null) {
-        unawaited(stop('Audio playback unavailable. Continue with text.'));
-      }
-    } finally {
-      writing = false;
-      if (finishAfterDrain && playback.isEmpty && attempt != null) {
-        scheduleFinish();
+      if (attempt == current) {
+        await stop('Audio playback unavailable. Continue with text.');
       }
     }
   }
 
   void scheduleFinish() {
-    deadline?.cancel();
-    // Let the native buffer finish playing before releasing the track.
-    deadline = Timer(const Duration(milliseconds: 350), () {
-      unawaited(
-        stop(
-          'Voice stopped. Review captured statements or continue with text.',
-        ),
-      );
+    finishDelay?.cancel();
+    finishDelay = Timer(const Duration(milliseconds: 250), () {
+      unawaited(stop('Voice stopped. Review captured statements.'));
     });
   }
 
@@ -328,24 +288,12 @@ class _ReportVoiceState extends State<ReportVoice>
       await channel.invokeMethod<void>('stopMic');
       if (attempt != current) return;
       socket?.add('end');
-      deadline = Timer(const Duration(seconds: 12), () {
-        finishAfterDrain = true;
-        if (playback.isEmpty) scheduleFinish();
+      deadline = Timer(const Duration(seconds: 15), () {
+        unawaited(stop('Voice stopped. Review captured statements.'));
       });
     } catch (_) {
       await stop('Microphone stopped. Continue with text.');
     }
-  }
-
-  Future<void> clearPlayback() async {
-    playbackEpoch++;
-    retryWrite?.cancel();
-    retryWrite = null;
-    playback.clear();
-    queuedBytes = 0;
-    try {
-      await channel.invokeMethod<void>('clearVoice');
-    } catch (_) {}
   }
 
   Future<void> stop(String message) async {
@@ -353,6 +301,7 @@ class _ReportVoiceState extends State<ReportVoice>
     attempt = null;
     stopping = true;
     deadline?.cancel();
+    finishDelay?.cancel();
     final connected = socket;
     socket = null;
     unawaited(subscription?.cancel());
@@ -367,14 +316,14 @@ class _ReportVoiceState extends State<ReportVoice>
     }
     if (mounted && !closed) {
       setState(() {
-        starting = finishing = startedMic = finishAfterDrain = false;
+        starting = finishing = startedMic = finishAfterDrain = playing = false;
         partial = agentPartial = '';
         status = message;
       });
     }
     try {
       await channel.invokeMethod<void>('stopMic');
-      await clearPlayback();
+      await channel.invokeMethod<void>('clearVoice');
       await channel.invokeMethod<void>('releaseVoice');
     } catch (_) {
       // Android also releases audio on activity pause.
@@ -413,9 +362,8 @@ class _ReportVoiceState extends State<ReportVoice>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text('Voice reporting. Review the transcript before using it.'),
         if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android)
-          OutlinedButton(
+          FilledButton.icon(
             onPressed:
                 !widget.enabled ||
                     starting ||
@@ -426,9 +374,14 @@ class _ReportVoiceState extends State<ReportVoice>
                 : attempt == null
                 ? start
                 : finish,
-            child: Text(attempt == null ? 'Start voice' : 'Stop microphone'),
+            icon: Icon(attempt == null ? Icons.mic : Icons.call_end),
+            label: Text(attempt == null ? 'Start voice' : 'End voice'),
           ),
-        if (status.isNotEmpty) Text(status),
+        if (status.isNotEmpty)
+          Semantics(
+            liveRegion: true,
+            child: Text(status, textAlign: TextAlign.center),
+          ),
         if (partial.isNotEmpty) Text('Live preview: $partial'),
         if (output.isNotEmpty) Text('Assistant: $output'),
         for (final statement in statements)

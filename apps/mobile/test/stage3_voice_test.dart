@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:anuvach_mobile/local_features.dart';
@@ -14,6 +15,7 @@ void main() {
   ) async {
     final calls = <String>[];
     final used = <String>[];
+    final played = <int>[];
     final messenger =
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
     messenger.setMockMethodCallHandler(LocalFeatures.channel, (
@@ -22,7 +24,7 @@ void main() {
       calls.add(call.method);
       if (call.method == 'startVoice') return true;
       if (call.method == 'playVoice') {
-        return (call.arguments['pcm'] as List).length;
+        played.add((call.arguments['pcm'] as Uint8List).length);
       }
       return null;
     });
@@ -58,19 +60,31 @@ void main() {
     await tester.tap(find.text('Start voice'));
     await tester.pump();
     final socket = sockets.single;
-    await messenger.handlePlatformMessage(
-      LocalFeatures.channel.name,
-      const StandardMethodCodec().encodeMethodCall(
-        MethodCall('voicePcm', Uint8List(640)),
-      ),
-      (_) {},
-    );
+    Future<void> native(String method, Object? arguments) async {
+      await messenger.handlePlatformMessage(
+        LocalFeatures.channel.name,
+        const StandardMethodCodec().encodeMethodCall(
+          MethodCall(method, arguments),
+        ),
+        (_) {},
+      );
+    }
+
+    final chunk = base64Encode(Uint8List(24000));
+    for (var i = 0; i < 4; i++) {
+      socket.emit({
+        'type': 'audio',
+        'data': chunk,
+        'mime_type': 'audio/pcm;rate=24000',
+      });
+    }
+    await tester.pump();
+    expect(played, [24000, 24000, 24000, 24000]);
+    await native('voicePlayback', true);
+    await tester.pump();
+    expect(find.text('Speaking'), findsOneWidget);
+    await native('voicePcm', Uint8List(640));
     expect(socket.sent.single, hasLength(640));
-    socket.emit({
-      'type': 'audio',
-      'data': 'AAAAAA==',
-      'mime_type': 'audio/pcm;rate=24000',
-    });
     socket.emit({
       'type': 'transcript',
       'role': 'employee',
@@ -92,6 +106,7 @@ void main() {
     }
     await tester.pump();
     expect(calls, containsAllInOrder(['playVoice', 'clearVoice']));
+    expect(find.text('Listening'), findsOneWidget);
     expect(find.text('Use in draft'), findsOneWidget);
     expect(used, isEmpty);
     await socket.close();
@@ -103,6 +118,22 @@ void main() {
     await tester.tap(find.text('Start voice'));
     await tester.pump();
     expect(languages, ['ta', 'ta']);
+    final restarted = sockets.last;
+    restarted.emit({
+      'type': 'audio',
+      'data': chunk,
+      'mime_type': 'audio/pcm;rate=24000',
+    });
+    await tester.pump();
+    await tester.tap(find.text('End voice'));
+    await tester.pump();
+    expect(restarted.sent.single, 'end');
+    restarted.emit({'type': 'state', 'state': 'listening'});
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('Finishing the voice turn…'), findsOneWidget);
+    await native('voicePlayback', false);
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Start voice'), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(milliseconds: 100));
   });

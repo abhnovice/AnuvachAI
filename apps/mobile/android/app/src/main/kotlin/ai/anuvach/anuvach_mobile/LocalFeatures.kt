@@ -15,7 +15,6 @@ import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
 import android.media.AudioRecord
-import android.media.AudioTrack
 import android.media.AudioManager
 import android.media.MediaRecorder
 import android.net.Uri
@@ -31,8 +30,6 @@ class LocalFeatures(private val activity: FlutterActivity, private val channel: 
     private val executor = Executors.newSingleThreadExecutor()
     @Volatile private var recorder: AudioRecord? = null
     private var streamMic = false
-    private var player: AudioTrack? = null
-    private var playerRate = 0
     private val audioManager = activity.getSystemService(AudioManager::class.java)
     private val handler = Handler(Looper.getMainLooper())
     private val voiceAttributes = AudioAttributes.Builder()
@@ -43,7 +40,11 @@ class LocalFeatures(private val activity: FlutterActivity, private val channel: 
     private var previousMode: Int? = null
     private var echoCanceler: AcousticEchoCanceler? = null
     private var trace = false
-    private var playbackStart: Runnable? = null
+    private val playback = lazy {
+        VoicePlayback(voiceAttributes,
+            onPlaying = { channel.invokeMethod("voicePlayback", it) },
+            onError = { channel.invokeMethod("voicePlaybackError", null) })
+    }
     private val focusListener = AudioManager.OnAudioFocusChangeListener { change ->
         if (change < 0) {
             stopVoiceSession()
@@ -61,36 +62,13 @@ class LocalFeatures(private val activity: FlutterActivity, private val channel: 
                     startMic(result, call.argument<String>("language") ?: "en", true)
                 }
                 "playVoice" -> {
-                    try {
-                        val bytes = call.argument<ByteArray>("pcm") ?: error("Missing PCM")
-                        val rate = call.argument<Int>("rate") ?: 24000
-                        require(rate in 8000..48000 && bytes.size % 2 == 0)
-                        if (player == null || playerRate != rate) {
-                            stopPlayback()
-                            val min = AudioTrack.getMinBufferSize(rate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT)
-                            check(min > 0)
-                            val audio = AudioTrack.Builder()
-                                .setAudioAttributes(voiceAttributes)
-                                .setAudioFormat(AudioFormat.Builder().setSampleRate(rate)
-                                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                                    .setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
-                                .setBufferSizeInBytes(maxOf(min, rate * 2 * 120 / 1000))
-                                .setTransferMode(AudioTrack.MODE_STREAM)
-                                .build()
-                            if (audio.state != AudioTrack.STATE_INITIALIZED) {
-                                audio.release()
-                                error("Audio output unavailable")
-                            }
-                            if (Build.VERSION.SDK_INT >= 31) {
-                                audio.setStartThresholdInFrames(minOf(audio.bufferSizeInFrames, rate * 20 / 1000))
-                            }
-                            player = audio
-                            playerRate = rate
-                            audio.play()
-                            if (trace) watchPlaybackStart(audio)
-                        }
-                        result.success(player!!.write(bytes, 0, bytes.size, AudioTrack.WRITE_NON_BLOCKING))
-                    } catch (_: Exception) { result.error("PLAYBACK_FAILED", "Audio playback unavailable", null) }
+                    val bytes = call.argument<ByteArray>("pcm")
+                    if (bytes == null || bytes.isEmpty() || bytes.size % 2 != 0) {
+                        result.error("PLAYBACK_FAILED", "Invalid audio", null)
+                    } else {
+                        playback.value.enqueue(bytes, trace)
+                        result.success(null)
+                    }
                 }
                 "releaseVoice" -> { stopVoiceSession(); result.success(null) }
                 "clearVoice" -> { stopPlayback(); result.success(null) }
@@ -229,31 +207,8 @@ class LocalFeatures(private val activity: FlutterActivity, private val channel: 
         audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
     }
 
-    private fun watchPlaybackStart(audio: AudioTrack) {
-        val start = SystemClock.elapsedRealtime()
-        val sample = object : Runnable {
-            override fun run() {
-                if (player !== audio) return
-                if (audio.playbackHeadPosition > 0) {
-                    Log.i("VoicePreview", "playback_started_ms=${SystemClock.elapsedRealtime()} track_start_delay_ms=${SystemClock.elapsedRealtime() - start}")
-                } else handler.postDelayed(this, 10)
-            }
-        }
-        playbackStart = sample
-        handler.post(sample)
-    }
-
     fun stopPlayback() {
-        playbackStart?.let(handler::removeCallbacks)
-        playbackStart = null
-        player?.let { audio ->
-            if (trace && Build.VERSION.SDK_INT >= 24) {
-                Log.i("VoicePreview", "playback_underruns=${audio.underrunCount}")
-            }
-            try { audio.pause(); audio.flush() } catch (_: IllegalStateException) {}
-            audio.release()
-        }
-        player = null
+        if (playback.isInitialized()) playback.value.clear()
     }
 
     fun stopMic() {
@@ -281,5 +236,9 @@ class LocalFeatures(private val activity: FlutterActivity, private val channel: 
         previousMode = null
     }
 
-    fun dispose() { stopVoiceSession(); executor.shutdownNow() }
+    fun dispose() {
+        stopVoiceSession()
+        if (playback.isInitialized()) playback.value.dispose()
+        executor.shutdownNow()
+    }
 }

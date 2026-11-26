@@ -6,6 +6,7 @@ import 'remote_localization_service.dart';
 import 'remote_app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'reporting.dart';
+import 'report_voice.dart';
 import 'device_review.dart';
 import 'design.dart';
 import 'language.dart';
@@ -579,6 +580,21 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
   }
 }
 
+List<Widget> reportingTranscript(Json? reporting) {
+  if (reporting == null) return [];
+  return [
+    heading('Reporting transcript'),
+    for (final turn in reporting['transcript'] as List)
+      Text(
+        "${turn['speaker'] == 'agent' ? 'Reporting assistant' : 'Employee'}: ${turn['text']}",
+      ),
+    if ((reporting['unknowns'] as List).isNotEmpty)
+      Text(
+        "Remaining questions: ${(reporting['unknowns'] as List).join(' · ')}",
+      ),
+  ];
+}
+
 class ReportForm extends StatefulWidget {
   const ReportForm({super.key, required this.draft});
   final Draft draft;
@@ -588,6 +604,54 @@ class ReportForm extends StatefulWidget {
 
 class _ReportFormState extends State<ReportForm> {
   final form = GlobalKey<FormState>();
+  bool reviewing = false;
+  late final description = TextEditingController(
+    text: draft.fields['description'] as String,
+  );
+
+  String get reportLanguage {
+    final selected = draft.fields['language'] as String;
+    final locale = Localizations.localeOf(context).languageCode;
+    return switch (selected) {
+      'english' => 'en',
+      'hindi' => 'hi',
+      'mixed' => languages.containsKey(locale) ? locale : 'en',
+      _ => selected,
+    };
+  }
+
+  @override
+  void dispose() {
+    description.dispose();
+    super.dispose();
+  }
+
+  void useVoiceStatement(String text) {
+    final previous = description.text.trim();
+    final combined = previous.isEmpty ? text : '$previous\n$text';
+    if (combined.length > 5000) {
+      setState(
+        () => error = 'Shorten the draft before adding another statement.',
+      );
+      return;
+    }
+    description.text = combined;
+    draft.update('description', combined);
+    final earlier = draft.fields['reporting'] as Json?;
+    final transcript = [
+      ...?earlier?['transcript'] as List?,
+      {'speaker': 'employee', 'text': text},
+    ];
+    draft.update('reporting', {
+      'language': reportLanguage,
+      'transcript': transcript
+          .skip(transcript.length > 12 ? transcript.length - 12 : 0)
+          .toList(),
+      'unknowns': earlier?['unknowns'] ?? <String>[],
+    });
+    save();
+  }
+
   String? error;
   bool checking = false;
   final DeviceReview device = PlatformDeviceReview();
@@ -631,11 +695,17 @@ class _ReportFormState extends State<ReportForm> {
               padding: const EdgeInsets.only(bottom: 16),
               child: TextFormField(
                 key: ValueKey(spec.$1),
-                initialValue: draft.fields[spec.$1],
-                enabled: !draft.locked,
+                controller: spec.$1 == 'description' ? description : null,
+                initialValue: spec.$1 == 'description'
+                    ? null
+                    : draft.fields[spec.$1],
+                enabled: !draft.locked && !reviewing,
                 maxLines: spec.$1 == 'appName' ? 1 : 4,
                 maxLength: spec.$3,
                 decoration: InputDecoration(labelText: spec.$2),
+                textDirection: spec.$1 != 'appName' && reportLanguage == 'ur'
+                    ? TextDirection.rtl
+                    : null,
                 validator: (v) =>
                     spec.$1 == 'description' && (v ?? '').trim().length < 10
                     ? AppLocalizations.of(context)!.descriptionTooShort
@@ -664,11 +734,18 @@ class _ReportFormState extends State<ReportForm> {
                 value: 'mixed',
                 child: Text(AppLocalizations.of(context)!.mixedLanguage),
               ),
+              for (final language in languages.entries)
+                if (language.key != 'en' && language.key != 'hi')
+                  DropdownMenuItem(
+                    value: language.key,
+                    child: Text(language.value),
+                  ),
             ],
             onChanged: draft.locked
                 ? null
                 : (v) {
                     draft.update('language', v);
+                    setState(() {});
                     save();
                   },
           ),
@@ -707,6 +784,47 @@ class _ReportFormState extends State<ReportForm> {
                     save();
                   },
           ),
+        ],
+      ),
+    ),
+    ReportVoice(
+      key: const ValueKey('report-voice'),
+      api: draft.api,
+      language: reportLanguage,
+      enabled: !draft.locked && !reviewing,
+      useStatement: useVoiceStatement,
+    ),
+    ListenableBuilder(
+      listenable: draft,
+      builder: (context, _) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          OutlinedButton(
+            onPressed:
+                draft.locked ||
+                    draft.assisting ||
+                    (draft.fields['description'] as String).trim().isEmpty
+                ? null
+                : () async {
+                    setState(() => error = null);
+                    try {
+                      await draft.askAgent(reportLanguage);
+                    } catch (_) {
+                      if (mounted) {
+                        setState(
+                          () => error =
+                              'Reporting assistant unavailable. You can continue with text.',
+                        );
+                      }
+                    }
+                  },
+            child: Text(
+              draft.assisting
+                  ? 'Asking reporting assistant…'
+                  : 'Ask reporting assistant',
+            ),
+          ),
+          ...reportingTranscript(draft.fields['reporting'] as Json?),
         ],
       ),
     ),
@@ -802,11 +920,14 @@ class _ReportFormState extends State<ReportForm> {
               }
               draft.review();
               if (!context.mounted) return;
+              setState(() => reviewing = true);
               final submitted = await Navigator.push<bool>(
                 context,
                 MaterialPageRoute(builder: (_) => Review(draft: draft)),
               );
-              if (submitted == true && context.mounted) Navigator.pop(context);
+              if (!context.mounted) return;
+              setState(() => reviewing = false);
+              if (submitted == true) Navigator.pop(context);
             },
       child: Text(AppLocalizations.of(context)!.reviewReport),
     ),
@@ -835,6 +956,7 @@ class _ReviewState extends State<Review> {
           const FlowSteps(current: 1),
           Text(strings.reviewFactsDescription),
           facts(snapshot),
+          ...reportingTranscript(snapshot['reporting'] as Json?),
           Text(strings.reviewConfirmationIncluded),
           CheckboxListTile(
             contentPadding: EdgeInsets.zero,
@@ -995,9 +1117,7 @@ class Help extends StatelessWidget {
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(
-                  AppLocalizations.of(context)!.settingsOpenError,
-                ),
+                content: Text(AppLocalizations.of(context)!.settingsOpenError),
               ),
             );
           }

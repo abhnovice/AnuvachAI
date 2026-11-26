@@ -11,7 +11,7 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
     private var localFeatures: LocalFeatures? = null
-    override fun onPause() { localFeatures?.stopMic(); super.onPause() }
+    override fun onPause() { localFeatures?.stopMic(); localFeatures?.stopPlayback(); super.onPause() }
     override fun onDestroy() { localFeatures?.dispose(); super.onDestroy() }
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)

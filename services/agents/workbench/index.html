@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#173b32" />
+    <title>Anuvach.AI | Stage 3 Workbench</title>
+    <link rel="stylesheet" href="/workbench/style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="wordmark" href="/" aria-label="Anuvach.AI workbench">anuvach<span>.ai</span></a>
+      <div class="topbar-status">
+        <span class="status-dot" id="service-dot"></span>
+        <span id="service-label">Local workbench</span>
+      </div>
+      <span class="environment-tag">STAGE 3 · SYNTHETIC DATA</span>
+    </header>
+
+    <div class="shell">
+      <aside class="rail" aria-label="Workbench views">
+        <button class="rail-tab active" data-view="employee" aria-current="page">01 <span>Employee</span></button>
+        <button class="rail-tab" data-view="admin">02 <span>Admin review</span></button>
+        <button class="rail-tab" data-view="diagnostics">03 <span>Diagnostics</span></button>
+        <div class="rail-bottom">
+          <span class="policy-mark">POLICY<br />GROUNDING</span>
+          <strong>Unavailable</strong>
+        </div>
+      </aside>
+
+      <main>
+        <section class="view active" id="view-employee" aria-labelledby="employee-title">
+          <div class="page-heading">
+            <div>
+              <p class="eyebrow">EMPLOYEE REPORTING</p>
+              <h1 id="employee-title">Tell us what happened.</h1>
+            </div>
+            <div class="language-control">
+              <label for="language">Conversation language</label>
+              <select id="language" dir="auto">
+                <option value="en">English</option>
+                <option value="hi">Hindi · हिन्दी</option>
+                <option value="ta">Tamil · தமிழ்</option>
+                <option value="te">Telugu · తెలుగు</option>
+                <option value="bn">Bengali · বাংলা</option>
+                <option value="kn">Kannada · ಕನ್ನಡ</option>
+                <option value="ml">Malayalam · മലയാളം</option>
+                <option value="ur">Urdu · اردو</option>
+                <option value="pa">Punjabi · ਪੰਜਾਬੀ</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="banner-row">
+            <span class="banner live-label">LIVE MODEL OUTPUT IS IDENTIFIED</span>
+            <span class="banner synthetic-label">SYNTHETIC TEST DATA ONLY</span>
+            <span class="banner policy-label">NO COMPANY-POLICY GROUNDING</span>
+          </div>
+
+          <div class="employee-grid">
+            <section class="conversation-panel" aria-label="Conversation">
+              <div class="panel-heading">
+                <div><p class="eyebrow">CONVERSATION</p><h2>Incident account</h2></div>
+                <span class="connection-pill" id="voice-state">Text ready</span>
+              </div>
+              <div class="transcript" id="transcript" aria-live="polite">
+                <p class="empty-state">Your original transcript and any corrections will appear here.</p>
+              </div>
+              <div class="agent-reply" id="agent-reply" hidden>
+                <span>AGENT RESPONSE</span>
+                <p id="agent-reply-text"></p>
+              </div>
+              <form id="message-form" class="composer">
+                <label for="message">Describe the call, message, or request</label>
+                <textarea id="message" rows="3" maxlength="4000" placeholder="Include what was requested, what you did, and what you are unsure about."></textarea>
+                <div class="composer-actions">
+                  <div class="voice-actions">
+                    <button class="button button-quiet" id="mic-start" type="button" title="Start live microphone">Start mic</button>
+                    <button class="button button-quiet" id="mic-stop" type="button" disabled title="Stop live microphone">Stop mic</button>
+                    <span class="interruption-state" id="interrupt-state" aria-live="polite">Listening for interruption</span>
+                  </div>
+                  <button class="button button-primary" type="submit">Add to draft <span aria-hidden="true">↗</span></button>
+                </div>
+              </form>
+              <div class="scenario-row">
+                <label for="scenario">Replay synthetic case</label>
+                <select id="scenario"><option value="">Choose a case</option></select>
+                <button class="button button-quiet" id="replay" type="button">Replay</button>
+                <button class="button button-quiet" id="reset" type="button">Reset data</button>
+              </div>
+            </section>
+
+            <section class="draft-panel" aria-label="Editable report draft">
+              <div class="panel-heading">
+                <div><p class="eyebrow">REPORT DRAFT</p><h2>Review the facts</h2></div>
+                <span class="revision" id="revision-label">Not saved</span>
+              </div>
+              <div class="facts-list" id="facts-list"><p class="empty-state">Add a statement to begin a draft.</p></div>
+              <label class="field-label" for="unknowns">What remains unknown</label>
+              <textarea id="unknowns" rows="2" placeholder="Keep unanswered details explicit."></textarea>
+              <button class="button button-quiet save-edit" id="save-edit" type="button" disabled>Save edits</button>
+              <div class="confirmation-box">
+                <p>Only confirmation creates a synthetic ticket. Editing the draft does not submit it.</p>
+                <div class="confirm-actions">
+                  <button class="button button-quiet" id="decline" type="button" disabled>Do not confirm</button>
+                  <button class="button button-confirm" id="confirm" type="button" disabled>Confirm report</button>
+                </div>
+              </div>
+              <p class="acknowledgment" id="employee-ack" role="status"></p>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="view-admin" aria-labelledby="admin-title" hidden>
+          <div class="page-heading">
+            <div><p class="eyebrow">ADMINISTRATOR REVIEW</p><h1 id="admin-title">Review the confirmed facts.</h1></div>
+            <span class="banner simulated-label">SIMULATED ADMIN ACTIONS</span>
+          </div>
+          <div class="admin-grid">
+            <section class="ticket-list-panel">
+              <div class="panel-heading"><div><p class="eyebrow">LOCAL QUEUE</p><h2>Confirmed tickets</h2></div><button class="icon-button" id="refresh-tickets" type="button" title="Refresh ticket list">↻</button></div>
+              <div id="ticket-list" class="ticket-list"><p class="empty-state">No confirmed synthetic tickets yet.</p></div>
+            </section>
+            <section class="ticket-detail-panel">
+              <div class="panel-heading"><div><p class="eyebrow">TRIAGE PROPOSAL</p><h2 id="ticket-title">Select a ticket</h2></div><button class="button button-quiet" id="run-triage" type="button" disabled>Request triage</button></div>
+              <p id="triage-status" class="triage-status">No triage requested.</p>
+              <div id="admin-facts" class="admin-facts"></div>
+              <div id="proposal-view"></div>
+              <div class="admin-decisions" id="admin-decisions" hidden>
+                <p class="eyebrow">SIMULATED DECISION</p>
+                <div class="decision-actions">
+                  <button class="button button-confirm" data-decision="accept" type="button">Accept</button>
+                  <button class="button button-quiet" data-decision="edit" type="button">Edit proposal</button>
+                  <button class="button button-danger" data-decision="reject" type="button">Reject</button>
+                </div>
+                <p id="decision-ack" class="acknowledgment" role="status"></p>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="view-diagnostics" aria-labelledby="diagnostics-title" hidden>
+          <div class="page-heading"><div><p class="eyebrow">LOCAL SYSTEM STATUS</p><h1 id="diagnostics-title">Diagnostics</h1></div><button class="button button-quiet" id="refresh-diagnostics" type="button">Refresh</button></div>
+          <div class="diagnostic-grid" id="diagnostic-grid"></div>
+          <section class="diagnostic-log"><div class="panel-heading"><div><p class="eyebrow">OBSERVABILITY</p><h2>Tool calls and results</h2></div></div><div id="tool-log"></div></section>
+          <section class="diagnostic-log"><div class="panel-heading"><div><p class="eyebrow">AUDIT</p><h2>Events</h2></div></div><div id="audit-log"></div></section>
+          <div class="error-log" id="error-log"></div>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="/workbench/app.js"></script>
+  </body>
+</html>

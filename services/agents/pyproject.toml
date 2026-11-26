@@ -1,0 +1,26 @@
+[project]
+name = "anuvach-agents"
+version = "0.1.0"
+description = "Standalone local reporting and triage agent workbench"
+requires-python = ">=3.11"
+dependencies = [
+  "google-adk[a2a]==2.15.1",
+  "pydantic>=2.10,<3",
+  "python-dotenv>=1.0,<2",
+  "uvicorn[standard]>=0.34,<1",
+]
+
+[project.scripts]
+anuvach-agents = "anuvach_agents.serve:main"
+
+[project.optional-dependencies]
+test = ["pytest>=8.3,<9", "httpx>=0.28,<1"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = ["gemini: opt-in live Google Gemini test using synthetic cases", "gemini_voice: opt-in live Gemini test using synthesized speech"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"

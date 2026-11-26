@@ -26,3 +26,6 @@ apps/mobile/firebase.json
 **/*service-account*.json
 **/*serviceAccount*.json
 !apps/mobile/.env.firebase.example.json
+services/agents/.venv/
+services/agents/__pycache__/
+services/agents/data/

@@ -7,6 +7,8 @@ import android.content.pm.PackageManager
 import android.content.pm.PackageInfo
 import android.media.AudioFormat
 import android.media.AudioRecord
+import android.media.AudioTrack
+import android.media.AudioManager
 import android.media.MediaRecorder
 import android.net.Uri
 import android.provider.Settings
@@ -17,15 +19,40 @@ import java.util.Locale
 import android.content.res.Configuration
 
 /** Local features only; no audio or inventory leaves the device. */
-class LocalFeatures(private val activity: FlutterActivity, channel: MethodChannel) {
+class LocalFeatures(private val activity: FlutterActivity, private val channel: MethodChannel) {
     private val executor = Executors.newSingleThreadExecutor()
-    private var recorder: AudioRecord? = null
+    @Volatile private var recorder: AudioRecord? = null
+    private var streamMic = false
+    private var player: AudioTrack? = null
+    private var playerRate = 0
     private var permissionReply: MethodChannel.Result? = null
 
     init {
         channel.setMethodCallHandler { call, result ->
             when (call.method) {
-                "startMic" -> startMic(result, call.argument<String>("language") ?: "en")
+                "startMic" -> startMic(result, call.argument<String>("language") ?: "en", false)
+                "startVoice" -> startMic(result, call.argument<String>("language") ?: "en", true)
+                "playVoice" -> {
+                    try {
+                        val bytes = call.argument<ByteArray>("pcm") ?: error("Missing PCM")
+                        val rate = call.argument<Int>("rate") ?: 24000
+                        require(rate in 8000..48000 && bytes.size % 2 == 0)
+                        if (player == null || playerRate != rate) {
+                            stopPlayback()
+                            val min = AudioTrack.getMinBufferSize(rate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT)
+                            check(min > 0)
+                            @Suppress("DEPRECATION")
+                            val audio = AudioTrack(AudioManager.STREAM_MUSIC, rate, AudioFormat.CHANNEL_OUT_MONO,
+                                AudioFormat.ENCODING_PCM_16BIT, maxOf(min, rate / 2), AudioTrack.MODE_STREAM)
+                            if (audio.state != AudioTrack.STATE_INITIALIZED) { audio.release(); error("Audio output unavailable") }
+                            player = audio
+                            playerRate = rate
+                            audio.play()
+                        }
+                        result.success(player!!.write(bytes, 0, bytes.size, AudioTrack.WRITE_NON_BLOCKING))
+                    } catch (_: Exception) { result.error("PLAYBACK_FAILED", "Audio playback unavailable", null) }
+                }
+                "clearVoice" -> { stopPlayback(); result.success(null) }
                 "stopMic" -> { stopMic(); result.success(null) }
                 "listApps" -> executor.execute {
                     try {
@@ -67,9 +94,10 @@ class LocalFeatures(private val activity: FlutterActivity, channel: MethodChanne
         }
     }
 
-    private fun startMic(result: MethodChannel.Result, language: String) {
-        if (recorder != null) { result.success(true); return }
+    private fun startMic(result: MethodChannel.Result, language: String, stream: Boolean) {
+        if (recorder != null) { result.success(streamMic == stream); return }
         if (permissionReply != null) { result.error("BUSY", "Permission request already in progress", null); return }
+        streamMic = stream
         if (activity.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
             openMic(result)
         } else if (activity.shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO)) {
@@ -99,16 +127,47 @@ class LocalFeatures(private val activity: FlutterActivity, channel: MethodChanne
             val size = AudioRecord.getMinBufferSize(16000, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
             if (size <= 0) throw IllegalStateException("Microphone format unavailable")
             @Suppress("MissingPermission")
-            val audio = AudioRecord(MediaRecorder.AudioSource.MIC, 16000, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, size)
+            val audio = AudioRecord(if (streamMic) MediaRecorder.AudioSource.VOICE_COMMUNICATION else MediaRecorder.AudioSource.MIC, 16000, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, size)
             if (audio.state != AudioRecord.STATE_INITIALIZED) { audio.release(); throw IllegalStateException("Microphone unavailable") }
             try { audio.startRecording() } catch (error: Exception) { audio.release(); throw error }
             recorder = audio
+            if (streamMic) Thread {
+                val buffer = ByteArray(3200)
+                try {
+                    while (recorder === audio) {
+                        val count = audio.read(buffer, 0, buffer.size)
+                        if (count <= 0) break
+                        val packet = buffer.copyOf(count)
+                        activity.runOnUiThread {
+                            if (recorder === audio) channel.invokeMethod("voicePcm", packet)
+                        }
+                    }
+                } catch (_: Exception) {
+                    // The recorder can be released during a blocking read.
+                }
+                activity.runOnUiThread {
+                    if (recorder === audio) stopMic()
+                }
+            }.start()
             result.success(true)
         } catch (error: Exception) { result.error("MIC_FAILED", error.message, null) }
     }
-    fun stopMic() {
-        recorder?.let { try { it.stop() } catch (_: IllegalStateException) {} ; it.release() }
-        recorder = null
+    fun stopPlayback() {
+        player?.let { audio ->
+            try { audio.pause(); audio.flush() } catch (_: IllegalStateException) {}
+            audio.release()
+        }
+        player = null
     }
-    fun dispose() { stopMic(); executor.shutdownNow() }
+
+    fun stopMic() {
+        val audio = recorder
+        recorder = null
+        if (audio != null) {
+            try { audio.stop() } catch (_: IllegalStateException) {}
+            audio.release()
+            if (streamMic) channel.invokeMethod("voiceMicStopped", null)
+        }
+    }
+    fun dispose() { stopMic(); stopPlayback(); executor.shutdownNow() }
 }

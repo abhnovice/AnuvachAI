@@ -3,6 +3,7 @@ import { flushSync } from "react-dom";
 import { usePageScroll } from "./usePageScroll";
 import { AnalyticsOverview, type DashboardData } from "./AnalyticsOverview";
 import { Icon } from "./Icon";
+import { TriageReview, type LocalTriage } from "./TriageReview";
 import { TicketJourney } from "./TicketJourney";
 import { ThemePicker } from "./ThemePicker";
 import { MaterialNavIcon } from "./MaterialNavIcon";
@@ -13,6 +14,7 @@ export type Report = {
   createdAt: string;
   updatedAt: string;
   version: number;
+  triage?: LocalTriage;
   facts: {
     employeeId: string;
     description: string;
@@ -725,11 +727,22 @@ export function App() {
                   </p>
                   <p>
                     {t("policyCitations")} <strong>{t("notAvailable")}</strong>
-                    <br />
-                    {t("severity")} <strong>{t("notAvailable")}</strong>
+                    {!detail.triage && (
+                      <>
+                        <br />
+                        {t("severity")} <strong>{t("notAvailable")}</strong>
+                      </>
+                    )}
                   </p>
                   <fieldset disabled={busy}>
                     <legend>{t("adminActions")}</legend>
+                    {detail.triage && (
+                      <TriageReview
+                        key={`${detail.id}:${detail.version}`}
+                        triage={detail.triage}
+                        save={(review) => void mutate("triage-review", review)}
+                      />
+                    )}
                     <form
                       onSubmit={(e) => {
                         e.preventDefault();

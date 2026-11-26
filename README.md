@@ -23,7 +23,13 @@ The dashboard uses synthetic scenarios and visualizes report volume, categories 
 - **Administrator dashboard:** React, TypeScript and Vite, with an interactive overview, report queue, ticket journey and audited review actions.
 - **Local API:** TypeScript and SQLite, with input validation, persistent reports and audit events. The seed provides two initial cases and 48 synthetic historical scenarios.
 
-A live voice conversation, policy-grounded retrieval, AI-assigned severity and automated triage are future stages; they do not operate in this iteration. The future voice adapter will populate the existing draft and use the [report creation and history contracts](docs/api-contract.md#stage-3-consumers), with employee review and confirmation still required.
+## Local Stage 3 agents
+
+The Flutter report flow supports nine text languages and opt-in Android voice preview. Review and edit the report before confirming it. Fastify creates the ticket in SQLite and queues triage through the existing private A2A connection. In React, administrators can review and amend the evidence-linked AI proposal. The local integration uses synthetic incident data and keeps the Gemini credential in the agent service.
+
+English passed the synthesized speech fixture and the live Fastify relay. Eight languages are voice-limited with text fallback. Android emulator audio I/O and the complete text-to-admin flow passed. Physical-device speech and listening have not been assessed. Policy answers remain unavailable pending Stage 4 RAG.
+
+See the [local commands and configuration](services/agents/README.md#local-flutter-and-react-integration), [language matrix](docs/language-test-matrix.md), and [verification log](docs/experiment-log.md#stage-3-closeout-verification). The standalone workbench and deterministic synthetic triage fixture remain available.
 
 ## Repository layout
 

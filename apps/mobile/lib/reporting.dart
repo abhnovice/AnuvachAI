@@ -17,27 +17,34 @@ class Api {
           );
   final http.Client client;
   final String base;
-  Future<dynamic> call(String path, {Json? body, String? key}) async {
+  Future<dynamic> call(
+    String path, {
+    Json? body,
+    String? key,
+    String? method,
+  }) async {
     try {
       final uri = Uri.parse('$base/api/v1$path');
       final response =
-          await (body == null
+          await (method == 'DELETE'
+                  ? client.delete(uri)
+                  : body == null
                   ? client.get(uri)
                   : client.post(
                       uri,
                       headers: {
                         'Content-Type': 'application/json',
-                        'idempotency-key': key!,
+                        'idempotency-key': ?key,
                       },
                       body: jsonEncode(body),
                     ))
-              .timeout(const Duration(seconds: 12));
+              .timeout(Duration(seconds: path == '/reporting/turns' ? 38 : 12));
       if (response.statusCode >= 400) {
         throw Exception(
           jsonDecode(response.body)['error'] ?? 'Request rejected',
         );
       }
-      return jsonDecode(response.body);
+      return response.statusCode == 204 ? null : jsonDecode(response.body);
     } catch (e) {
       throw Exception(
         'Could not reach or complete the API request. Your draft is preserved. Check the local API address and retry. ($e)',
@@ -79,6 +86,7 @@ class Draft extends ChangeNotifier {
     'observations': <dynamic>[],
   };
   String key = const Uuid().v4();
+  bool assisting = false;
   Json? pending;
   Json? reviewed;
   bool confirmed = false, busy = false;
@@ -105,6 +113,54 @@ class Draft extends ChangeNotifier {
     reviewed = null;
     confirmed = false;
     notifyListeners();
+  }
+
+  Future<void> askAgent(String language) async {
+    final text = (fields['description'] as String).trim();
+    if (text.isEmpty || locked || busy || assisting) return;
+    final sessionId = key;
+    assisting = true;
+    notifyListeners();
+    try {
+      final previous = fields['reporting'] as Json?;
+      final transcript = [
+        ...?previous?['transcript'] as List?,
+        {'speaker': 'employee', 'text': text},
+      ];
+      // Reserve a slot for the reply and bound the submitted transcript.
+      if (transcript.length > 11) {
+        transcript.removeRange(0, transcript.length - 11);
+      }
+      update('reporting', {
+        'language': language,
+        'transcript': transcript,
+        'unknowns': previous?['unknowns'] ?? <String>[],
+      });
+      await save();
+      final reply =
+          await api.call(
+                '/reporting/turns',
+                body: {
+                  'sessionId': sessionId,
+                  'language': language,
+                  'text': text,
+                },
+              )
+              as Json;
+      if (key != sessionId || reviewed != null || locked || busy) return;
+      update('reporting', {
+        'language': language,
+        'transcript': [
+          ...transcript,
+          {'speaker': 'agent', 'text': reply['reply']},
+        ],
+        'unknowns': reply['unknowns'],
+      });
+      await save();
+    } finally {
+      assisting = false;
+      notifyListeners();
+    }
   }
 
   Json review() {

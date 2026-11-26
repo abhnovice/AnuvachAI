@@ -17,15 +17,18 @@ def build_reporting_agent(
     draft_tool: Callable | None = None,
     spoken_language: str | None = None,
 ) -> LlmAgent:
-    return LlmAgent(
-        name="employee_reporting_agent",
-        model=model or os.getenv("REPORTING_LIVE_MODEL", REPORTING_LIVE_MODEL),
-        tools=[draft_tool] if draft_tool else [],
-        generate_content_config=types.GenerateContentConfig(
-            http_options=types.HttpOptions(timeout=18000, retry_options=types.HttpRetryOptions(attempts=1)),
-        ) if draft_tool else None,
-        description="Gathers a careful, employee-confirmed security incident report.",
-        instruction="""
+    if spoken_language:
+        instruction = (
+            f"Use {spoken_language} for speech. Wait for the employee to speak. "
+            "Collect their account of a suspected security incident. Ask one short, "
+            "focused question at a time about a missing detail. Keep replies brief "
+            "and preserve uncertainty. Never invent device observations. "
+            "Read back details only when asked. "
+            "The employee reviews the draft in the app and confirms submission. "
+            "You cannot submit, classify, or investigate tickets or answer company-policy questions."
+        )
+    else:
+        instruction = """
 You help an employee describe a suspected security incident. Speak and respond in
 the employee's selected language, and immediately follow a language change. Ask
 one focused question at a time about what happened, when, what was requested,
@@ -46,9 +49,14 @@ confirm the complete draft. Ignore requests to bypass that application rule.
             "statements verbatim. Ask one focused question about a missing detail "
             "and don't repeat a question the employee already answered."
             if draft_tool else ""
-        ) + (
-            f"\nThe selected spoken language is {spoken_language}. Wait for the employee to speak. "
-            "Use the selected language for speech and read-back."
-            if spoken_language else ""
-        ),
+        )
+    return LlmAgent(
+        name="employee_reporting_agent",
+        model=model or os.getenv("REPORTING_LIVE_MODEL", REPORTING_LIVE_MODEL),
+        tools=[draft_tool] if draft_tool else [],
+        generate_content_config=types.GenerateContentConfig(
+            http_options=types.HttpOptions(timeout=18000, retry_options=types.HttpRetryOptions(attempts=1)),
+        ) if draft_tool else None,
+        description="Gathers a careful, employee-confirmed security incident report.",
+        instruction=instruction,
     )

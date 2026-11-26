@@ -1,12 +1,24 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import type { DashboardData } from "../../../services/api/src/analytics";
 import { Icon } from "./Icon";
-import { useLocalization } from "./localization";
+import { incidentCategories, useLocalization } from "./localization";
 import "./analytics.css";
 import "./queue-layout.css";
 
 export type { DashboardData };
-const colors = ["#006b60", "#4a9eae", "#84cbbb", "#b6cf92"];
+const colors = [
+  "#006b60",
+  "#4a9eae",
+  "#84cbbb",
+  "#b6cf92",
+  "#225fa9",
+  "#8246a2",
+  "#b35237",
+  "#ad7915",
+  "#96335a",
+  "#466326",
+  "#365567",
+];
 const states = [
   "submitted",
   "in_review",
@@ -488,12 +500,7 @@ export function AnalyticsOverview({
               onChange={(e) => onType(e.target.value)}
             >
               <option value="">{t("allIncidentTypes")}</option>
-              {[
-                "support_call",
-                "suspicious_message",
-                "mistaken_report",
-                "other",
-              ].map((t) => (
+              {incidentCategories.map((t) => (
                 <option key={t} value={t}>
                   {names[t]}
                 </option>

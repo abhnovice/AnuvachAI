@@ -464,7 +464,7 @@ async function startMicrophone() {
     audioContext = new AudioContext();
     await audioContext.resume();
     source = audioContext.createMediaStreamSource(stream);
-    processor = audioContext.createScriptProcessor(4096, 1, 1);
+    processor = audioContext.createScriptProcessor(1024, 1, 1);
     const nextReportId = state.draft?.report_id || liveReportId || `R-${crypto.randomUUID()}`;
     if (nextReportId !== liveReportId) liveSessionId = crypto.randomUUID();
     liveReportId = nextReportId;

@@ -16,6 +16,15 @@ import 'language.dart';
 import 'new_tabs.dart';
 import 'l10n/app_localizations.dart';
 
+Future<FirebaseApp> initializeFirebase() {
+  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+    return Firebase.initializeApp();
+  }
+  return Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final prefs = await SharedPreferences.getInstance();
@@ -26,9 +35,7 @@ Future<void> main() async {
   FirebaseAuth? auth;
   if (authenticated) {
     try {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
+      await initializeFirebase();
       auth = FirebaseAuth.instance;
     } catch (_) {
       runApp(
@@ -85,9 +92,7 @@ class _AnuvachAppState extends State<AnuvachApp> {
   Future<void> _initializeRemote() async {
     try {
       if (Firebase.apps.isEmpty) {
-        await Firebase.initializeApp(
-          options: DefaultFirebaseOptions.currentPlatform,
-        );
+        await initializeFirebase();
       }
       if (mounted) await remoteTranslations.initialize();
     } catch (error) {

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { incidentCategories, useLocalization } from "./localization";
 
 export type LocalTriage = {
   status: "pending" | "completed" | "human_review";
@@ -18,7 +19,12 @@ export type LocalTriage = {
     };
   };
   evidence?: { fact_id: string; text: string }[];
-  review?: { decision: "accepted" | "amended"; severity: string; team: string };
+  review?: {
+    decision: "accepted" | "amended";
+    severity: string;
+    team: string;
+    incidentType?: string;
+  };
 };
 
 const label = (value: string) => value.replaceAll("_", " ");
@@ -30,11 +36,16 @@ export function TriageReview({
   triage: LocalTriage;
   save: (review: {
     proposalId: string;
+    incidentType: string;
     severity: string;
     team: string;
   }) => void;
 }) {
   const proposal = triage.result?.proposal;
+  const { enumLabel } = useLocalization();
+  const [incidentType, setIncidentType] = useState(
+    triage.review?.incidentType ?? proposal?.incident_type ?? "other",
+  );
   const [severity, setSeverity] = useState(
     triage.review?.severity ?? proposal?.proposed_severity ?? "unassessed",
   );
@@ -68,7 +79,7 @@ export function TriageReview({
         Human review required. Suggested severity{" "}
         {label(proposal.proposed_severity)}, team{" "}
         {label(proposal.proposed_team)}, incident type{" "}
-        {label(proposal.incident_type)}.
+        {enumLabel(proposal.incident_type)}.
       </p>
       <ul>
         {proposal.reasons.map((reason, index) => (
@@ -106,9 +117,27 @@ export function TriageReview({
       <form
         onSubmit={(event) => {
           event.preventDefault();
-          save({ proposalId: proposal.proposal_id, severity, team });
+          save({
+            proposalId: proposal.proposal_id,
+            incidentType,
+            severity,
+            team,
+          });
         }}
       >
+        <label>
+          Reviewed incident type
+          <select
+            value={incidentType}
+            onChange={(event) => setIncidentType(event.target.value)}
+          >
+            {incidentCategories.map((value) => (
+              <option key={value} value={value}>
+                {enumLabel(value)}
+              </option>
+            ))}
+          </select>
+        </label>
         <label>
           Reviewed severity
           <select
@@ -141,7 +170,8 @@ export function TriageReview({
         </label>
         <button type="submit">
           {severity === proposal.proposed_severity &&
-          team === proposal.proposed_team
+          team === proposal.proposed_team &&
+          incidentType === proposal.incident_type
             ? "Accept AI proposal"
             : "Save amended proposal"}
         </button>

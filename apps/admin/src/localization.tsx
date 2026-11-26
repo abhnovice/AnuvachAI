@@ -1,3 +1,4 @@
+import { firebaseClient } from "./firebaseClient";
 import {
   createContext,
   useContext,
@@ -30,34 +31,35 @@ export const languages = {
 export type Language = keyof typeof languages;
 
 const en = {
-    syntheticData: "Synthetic demonstration data",
-    localApiHistory: "Reports and audit history from the local API",
-    dashboardIncidentType: "Dashboard incident type",
-    loadingAnalytics: "Loading report analytics…",
-    analyticsUnavailable: "Analytics unavailable. Refresh the queue to retry.",
-    brushWeeks: "Brush weeks",
-    brushFromWeek: "Brush from week",
-    brushThroughWeek: "Brush through week",
-    from: "From",
-    through: "Through",
-    clearBrush: "Clear brush",
-    dragBrushHint: "Drag across either weekly chart or choose weeks. Totals remain unchanged.",
-    viewReceived: "View reports received",
-    viewOpen: "View open reports",
-    viewClosed: "View closed reports",
-    viewClosureTime: "View reports contributing to closure time",
-    noPreviousBaseline: "No previous-period baseline",
-    medianTurnaround: "Median turnaround",
-    fewer: "Fewer",
-    moreReports: "More reports",
-    responsibilityCohort: "Responsibility in this cohort",
-    assignmentIdentityNote: "Team assignment is separate from employee identity.",
+  syntheticData: "Synthetic demonstration data",
+  localApiHistory: "Reports and audit history from the local API",
+  dashboardIncidentType: "Dashboard incident type",
+  loadingAnalytics: "Loading report analytics…",
+  analyticsUnavailable: "Analytics unavailable. Refresh the queue to retry.",
+  brushWeeks: "Brush weeks",
+  brushFromWeek: "Brush from week",
+  brushThroughWeek: "Brush through week",
+  from: "From",
+  through: "Through",
+  clearBrush: "Clear brush",
+  dragBrushHint:
+    "Drag across either weekly chart or choose weeks. Totals remain unchanged.",
+  viewReceived: "View reports received",
+  viewOpen: "View open reports",
+  viewClosed: "View closed reports",
+  viewClosureTime: "View reports contributing to closure time",
+  noPreviousBaseline: "No previous-period baseline",
+  medianTurnaround: "Median turnaround",
+  fewer: "Fewer",
+  moreReports: "More reports",
+  responsibilityCohort: "Responsibility in this cohort",
+  assignmentIdentityNote: "Team assignment is separate from employee identity.",
   chartSubtitle1: "New reports in consecutive seven-day buckets",
   chartDefinition1:
     "Counts reports by receipt time within the selected window. The final bucket may be shorter than seven days.",
-  chartSubtitle2: "Employee-selected categories · click to filter",
+  chartSubtitle2: "Ticket categories · click to filter",
   chartDefinition2:
-    "Each report appears in exactly one category. Percentages use reports received in the selected window.",
+    "Each report uses the reviewed category when available, then the triage suggestion, then the employee-selected type. Percentages use reports received in the selected window.",
   chartSubtitle3: "Activity by calendar month within this window",
   chartDefinition3:
     "Received counts new reports; closed counts transitions into closed, including reports received before this window. Partial months are included.",
@@ -100,6 +102,7 @@ const en = {
   reportQueue: "Report queue",
   status: "Status",
   incidentType: "Incident type",
+  reportedIncidentType: "Employee-reported type",
   allStatuses: "All statuses",
   allOpen: "All open",
   allTypes: "All types",
@@ -135,6 +138,13 @@ const en = {
   statusByType: "Status by incident type",
   openClosedWorkload: "Open & closed workload",
   supportCall: "Support call",
+  email_phishing: "Email phishing",
+  messaging_phishing: "Text or chat phishing",
+  voice_phishing: "Voice phishing",
+  qr_phishing: "QR code phishing",
+  payment_fraud: "Payment or invoice fraud",
+  mfa_fatigue: "MFA push fatigue",
+  remote_access_scam: "Remote access scam",
   suspiciousMessage: "Suspicious message",
   mistakenReport: "Mistaken report",
   other: "Other",
@@ -170,14 +180,16 @@ const dictionaries: Record<
     localApiHistory: "உள்ளூர் API-இன் அறிக்கைகள் மற்றும் தணிக்கை வரலாறு",
     dashboardIncidentType: "முகப்புப் பலகை சம்பவ வகை",
     loadingAnalytics: "அறிக்கை பகுப்பாய்வு ஏற்றப்படுகிறது…",
-    analyticsUnavailable: "பகுப்பாய்வு கிடைக்கவில்லை. மீண்டும் முயற்சிக்க வரிசையைப் புதுப்பிக்கவும்.",
+    analyticsUnavailable:
+      "பகுப்பாய்வு கிடைக்கவில்லை. மீண்டும் முயற்சிக்க வரிசையைப் புதுப்பிக்கவும்.",
     brushWeeks: "வாரங்களைத் தேர்ந்தெடு",
     brushFromWeek: "தொடக்க வாரம்",
     brushThroughWeek: "இறுதி வாரம்",
     from: "முதல்",
     through: "வரை",
     clearBrush: "தேர்வை நீக்கு",
-    dragBrushHint: "வார விளக்கப்படத்தில் இழுக்கவும் அல்லது வாரங்களைத் தேர்ந்தெடுக்கவும். மொத்த எண்ணிக்கை மாறாது.",
+    dragBrushHint:
+      "வார விளக்கப்படத்தில் இழுக்கவும் அல்லது வாரங்களைத் தேர்ந்தெடுக்கவும். மொத்த எண்ணிக்கை மாறாது.",
     viewReceived: "பெறப்பட்ட அறிக்கைகளைக் காண்க",
     viewOpen: "திறந்துள்ள அறிக்கைகளைக் காண்க",
     viewClosed: "மூடப்பட்ட அறிக்கைகளைக் காண்க",
@@ -191,9 +203,9 @@ const dictionaries: Record<
     chartSubtitle1: "தொடர்ச்சியான ஏழு நாள் காலப்பகுதிகளில் புதிய அறிக்கைகள்",
     chartDefinition1:
       "தேர்ந்தெடுத்த காலப்பகுதியில் பெறப்பட்ட நேரத்தின் அடிப்படையில் அறிக்கைகளை எண்ணுகிறது. இறுதிக் காலப்பகுதி ஏழு நாட்களுக்குக் குறைவாக இருக்கலாம்.",
-    chartSubtitle2: "பணியாளர் தேர்ந்தெடுத்த வகைகள் · வடிகட்ட கிளிக் செய்யவும்",
+    chartSubtitle2: "சம்பவ வகைகள் · வடிகட்ட கிளிக் செய்யவும்",
     chartDefinition2:
-      "ஒவ்வொரு அறிக்கையும் ஒரு வகையில் மட்டும் இடம்பெறும். தேர்ந்தெடுத்த காலத்தில் பெறப்பட்ட அறிக்கைகளின் அடிப்படையில் சதவீதங்கள் கணக்கிடப்படுகின்றன.",
+      "மதிப்பாய்வு செய்த வகை இருந்தால் அதைப் பயன்படுத்தும். இல்லையெனில் பரிந்துரைக்கப்பட்ட வகை அல்லது பணியாளர் தேர்ந்தெடுத்த வகை பயன்படும். தேர்ந்தெடுத்த காலத்தில் பெறப்பட்ட அறிக்கைகளின் அடிப்படையில் சதவீதங்கள் கணக்கிடப்படுகின்றன.",
     chartSubtitle3: "இந்தக் காலப்பகுதியில் காலண்டர் மாத வாரியான செயல்பாடு",
     chartDefinition3:
       "பெறப்பட்டவை புதிய அறிக்கைகளைக் கணக்கிடுகின்றன; மூடப்பட்டவை இந்தக் காலத்திற்கு முன் பெறப்பட்ட அறிக்கைகள் உட்பட மூடப்பட்ட நிலைக்கு மாறிய நிகழ்வுகளைக் கணக்கிடுகின்றன. பகுதி மாதங்களும் சேர்க்கப்பட்டுள்ளன.",
@@ -376,23 +388,11 @@ export function LocalizationProvider({ children }: { children: ReactNode }) {
     let disposed = false;
     async function fetchOverrides() {
       try {
-        const [
-          { initializeApp, getApps, getApp },
-          { getRemoteConfig, isSupported, fetchAndActivate, getString },
-        ] = await Promise.all([
-          import("firebase/app"),
-          import("firebase/remote-config"),
-        ]);
+        const { getRemoteConfig, isSupported, fetchAndActivate, getString } =
+          await import("firebase/remote-config");
         if (!(await isSupported()) || disposed) return;
-        const app = getApps().length
-          ? getApp()
-          : initializeApp({
-              apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-              authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-              projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-              appId: import.meta.env.VITE_FIREBASE_APP_ID,
-              messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-            });
+        const app = await firebaseClient();
+        if (disposed) return;
         const config = getRemoteConfig(app);
         config.settings.minimumFetchIntervalMillis = 12 * 60 * 60 * 1000;
         await fetchAndActivate(config);
@@ -427,8 +427,28 @@ export function LocalizationProvider({ children }: { children: ReactNode }) {
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
+export const incidentCategories = [
+  "support_call",
+  "suspicious_message",
+  "mistaken_report",
+  "other",
+  "email_phishing",
+  "messaging_phishing",
+  "voice_phishing",
+  "qr_phishing",
+  "payment_fraud",
+  "mfa_fatigue",
+  "remote_access_scam",
+] as const;
 const enumKeys: Record<string, TranslationKey> = {
   support_call: "supportCall",
+  email_phishing: "email_phishing",
+  messaging_phishing: "messaging_phishing",
+  voice_phishing: "voice_phishing",
+  qr_phishing: "qr_phishing",
+  payment_fraud: "payment_fraud",
+  mfa_fatigue: "mfa_fatigue",
+  remote_access_scam: "remote_access_scam",
   suspicious_message: "suspiciousMessage",
   mistaken_report: "mistakenReport",
   other: "other",

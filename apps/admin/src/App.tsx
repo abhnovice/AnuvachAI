@@ -8,7 +8,11 @@ import { TicketJourney } from "./TicketJourney";
 import { ThemePicker } from "./ThemePicker";
 import { MaterialNavIcon } from "./MaterialNavIcon";
 import { adminToken } from "./AuthGate";
-import { LanguagePicker, useLocalization } from "./localization";
+import {
+  incidentCategories,
+  LanguagePicker,
+  useLocalization,
+} from "./localization";
 export type Report = {
   id: string;
   status: string;
@@ -16,6 +20,7 @@ export type Report = {
   updatedAt: string;
   version: number;
   triage?: LocalTriage;
+  incidentCategory?: string;
   facts: {
     employeeId: string;
     description: string;
@@ -40,12 +45,6 @@ export type Report = {
     data: Record<string, unknown>;
   }[];
 };
-const types = [
-  "support_call",
-  "suspicious_message",
-  "mistaken_report",
-  "other",
-];
 const statuses = [
   "submitted",
   "in_review",
@@ -587,7 +586,7 @@ export function App({ onSignOut }: { onSignOut?: () => void } = {}) {
                     onChange={(e) => setType(e.target.value)}
                   >
                     <option value="">{t("allTypes")}</option>
-                    {types.map((t) => (
+                    {incidentCategories.map((t) => (
                       <option key={t} value={t}>
                         {enumLabel(t)}
                       </option>
@@ -649,7 +648,11 @@ export function App({ onSignOut }: { onSignOut?: () => void } = {}) {
                             {new Date(r.createdAt).toLocaleString()}
                           </small>
                         </td>
-                        <td>{enumLabel(r.facts.incidentType)}</td>
+                        <td>
+                          {enumLabel(
+                            r.incidentCategory ?? r.facts.incidentType,
+                          )}
+                        </td>
                         <td>
                           <span className={"badge status-" + r.status}>
                             {statusLabel(r.status)}
@@ -734,7 +737,18 @@ export function App({ onSignOut }: { onSignOut?: () => void } = {}) {
                     <dt>{t("reportLanguage")}</dt>
                     <dd>{detail.facts.language}</dd>
                     <dt>{t("incidentType")}</dt>
-                    <dd>{enumLabel(detail.facts.incidentType)}</dd>
+                    <dd>
+                      {enumLabel(
+                        detail.incidentCategory ?? detail.facts.incidentType,
+                      )}
+                    </dd>
+                    {detail.incidentCategory &&
+                      detail.incidentCategory !== detail.facts.incidentType && (
+                        <>
+                          <dt>{t("reportedIncidentType")}</dt>
+                          <dd>{enumLabel(detail.facts.incidentType)}</dd>
+                        </>
+                      )}
                     <dt>{t("appName")}</dt>
                     <dd>{detail.facts.appName || t("notSupplied")}</dd>
                     <dt>{t("evidenceNotes")}</dt>

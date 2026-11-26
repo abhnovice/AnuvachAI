@@ -751,27 +751,8 @@ def create_app(
                     await websocket.send_json({"type": "state", "state": "interrupted"})
                 if event.turn_complete:
                     await websocket.send_json({"type": "state", "state": "listening"})
-                for role, transcription in (
-                    ("employee", event.input_transcription), ("agent", event.output_transcription),
-                ):
-                    if not transcription or not transcription.text:
-                        continue
-                    payload = {
-                        "type": "transcript", "role": role, "text": transcription.text,
-                        "partial": not transcription.finished, "language": language,
-                    }
-                    if not preview and role == "employee" and transcription.finished:
-                        prior = store.read_draft(report_id)
-                        draft = create_draft(DraftRequest(
-                            report_id=report_id, language=language, text=transcription.text[:4000],
-                            incident_type=prior.incident_type if prior else IncidentType.OTHER,
-                        ))
-                        payload["draft"] = draft.model_dump(mode="json")
-                        payload["turn_id"] = draft.transcript[-1].turn_id
-                    await websocket.send_json(payload)
-                if not event.content or event.interrupted:
-                    continue
-                for part in event.content.parts or []:
+                parts = event.content.parts if event.content and not event.interrupted else None
+                for part in parts or []:
                     if part.inline_data and part.inline_data.data:
                         if first_audio is None and first_input is not None:
                             first_audio = (time.perf_counter() - first_input) * 1000
@@ -791,6 +772,25 @@ def create_app(
                                 "mime_type": part.inline_data.mime_type or "audio/pcm;rate=24000",
                             }
                         )
+
+                for role, transcription in (
+                    ("employee", event.input_transcription), ("agent", event.output_transcription),
+                ):
+                    if not transcription or not transcription.text:
+                        continue
+                    payload = {
+                        "type": "transcript", "role": role, "text": transcription.text,
+                        "partial": not transcription.finished, "language": language,
+                    }
+                    if not preview and role == "employee" and transcription.finished:
+                        prior = store.read_draft(report_id)
+                        draft = create_draft(DraftRequest(
+                            report_id=report_id, language=language, text=transcription.text[:4000],
+                            incident_type=prior.incident_type if prior else IncidentType.OTHER,
+                        ))
+                        payload["draft"] = draft.model_dump(mode="json")
+                        payload["turn_id"] = draft.transcript[-1].turn_id
+                    await websocket.send_json(payload)
 
         async def receive_events() -> None:
             nonlocal first_input

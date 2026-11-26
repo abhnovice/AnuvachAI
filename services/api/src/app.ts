@@ -23,6 +23,7 @@ import {
   noteChange,
   escalationChange,
   incidentTypes,
+  ticketIncidentType,
   statuses,
   type Report,
 } from "./contracts.js";
@@ -243,6 +244,7 @@ export async function buildApp(
     const current = now(),
       since = q.days ? windowStart(q.days, current).getTime() : null;
     const owner = employeeUid(req);
+    const adminQueue = !owner && !q.employeeId;
     return (await store.list())
       .filter((entry) => !owner || entry.owner === owner)
       .map((entry) => entry.report)
@@ -250,13 +252,22 @@ export async function buildApp(
         (r) =>
           (!q.employeeId || r.facts.employeeId === q.employeeId) &&
           (!q.status || r.status === q.status) &&
-          (!q.incidentType || r.facts.incidentType === q.incidentType) &&
+          (!q.incidentType ||
+            (adminQueue ? ticketIncidentType(r) : r.facts.incidentType) ===
+              q.incidentType) &&
           (since === null ||
             (Date.parse(r.createdAt) >= since &&
               Date.parse(r.createdAt) <= current.getTime())),
       )
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-      .map(employeeView);
+      .map((report) =>
+        adminQueue
+          ? {
+              ...employeeView(report),
+              incidentCategory: ticketIncidentType(report),
+            }
+          : employeeView(report),
+      );
   });
   app.get("/api/v1/reports/:id", async (req) => {
     const { id } = req.params as { id: string };
@@ -271,6 +282,7 @@ export async function buildApp(
       ? {
           ...report,
           audit: await store.events(id),
+          incidentCategory: ticketIncidentType(report),
           policyCitations: null,
           aiSeverity: null,
         }
@@ -294,6 +306,7 @@ export async function buildApp(
           .object({
             expectedVersion: z.number().int().positive(),
             proposalId: z.string().min(1),
+            incidentType: z.enum(incidentTypes).optional(),
             severity: z.enum(severities),
             team: z.enum(teams),
           })
@@ -309,6 +322,7 @@ export async function buildApp(
         if (kind === "triage-review") {
           const c = change as {
             proposalId: string;
+            incidentType?: (typeof incidentTypes)[number];
             severity: (typeof severities)[number];
             team: (typeof teams)[number];
           };
@@ -322,13 +336,17 @@ export async function buildApp(
               409,
               "The proposal is unavailable. Refresh the ticket.",
             );
+          const incidentType = c.incidentType ?? proposal.incident_type;
           report.triage.review = {
             proposalId: c.proposalId,
+            incidentType,
             severity: c.severity,
             team: c.team,
             decision:
               c.severity === proposal.proposed_severity &&
-              c.team === proposal.proposed_team
+              c.team === proposal.proposed_team &&
+              (c.incidentType ?? proposal.incident_type) ===
+                proposal.incident_type
                 ? "accepted"
                 : "amended",
             at: now().toISOString(),
@@ -356,6 +374,7 @@ export async function buildApp(
       });
       return {
         ...report,
+        incidentCategory: ticketIncidentType(report),
         audit: await store.events(id),
         policyCitations: null,
         aiSeverity: null,

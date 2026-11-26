@@ -1,4 +1,9 @@
-import { incidentTypes, statuses, type Report } from "./contracts.js";
+import {
+  incidentTypes,
+  statuses,
+  ticketIncidentType,
+  type Report,
+} from "./contracts.js";
 
 const DAY = 86_400_000;
 export type AuditRow = {
@@ -46,7 +51,7 @@ export function buildDashboard(
     previousStart = start - duration;
   const population = reports.filter(
     (r) =>
-      (!incidentType || r.facts.incidentType === incidentType) &&
+      (!incidentType || ticketIncidentType(r) === incidentType) &&
       Date.parse(r.createdAt) <= end,
   );
   const cohort = population.filter((r) => Date.parse(r.createdAt) >= start);
@@ -219,7 +224,7 @@ export function buildDashboard(
     monthly: [...monthlyMap.values()],
     incidentMix: incidentTypes.map((type) => ({
       type,
-      count: cohort.filter((r) => r.facts.incidentType === type).length,
+      count: cohort.filter((r) => ticketIncidentType(r) === type).length,
     })),
     statusCounts,
     statusMatrix: incidentTypes.map((type) => ({
@@ -227,7 +232,7 @@ export function buildDashboard(
       counts: Object.fromEntries(
         statuses.map((s) => [
           s,
-          cohort.filter((r) => r.facts.incidentType === type && r.status === s)
+          cohort.filter((r) => ticketIncidentType(r) === type && r.status === s)
             .length,
         ]),
       ) as typeof statusCounts,

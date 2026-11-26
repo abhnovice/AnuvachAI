@@ -186,7 +186,9 @@ class _ReportVoiceState extends State<ReportVoice>
           );
           return;
         }
-        await Future<void>.delayed(const Duration(milliseconds: 65));
+        if (frames.isEmpty) {
+          await Future<void>.delayed(const Duration(milliseconds: 35));
+        }
       }
     } catch (_) {
       if (session == id) {

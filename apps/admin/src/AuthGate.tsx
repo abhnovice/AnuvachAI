@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { getApp, getApps, initializeApp } from "firebase/app";
+import { firebaseClient } from "./firebaseClient";
 import {
   getAuth,
   onAuthStateChanged,
@@ -10,22 +10,13 @@ import {
 const required =
   import.meta.env.PROD || import.meta.env.VITE_AUTH_REQUIRED === "true";
 
-function auth() {
-  const app = getApps().length
-    ? getApp()
-    : initializeApp({
-        apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-        authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-        projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-        appId: import.meta.env.VITE_FIREBASE_APP_ID,
-        messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-      });
-  return getAuth(app);
+async function auth() {
+  return getAuth(await firebaseClient());
 }
 
 export async function adminToken() {
   if (!required) return undefined;
-  const token = await auth().currentUser?.getIdToken();
+  const token = await (await auth()).currentUser?.getIdToken();
   if (!token) throw new Error("Sign in to continue");
   return token;
 }
@@ -42,14 +33,24 @@ export function AuthGate({
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     if (!required) return;
-    try {
-      return onAuthStateChanged(auth(), (user) =>
-        setState(user ? "signed-in" : "signed-out"),
-      );
-    } catch {
-      setError("Firebase sign-in is unavailable.");
-      setState("signed-out");
-    }
+    let disposed = false;
+    let unsubscribe: (() => void) | undefined;
+    void auth()
+      .then((client) => {
+        if (disposed) return;
+        unsubscribe = onAuthStateChanged(client, (user) =>
+          setState(user ? "signed-in" : "signed-out"),
+        );
+      })
+      .catch(() => {
+        if (disposed) return;
+        setError("Firebase sign-in is unavailable. Reload to try again.");
+        setState("signed-out");
+      });
+    return () => {
+      disposed = true;
+      unsubscribe?.();
+    };
   }, []);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -58,7 +59,7 @@ export function AuthGate({
     setError("");
     try {
       await signInWithEmailAndPassword(
-        auth(),
+        await auth(),
         String(values.get("email")).trim(),
         String(values.get("password")),
       );
@@ -73,7 +74,7 @@ export function AuthGate({
     return <main aria-busy="true">Checking sign-in…</main>;
   if (state === "signed-in")
     return children(() => {
-      void signOut(auth());
+      void auth().then(signOut);
     });
   return (
     <main style={{ maxWidth: "26rem", margin: "4rem auto", padding: "1rem" }}>

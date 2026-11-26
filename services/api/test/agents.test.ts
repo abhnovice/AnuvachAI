@@ -36,7 +36,7 @@ test("existing ticket survives peer outage, restart, and duplicate submission", 
           proposal_id: "local-proposal-1",
           report_id,
           report_revision: 1,
-          incident_type: "support_call",
+          incident_type: "voice_phishing",
           proposed_severity: "unassessed",
           proposed_team: "security",
           human_review_required: true,
@@ -109,6 +109,12 @@ test("existing ticket survives peer outage, restart, and duplicate submission", 
     app = await buildApp(path, () => new Date(clock), base);
     const completed = await poll((data) => data.triage?.status === "completed");
     assert.equal(completed.triage.result.taskId, "local-task-1");
+    assert.equal(completed.incidentCategory, "voice_phishing");
+    assert.equal(completed.facts.incidentType, "support_call");
+    const queue = await app.inject(
+      "/api/v1/reports?incidentType=voice_phishing",
+    );
+    assert.equal(queue.json()[0].id, id);
     assert.equal((await app.inject(submission)).json().id, id);
     assert.equal(calls, 2);
     const review = {
@@ -117,7 +123,8 @@ test("existing ticket survives peer outage, restart, and duplicate submission", 
       payload: {
         expectedVersion: completed.version,
         proposalId: "local-proposal-1",
-        severity: "low",
+        incidentType: "remote_access_scam",
+        severity: "unassessed",
         team: "security",
       },
     };
@@ -126,6 +133,19 @@ test("existing ticket survives peer outage, restart, and duplicate submission", 
       "amended",
     );
     assert.equal((await app.inject(review)).statusCode, 409);
+    const dashboard = (
+      await app.inject("/api/v1/dashboard?incidentType=remote_access_scam")
+    ).json();
+    assert.equal(
+      dashboard.incidentMix.find(
+        (row: { type: string }) => row.type === "remote_access_scam",
+      ).count,
+      1,
+    );
+    const oldQueue = await app.inject(
+      "/api/v1/reports?incidentType=voice_phishing",
+    );
+    assert.deepEqual(oldQueue.json(), []);
     assert.equal(
       (await app.inject("/api/v1/reports/" + id)).json().triage,
       undefined,

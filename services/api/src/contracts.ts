@@ -5,6 +5,13 @@ export const incidentTypes = [
   "suspicious_message",
   "mistaken_report",
   "other",
+  "email_phishing",
+  "messaging_phishing",
+  "voice_phishing",
+  "qr_phishing",
+  "payment_fraud",
+  "mfa_fatigue",
+  "remote_access_scam",
 ] as const;
 export const statuses = [
   "submitted",
@@ -84,6 +91,13 @@ export type Report = {
   version: number;
   triage?: Triage;
 };
+export function ticketIncidentType(report: Report) {
+  return (
+    report.triage?.review?.incidentType ??
+    report.triage?.result?.proposal.incident_type ??
+    report.facts.incidentType
+  );
+}
 export const adminChange = z.object({
   expectedVersion: z.number().int().positive(),
 });

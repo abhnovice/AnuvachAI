@@ -66,8 +66,10 @@ Install Android SDK platforms/build tools requested by Gradle through Android St
 
 For the admin dashboard, copy `apps/admin/.env.example` to
 `apps/admin/.env.local` and populate the listed `VITE_FIREBASE_*` values.
-CI must supply these variables before the Vite build. They are embedded in the
-client bundle; keep the populated environment file out of Git.
+Local development and deployments outside Firebase Hosting can use these
+build-time values. Firebase Hosting supplies its web client configuration at
+`/__/firebase/init.json` when CI builds without them. Keep the populated
+environment file out of Git.
 
 Before running mobile builds, copy `apps/mobile/.env.firebase.example.json` to
 `apps/mobile/.env.firebase.json` and fill every value from your existing Firebase
@@ -75,7 +77,7 @@ Android and iOS app configuration. Flutter reads these build-time environment
 values via `--dart-define-from-file`; it does not load shell environment variables
 automatically. The JSON example lists all required variable names.
 
-Android also requires the matching local file at
+Android initializes Firebase from the matching packaged configuration at
 `apps/mobile/android/app/google-services.json`. Retrieve it with
 `npx -y firebase-tools@latest apps:sdkconfig ANDROID <APP_ID> --project <PROJECT_ID>`
 and save the returned JSON there. These populated files and FlutterFire's local
@@ -186,8 +188,8 @@ The trial backend requires two distinct Firebase Auth UIDs and a Firestore
 Native database in the same project. The Cloud Run service account needs
 Firestore read/write access and Firebase Auth user lookup for revocation checks.
 Use application default credentials in Cloud Run and keep the Gemini credential
-in the existing server configuration. The Firebase site uses the web client
-configuration from `apps/admin/.env.local` or CI.
+in the existing server configuration. The Firebase site can load its web client configuration at runtime from
+Firebase Hosting.
 
 The API stores reports, scoped idempotency records, audit events and triage
 state in Firestore. The private developer workbench can keep its separate

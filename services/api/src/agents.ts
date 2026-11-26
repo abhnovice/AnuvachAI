@@ -69,6 +69,7 @@ export type Triage = {
   evidence?: { fact_id: string; text: string }[];
   review?: {
     proposalId: string;
+    incidentType?: (typeof incidentTypes)[number];
     severity: (typeof severities)[number];
     team: (typeof teams)[number];
     decision: "accepted" | "amended";

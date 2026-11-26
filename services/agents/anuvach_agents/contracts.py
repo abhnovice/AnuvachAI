@@ -25,6 +25,13 @@ class Language(StrEnum):
 
 class IncidentType(StrEnum):
     SUPPORT_CALL = "support_call"
+    EMAIL_PHISHING = "email_phishing"
+    MESSAGING_PHISHING = "messaging_phishing"
+    VOICE_PHISHING = "voice_phishing"
+    QR_PHISHING = "qr_phishing"
+    PAYMENT_FRAUD = "payment_fraud"
+    MFA_FATIGUE = "mfa_fatigue"
+    REMOTE_ACCESS_SCAM = "remote_access_scam"
     SUSPICIOUS_MESSAGE = "suspicious_message"
     MISTAKEN_REPORT = "mistaken_report"
     OTHER = "other"

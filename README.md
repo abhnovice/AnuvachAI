@@ -107,7 +107,7 @@ npm run dev:api
 In a second terminal, from the root:
 
 ```bash
-npm run dev:admin
+LOCAL_API_URL=http://127.0.0.1:3000 npm run dev:admin
 ```
 
 Open http://localhost:5173. Vite proxies `/api` to http://127.0.0.1:3000. API defaults to loopback. SQLite defaults to `services/api/anuvach.sqlite` when started through the npm workspace scripts. Seed is repeatable: it preserves the original two synthetic cases and adds 48 historical demonstration scenarios. Re-running it does not duplicate fixtures or overwrite administrator edits.
@@ -119,7 +119,7 @@ export PATH="$PWD/.tooling/flutter/bin:$PATH"
 cd apps/mobile
 flutter pub get
 flutter devices
-flutter run --dart-define-from-file=.env.firebase.json --dart-define=API_BASE_URL=http://10.0.2.2:3000
+flutter run --dart-define-from-file=.env.firebase.json --dart-define=FIREBASE_AUTH_REQUIRED=false --dart-define=API_BASE_URL=http://10.0.2.2:3000
 ```
 
 Use `-d DEVICE_ID` if multiple devices are available.
@@ -137,7 +137,7 @@ On macOS install Flutter and Xcode, then run from `apps/mobile`:
 ```bash
 flutter pub get
 flutter build ios --simulator --debug --dart-define-from-file=.env.firebase.json
-flutter run --dart-define-from-file=.env.firebase.json -d IOS_SIMULATOR_ID --dart-define=API_BASE_URL=http://localhost:3000
+flutter run --dart-define-from-file=.env.firebase.json --dart-define=FIREBASE_AUTH_REQUIRED=false -d IOS_SIMULATOR_ID --dart-define=API_BASE_URL=http://localhost:3000
 ```
 
 iOS native validation is pending on macOS with Xcode. Debug iOS builds use a separate plist for local HTTP; release/profile do not. Local network access on physical iOS may trigger the working feature's system prompt.
@@ -156,7 +156,8 @@ adb install -r apps/mobile/build/app/outputs/flutter-apk/app-arm64-v8a-release.a
 
 Choose the matching artifact: `arm64-v8a` for most current Android phones, `armeabi-v7a` for older 32-bit ARM devices, or `x86_64` for the emulator used here. Each includes the complete app, theme and features. The command uses release compilation, shrinking and per-architecture packaging, and fails if any output exceeds 50 MB (50,000,000 bytes). Outputs are in `apps/mobile/build/app/outputs/flutter-apk/`.
 
-The default API URL is the Android emulator's `http://10.0.2.2:3000`. For a physical device, build with:
+The default API is the deployed Cloud Run HTTPS endpoint. To build a local
+synthetic demo for a physical device, use:
 
 ```bash
 API_BASE_URL=http://HOST_LAN_IP:3000 npm run build:mobile
@@ -165,6 +166,35 @@ API_BASE_URL=http://HOST_LAN_IP:3000 npm run build:mobile
 The script explicitly enables local HTTP for an HTTP API URL; ordinary release builds keep cleartext disabled. These synthetic demo APKs retain the project's existing debug signing key. Production signing, HTTPS and access control must be configured before real deployment. `FLUTTER_BIN` can select a Flutter executable; otherwise the script uses the local SDK when present, then Flutter on PATH.
 
 See [size measurements and verification](docs/size-optimization.md).
+
+## Cloud Run demo
+
+The Flutter app calls Cloud Run directly. Firebase Hosting forwards the React
+dashboard's same-origin `/api/**` requests to the Cloud Run service in
+`asia-south1`. Vite development proxies requests to Cloud Run unless
+`LOCAL_API_URL` is set. If a different dashboard host needs a cross-origin API,
+set `VITE_API_BASE_URL` before building and configure Cloud Run's
+`ADMIN_ORIGIN` to match the dashboard's exact origin.
+
+Confirming a synthetic report in Flutter creates a ticket. Fastify sends it
+to the private loopback agent bridge, which discovers the triage agent via its
+A2A card and requests a proposal. Open the same ticket in the dashboard to
+review the result. Enable instance-based CPU allocation on Cloud Run so queued
+triage can run between HTTP requests.
+
+The trial backend requires two distinct Firebase Auth UIDs and a Firestore
+Native database in the same project. The Cloud Run service account needs
+Firestore read/write access and Firebase Auth user lookup for revocation checks.
+Use application default credentials in Cloud Run and keep the Gemini credential
+in the existing server configuration. The Firebase site uses the web client
+configuration from `apps/admin/.env.local` or CI.
+
+The API stores reports, scoped idempotency records, audit events and triage
+state in Firestore. The private developer workbench can keep its separate
+scratch database at `/tmp/agents.sqlite`. When signed in, use the intended
+employee account on the APK and the intended administrator account on the
+website. Use only synthetic reports until both accounts and durable storage have
+passed deployment verification.
 
 ## Verify
 
@@ -208,4 +238,5 @@ flutter test integration_test/device_review_test.dart -d emulator-5554
 - [Dashboard metrics and synthetic history](docs/dashboard-metrics.md)
 - [Your confirmation exercise](docs/confirmation-exercise.md)
 
-No voice, transcript, policy retrieval, AI severity, triage, authentication provider, cloud deployment, Gemini, or AlloyDB is implemented. The logo is a replaceable placeholder. UI copy is English; report language supports English, Hindi and mixed.
+Policy retrieval and AlloyDB are outside the trial. Voice is an Android preview
+with text fallback. Physical-device speech and listening remain unverified.

@@ -6,7 +6,7 @@ import { agentLanguage } from "./agents.js";
 export function registerVoice(app: FastifyInstance, agentBase?: string) {
   const sessions = new Map<
     string,
-    { socket: WebSocket; events: unknown[]; touched: number }
+    { socket: WebSocket; events: unknown[]; touched: number; owner?: string }
   >();
   const expiry = setInterval(() => {
     for (const [id, session] of sessions) {
@@ -41,7 +41,12 @@ export function registerVoice(app: FastifyInstance, agentBase?: string) {
       preview: "1",
     }).toString();
     const socket = new WebSocket(url);
-    const session = { socket, events: [] as unknown[], touched: Date.now() };
+    const session = {
+      socket,
+      events: [] as unknown[],
+      touched: Date.now(),
+      owner: request.identity?.uid,
+    };
     let failed = false;
     const disconnect = () => {
       if (failed) return;
@@ -127,7 +132,7 @@ export function registerVoice(app: FastifyInstance, agentBase?: string) {
         .strict()
         .parse(request.body);
       const session = sessions.get(request.params.id);
-      if (!session)
+      if (!session || session.owner !== request.identity?.uid)
         return reply.code(404).send({
           error: "Voice session ended. Start again or continue with text.",
         });
@@ -145,8 +150,11 @@ export function registerVoice(app: FastifyInstance, agentBase?: string) {
   app.delete<{ Params: { id: string } }>(
     "/api/v1/reporting/voice/:id",
     async (request, reply) => {
-      sessions.get(request.params.id)?.socket.close();
-      sessions.delete(request.params.id);
+      const session = sessions.get(request.params.id);
+      if (session && session.owner === request.identity?.uid) {
+        session.socket.close();
+        sessions.delete(request.params.id);
+      }
       return reply.code(204).send();
     },
   );

@@ -1,0 +1,127 @@
+[debug] [2026-11-26T12:10:55.121Z] ----------------------------------------------------------------------
+[debug] [2026-11-26T12:10:55.124Z] Command:       /home/linuxbrew/.linuxbrew/Cellar/node/26.12.1_1/bin/node /home/abhyudaya/.npm-global/bin/firebase deploy --only hosting --project anuvachai --non-interactive
+[debug] [2026-11-26T12:10:55.125Z] CLI Version:   15.37.0
+[debug] [2026-11-26T12:10:55.125Z] Platform:      linux
+[debug] [2026-11-26T12:10:55.126Z] Node Version:  v26.12.1
+[debug] [2026-11-26T12:10:55.126Z] Detected Agent: codex_cli
+[debug] [2026-11-26T12:10:55.127Z] Time:          Thu Nov 26 2026 17:40:55 GMT+0530 (India Standard Time)
+[debug] [2026-11-26T12:10:55.127Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-11-26T12:10:56.198Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-11-26T12:10:56.198Z] > authorizing via signed-in user (abhyudaya.marya.prod@gmail.com)
+[debug] [2026-11-26T12:10:56.199Z] [iam] checking project anuvachai for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-11-26T12:10:56.215Z] Checked if tokens are valid: true, expires at: 1795698062223
+[debug] [2026-11-26T12:10:56.216Z] Checked if tokens are valid: true, expires at: 1795698062223
+[debug] [2026-11-26T12:10:56.217Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/anuvachai:testIamPermissions [none]
+[debug] [2026-11-26T12:10:56.218Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/anuvachai:testIamPermissions  x-goog-user-project=anuvachai
+[debug] [2026-11-26T12:10:56.218Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/anuvachai:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-11-26T12:10:56.611Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/anuvachai:testIamPermissions 200
+[debug] [2026-11-26T12:10:56.611Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/anuvachai:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-11-26T12:10:56.614Z] Checked if tokens are valid: true, expires at: 1795698062223
+[debug] [2026-11-26T12:10:56.614Z] Checked if tokens are valid: true, expires at: 1795698062223
+[debug] [2026-11-26T12:10:56.614Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/anuvachai [none]
+[debug] [2026-11-26T12:10:57.063Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/anuvachai 200
+[debug] [2026-11-26T12:10:57.063Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/anuvachai {"projectId":"anuvachai","projectNumber":"425459156696","displayName":"AnuvachAI","name":"projects/anuvachai","resources":{"hostingSite":"anuvachai"},"state":"ACTIVE","labels":{"firebase":"enabled"},"etag":"1_1cc1bd1a-8b29-4ac1-a02f-05dbf27ecba2"}
+[info] 
+[info] === Deploying to 'anuvachai'...
+[info] 
+[info] i  deploying hosting 
+[debug] [2026-11-26T12:10:57.069Z] Checked if tokens are valid: true, expires at: 1795698062223
+[debug] [2026-11-26T12:10:57.069Z] Checked if tokens are valid: true, expires at: 1795698062223
+[debug] [2026-11-26T12:10:57.069Z] >>> [apiv2][query] GET https://firebasehosting.googleapis.com/v1beta1/projects/anuvachai/sites/anuvachai [none]
+[debug] [2026-11-26T12:10:58.149Z] <<< [apiv2][status] GET https://firebasehosting.googleapis.com/v1beta1/projects/anuvachai/sites/anuvachai 200
+[debug] [2026-11-26T12:10:58.149Z] <<< [apiv2][body] GET https://firebasehosting.googleapis.com/v1beta1/projects/anuvachai/sites/anuvachai {"name":"projects/anuvachai/sites/anuvachai","defaultUrl":"https://anuvachai.web.app","type":"DEFAULT_SITE"}
+[debug] [2026-11-26T12:10:58.155Z] Checked if tokens are valid: true, expires at: 1795698062223
+[debug] [2026-11-26T12:10:58.156Z] Checked if tokens are valid: true, expires at: 1795698062223
+[debug] [2026-11-26T12:10:58.160Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/anuvachai/sites/anuvachai/versions [none]
+[debug] [2026-11-26T12:10:58.160Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/anuvachai/sites/anuvachai/versions {"status":"CREATED","labels":{"deployment-tool":"cli-firebase"}}
+[debug] [2026-11-26T12:10:59.198Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/anuvachai/sites/anuvachai/versions 200
+[debug] [2026-11-26T12:10:59.199Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/anuvachai/sites/anuvachai/versions {"name":"projects/anuvachai/sites/anuvachai/versions/0e568ada27b69904","status":"CREATED","config":{},"labels":{"deployment-tool":"cli-firebase"}}
+[info] i  hosting[anuvachai]: beginning deploy... 
+[info] i  hosting[anuvachai]: found 8 files in apps/admin/dist 
+[debug] [2026-11-26T12:10:59.236Z] [hosting] uploading with 200 concurrency
+[debug] [2026-11-26T12:10:59.283Z] Checked if tokens are valid: true, expires at: 1795698062223
+[debug] [2026-11-26T12:10:59.283Z] Checked if tokens are valid: true, expires at: 1795698062223
+[debug] [2026-11-26T12:10:59.284Z] [hosting] hash cache [YXBwcy9hZG1pbi9kaXN0] stored for 8 files
+[debug] [2026-11-26T12:10:59.284Z] [hosting][hash queue][FINAL] {"max":44,"min":6,"avg":13.125,"active":0,"complete":8,"success":8,"errored":0,"retried":0,"total":8,"elapsed":46}
+[debug] [2026-11-26T12:10:59.285Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/anuvachai/sites/anuvachai/versions/0e568ada27b69904:populateFiles [none]
+[debug] [2026-11-26T12:10:59.285Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/anuvachai/sites/anuvachai/versions/0e568ada27b69904:populateFiles {"files":{"/index.html":"af4bcbed91136315034ffaaf434daf8c80dbc9f57de38496cb2bd260aa5aff2c","/assets/index.esm-CTyAwVMY.js":"9737278c16e2d1d8891957498e4cdd847c15734e83d12b40efd6a4ce5d330715","/assets/index.esm-BM4BViO4.js":"4c666b5203a5e0a122fb8b2e06c7e40c0b4cc0842ff1854be77bc8ac8ea96d2d","/assets/index.esm2017-Cj2BBHh4.js":"dab451258803bdf8186f5839e77768fc47cdde495889f28a13af430a5f674678","/fonts/OFL.txt":"8254d089b7e10f00145625028ef46b885cfd57b4a97e3d45a40fe0619aefd293","/assets/index-zgkVX6QW.css":"c8133320f82482984efb8e3968f8818a4240a71a49c5fbad15c3579070a5d57e","/assets/index-Cfz3BcFk.js":"c6084e2e7e3530f7fdf9fa73bab76b65380fa306a5404d692194522cb30eacae","/fonts/NotoSans.woff2":"286ac32826e23769418d35dc7472774d3179570096e7a6fb961256bd98d773a2"}}
+[debug] [2026-11-26T12:10:59.930Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/anuvachai/sites/anuvachai/versions/0e568ada27b69904:populateFiles 200
+[debug] [2026-11-26T12:10:59.930Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/anuvachai/sites/anuvachai/versions/0e568ada27b69904:populateFiles {"uploadRequiredHashes":["c6084e2e7e3530f7fdf9fa73bab76b65380fa306a5404d692194522cb30eacae","af4bcbed91136315034ffaaf434daf8c80dbc9f57de38496cb2bd260aa5aff2c"],"uploadUrl":"https://upload-firebasehosting.googleapis.com/upload/sites/anuvachai/versions/0e568ada27b69904/files"}
+[debug] [2026-11-26T12:10:59.932Z] Checked if tokens are valid: true, expires at: 1795698062223
+[debug] [2026-11-26T12:10:59.932Z] Checked if tokens are valid: true, expires at: 1795698062223
+[debug] [2026-11-26T12:10:59.933Z] Checked if tokens are valid: true, expires at: 1795698062223
+[debug] [2026-11-26T12:10:59.934Z] Checked if tokens are valid: true, expires at: 1795698062223
+[debug] [2026-11-26T12:10:59.934Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/anuvachai/versions/0e568ada27b69904/files/c6084e2e7e3530f7fdf9fa73bab76b65380fa306a5404d692194522cb30eacae [none]
+[debug] [2026-11-26T12:10:59.934Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/anuvachai/versions/0e568ada27b69904/files/c6084e2e7e3530f7fdf9fa73bab76b65380fa306a5404d692194522cb30eacae [stream]
+[debug] [2026-11-26T12:10:59.945Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/anuvachai/versions/0e568ada27b69904/files/af4bcbed91136315034ffaaf434daf8c80dbc9f57de38496cb2bd260aa5aff2c [none]
+[debug] [2026-11-26T12:10:59.946Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/anuvachai/versions/0e568ada27b69904/files/af4bcbed91136315034ffaaf434daf8c80dbc9f57de38496cb2bd260aa5aff2c [stream]
+[debug] [2026-11-26T12:10:59.953Z] [hosting][populate queue][FINAL] {"max":651,"min":651,"avg":651,"active":0,"complete":1,"success":1,"errored":0,"retried":0,"total":1,"elapsed":670}
+[debug] [2026-11-26T12:10:59.954Z] [hosting] uploads queued: 2
+[info] i  hosting: uploading new files [0/2] (0%) 
+[debug] [2026-11-26T12:11:01.846Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/anuvachai/versions/0e568ada27b69904/files/af4bcbed91136315034ffaaf434daf8c80dbc9f57de38496cb2bd260aa5aff2c 200
+[debug] [2026-11-26T12:11:01.846Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/anuvachai/versions/0e568ada27b69904/files/af4bcbed91136315034ffaaf434daf8c80dbc9f57de38496cb2bd260aa5aff2c [stream]
+[debug] [2026-11-26T12:11:01.887Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/anuvachai/versions/0e568ada27b69904/files/c6084e2e7e3530f7fdf9fa73bab76b65380fa306a5404d692194522cb30eacae 200
+[debug] [2026-11-26T12:11:01.887Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/anuvachai/versions/0e568ada27b69904/files/c6084e2e7e3530f7fdf9fa73bab76b65380fa306a5404d692194522cb30eacae [stream]
+[debug] [2026-11-26T12:11:01.888Z] [hosting][upload queue][FINAL] {"max":1957,"min":1913,"avg":1935,"active":0,"complete":2,"success":2,"errored":0,"retried":0,"total":2,"elapsed":1957}
+[info] i  hosting: upload complete 
+[info] ✔  hosting[anuvachai]: file upload complete 
+[debug] [2026-11-26T12:11:01.889Z] [hosting] deploy completed after 2681ms
+[debug] [2026-11-26T12:11:01.891Z] [
+  {
+    "config": {
+      "public": "apps/admin/dist",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "rewrites": [
+        {
+          "source": "/api/**",
+          "run": {
+            "serviceId": "anuvachai-git",
+            "region": "asia-south1"
+          }
+        },
+        {
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ],
+      "site": "anuvachai"
+    },
+    "version": "projects/anuvachai/sites/anuvachai/versions/0e568ada27b69904"
+  }
+]
+[info] i  hosting[anuvachai]: finalizing version... 
+[debug] [2026-11-26T12:11:01.896Z] Checked if tokens are valid: true, expires at: 1795698062223
+[debug] [2026-11-26T12:11:01.897Z] Checked if tokens are valid: true, expires at: 1795698062223
+[debug] [2026-11-26T12:11:01.897Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v1/projects/anuvachai/locations/-/functions [none]
+[debug] [2026-11-26T12:11:02.084Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v1/projects/anuvachai/locations/-/functions 403
+[debug] [2026-11-26T12:11:02.084Z] <<< [apiv2][body] GET https://cloudfunctions.googleapis.com/v1/projects/anuvachai/locations/-/functions {"error":{"code":403,"message":"Cloud Functions API has not been used in project anuvachai before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/cloudfunctions.googleapis.com/overview?project=anuvachai then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry.","status":"PERMISSION_DENIED","details":[{"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"SERVICE_DISABLED","domain":"googleapis.com","metadata":{"service":"cloudfunctions.googleapis.com","serviceTitle":"Cloud Functions API","activationUrl":"https://console.developers.google.com/apis/api/cloudfunctions.googleapis.com/overview?project=anuvachai","consumer":"projects/anuvachai","containerInfo":"anuvachai"}},{"@type":"type.googleapis.com/google.rpc.LocalizedMessage","locale":"en-US","message":"Cloud Functions API has not been used in project anuvachai before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/cloudfunctions.googleapis.com/overview?project=anuvachai then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry."},{"@type":"type.googleapis.com/google.rpc.Help","links":[{"description":"Google developers console API activation","url":"https://console.developers.google.com/apis/api/cloudfunctions.googleapis.com/overview?project=anuvachai"}]}]}}
+[debug] [2026-11-26T12:11:02.087Z] [functions] failed to list functions for anuvachai
+[debug] [2026-11-26T12:11:02.088Z] [functions] Request to https://cloudfunctions.googleapis.com/v1/projects/anuvachai/locations/-/functions had HTTP Error: 403, Cloud Functions API has not been used in project anuvachai before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/cloudfunctions.googleapis.com/overview?project=anuvachai then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry.
+[debug] [2026-11-26T12:11:02.088Z] Deploying hosting site anuvachai, did not have permissions to check for backends:  Failed to list functions for anuvachai {"name":"FirebaseError","children":[],"exit":1,"message":"Failed to list functions for anuvachai","original":{"name":"FirebaseError","children":[],"context":{"body":{"error":{"code":403,"message":"Cloud Functions API has not been used in project anuvachai before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/cloudfunctions.googleapis.com/overview?project=anuvachai then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry.","status":"PERMISSION_DENIED","details":[{"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"SERVICE_DISABLED","domain":"googleapis.com","metadata":{"service":"cloudfunctions.googleapis.com","serviceTitle":"Cloud Functions API","activationUrl":"https://console.developers.google.com/apis/api/cloudfunctions.googleapis.com/overview?project=anuvachai","consumer":"projects/anuvachai","containerInfo":"anuvachai"}},{"@type":"type.googleapis.com/google.rpc.LocalizedMessage","locale":"en-US","message":"Cloud Functions API has not been used in project anuvachai before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/cloudfunctions.googleapis.com/overview?project=anuvachai then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry."},{"@type":"type.googleapis.com/google.rpc.Help","links":[{"description":"Google developers console API activation","url":"https://console.developers.google.com/apis/api/cloudfunctions.googleapis.com/overview?project=anuvachai"}]}]}},"response":{"statusCode":403}},"exit":1,"message":"Request to https://cloudfunctions.googleapis.com/v1/projects/anuvachai/locations/-/functions had HTTP Error: 403, Cloud Functions API has not been used in project anuvachai before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/cloudfunctions.googleapis.com/overview?project=anuvachai then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry.","status":403},"status":403}
+[debug] [2026-11-26T12:11:02.093Z] Checked if tokens are valid: true, expires at: 1795698062223
+[debug] [2026-11-26T12:11:02.093Z] Checked if tokens are valid: true, expires at: 1795698062223
+[debug] [2026-11-26T12:11:02.094Z] >>> [apiv2][query] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/anuvachai/sites/anuvachai/versions/0e568ada27b69904 updateMask=status%2Cconfig
+[debug] [2026-11-26T12:11:02.094Z] >>> [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/anuvachai/sites/anuvachai/versions/0e568ada27b69904 {"status":"FINALIZED","config":{"rewrites":[{"glob":"/api/**","run":{"serviceId":"anuvachai-git","region":"asia-south1"}},{"glob":"**","path":"/index.html"}]}}
+[debug] [2026-11-26T12:11:03.202Z] <<< [apiv2][status] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/anuvachai/sites/anuvachai/versions/0e568ada27b69904 200
+[debug] [2026-11-26T12:11:03.202Z] <<< [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/anuvachai/sites/anuvachai/versions/0e568ada27b69904 {"name":"projects/anuvachai/sites/anuvachai/versions/0e568ada27b69904","status":"FINALIZED","config":{"rewrites":[{"glob":"/api/**","run":{"serviceId":"anuvachai-git","region":"asia-south1"}},{"glob":"**","path":"/index.html"}]},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-11-26T12:10:58.471828Z","createUser":{"email":"abhyudaya.marya.prod@gmail.com"},"finalizeTime":"2026-11-26T12:11:02.995718Z","finalizeUser":{"email":"abhyudaya.marya.prod@gmail.com"}}
+[debug] [2026-11-26T12:11:03.203Z] [hosting] finalized version for anuvachai:[object Object]
+[info] ✔  hosting[anuvachai]: version finalized 
+[info] i  hosting[anuvachai]: releasing new version... 
+[debug] [2026-11-26T12:11:03.206Z] Checked if tokens are valid: true, expires at: 1795698062223
+[debug] [2026-11-26T12:11:03.207Z] Checked if tokens are valid: true, expires at: 1795698062223
+[debug] [2026-11-26T12:11:03.208Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/anuvachai/sites/anuvachai/channels/live/releases versionName=projects%2Fanuvachai%2Fsites%2Fanuvachai%2Fversions%2F0e568ada27b69904
+[debug] [2026-11-26T12:11:03.208Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/anuvachai/sites/anuvachai/channels/live/releases {}
+[debug] [2026-11-26T12:11:04.006Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/anuvachai/sites/anuvachai/channels/live/releases 200
+[debug] [2026-11-26T12:11:04.007Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/anuvachai/sites/anuvachai/channels/live/releases {"name":"projects/anuvachai/sites/anuvachai/channels/live/releases/1795695063115000","version":{"name":"projects/anuvachai/sites/anuvachai/versions/0e568ada27b69904","status":"FINALIZED","config":{"rewrites":[{"glob":"/api/**","run":{"serviceId":"anuvachai-git","region":"asia-south1"}},{"glob":"**","path":"/index.html"}]},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-11-26T12:10:58.471828Z","createUser":{"email":"abhyudaya.marya.prod@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocKXnb6MgN1-MXATnF4thUYwRSSstSbrv_cglbuluTj4p81e-czx"},"finalizeTime":"2026-11-26T12:11:02.995718Z","finalizeUser":{"email":"abhyudaya.marya.prod@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocKXnb6MgN1-MXATnF4thUYwRSSstSbrv_cglbuluTj4p81e-czx"}},"type":"DEPLOY","releaseTime":"2026-11-26T12:11:03.115Z","releaseUser":{"email":"abhyudaya.marya.prod@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocKXnb6MgN1-MXATnF4thUYwRSSstSbrv_cglbuluTj4p81e-czx"}}
+[debug] [2026-11-26T12:11:04.008Z] [hosting] release: {"name":"projects/anuvachai/sites/anuvachai/channels/live/releases/1795695063115000","version":{"name":"projects/anuvachai/sites/anuvachai/versions/0e568ada27b69904","status":"FINALIZED","config":{"rewrites":[{"glob":"/api/**","run":{"serviceId":"anuvachai-git","region":"asia-south1"}},{"glob":"**","path":"/index.html"}]},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-11-26T12:10:58.471828Z","createUser":{"email":"abhyudaya.marya.prod@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocKXnb6MgN1-MXATnF4thUYwRSSstSbrv_cglbuluTj4p81e-czx"},"finalizeTime":"2026-11-26T12:11:02.995718Z","finalizeUser":{"email":"abhyudaya.marya.prod@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocKXnb6MgN1-MXATnF4thUYwRSSstSbrv_cglbuluTj4p81e-czx"}},"type":"DEPLOY","releaseTime":"2026-11-26T12:11:03.115Z","releaseUser":{"email":"abhyudaya.marya.prod@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocKXnb6MgN1-MXATnF4thUYwRSSstSbrv_cglbuluTj4p81e-czx"}}
+[info] ✔  hosting[anuvachai]: release complete 
+[info] 
+[info] ✔  Deploy complete! 
+[info] 
+[info] Project Console: https://console.firebase.google.com/project/anuvachai/overview
+[info] Hosting URL: https://anuvachai.web.app

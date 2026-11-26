@@ -1,5 +1,6 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
+import { AuthGate } from "./AuthGate";
 import { App } from "./App";
 import { LocalizationProvider } from "./localization";
 import "./style.css";
@@ -17,7 +18,7 @@ import "./localization.css";
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <LocalizationProvider>
-      <App />
+      <AuthGate>{(logout) => <App onSignOut={logout} />}</AuthGate>
     </LocalizationProvider>
   </React.StrictMode>,
 );

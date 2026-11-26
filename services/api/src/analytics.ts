@@ -187,7 +187,7 @@ export function buildDashboard(
       previousStart: new Date(previousStart).toISOString(),
       incidentType: incidentType ?? null,
       timeZone: "UTC",
-      source: "Local SQLite reports and append-only audit events",
+      source: "Reports and append-only audit events",
       classification: "Synthetic demonstration",
     },
     metrics: {

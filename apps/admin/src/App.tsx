@@ -7,6 +7,7 @@ import { TriageReview, type LocalTriage } from "./TriageReview";
 import { TicketJourney } from "./TicketJourney";
 import { ThemePicker } from "./ThemePicker";
 import { MaterialNavIcon } from "./MaterialNavIcon";
+import { adminToken } from "./AuthGate";
 import { LanguagePicker, useLocalization } from "./localization";
 export type Report = {
   id: string;
@@ -53,6 +54,7 @@ const statuses = [
   "closed",
 ];
 const label = (s: string) => s.replaceAll("_", " ");
+const apiBase = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/+$/, "");
 const elapsedSince = (createdAt: string) => {
   const minutes = Math.max(
     0,
@@ -69,20 +71,22 @@ export async function request<T>(
   method = "GET",
   body?: unknown,
 ): Promise<T> {
-  const response = await fetch("/api/v1" + path, {
+  const token = await adminToken();
+  const response = await fetch(apiBase + "/api/v1" + path, {
     method,
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: "Bearer " + token } : {}),
+    },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(
-      error.error ?? "API unavailable. Start the local API and retry.",
-    );
+    throw new Error(error.error ?? "API unavailable. Please retry.");
   }
   return response.json();
 }
-export function App() {
+export function App({ onSignOut }: { onSignOut?: () => void } = {}) {
   const { t, enumLabel } = useLocalization();
   const statusLabel = (value: string) => {
     switch (value) {
@@ -469,6 +473,7 @@ export function App() {
         </div>
         <LanguagePicker />
         <ThemePicker />
+        {onSignOut && <button onClick={onSignOut}>Sign out</button>}
         <div className="sidebar-footer">
           <span className="demo-dot" />
           Local demonstration<small>Synthetic data · No authentication</small>

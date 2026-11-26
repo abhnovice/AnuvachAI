@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'employee_sign_in.dart';
 import 'firebase_options.dart';
 import 'remote_localization_service.dart';
 import 'remote_app_localizations.dart';
@@ -17,13 +19,54 @@ import 'l10n/app_localizations.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final prefs = await SharedPreferences.getInstance();
-  runApp(AnuvachApp(prefs: prefs, api: Api()));
+  const authenticated = bool.fromEnvironment(
+    'FIREBASE_AUTH_REQUIRED',
+    defaultValue: true,
+  );
+  FirebaseAuth? auth;
+  if (authenticated) {
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      auth = FirebaseAuth.instance;
+    } catch (_) {
+      runApp(
+        const MaterialApp(
+          home: Scaffold(
+            body: Center(child: Text('Firebase sign-in is unavailable.')),
+          ),
+        ),
+      );
+      return;
+    }
+  }
+  final clientAuth = auth;
+  runApp(
+    AnuvachApp(
+      prefs: prefs,
+      api: Api(
+        token: clientAuth == null
+            ? null
+            : () async {
+                return await clientAuth.currentUser?.getIdToken();
+              },
+      ),
+      auth: clientAuth,
+    ),
+  );
 }
 
 class AnuvachApp extends StatefulWidget {
-  const AnuvachApp({super.key, required this.prefs, required this.api});
+  const AnuvachApp({
+    super.key,
+    required this.prefs,
+    required this.api,
+    this.auth,
+  });
   final SharedPreferences prefs;
   final Api api;
+  final FirebaseAuth? auth;
   @override
   State<AnuvachApp> createState() => _AnuvachAppState();
 }
@@ -41,9 +84,11 @@ class _AnuvachAppState extends State<AnuvachApp> {
 
   Future<void> _initializeRemote() async {
     try {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
+      if (Firebase.apps.isEmpty) {
+        await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform,
+        );
+      }
       if (mounted) await remoteTranslations.initialize();
     } catch (error) {
       debugPrint('Firebase unavailable: $error');
@@ -89,17 +134,35 @@ class _AnuvachAppState extends State<AnuvachApp> {
         ...AppLocalizations.localizationsDelegates,
       ],
       supportedLocales: AppLocalizations.supportedLocales,
-      home: Home(
-        prefs: widget.prefs,
-        api: widget.api,
-        language: language,
-        mode: mode,
-        onLanguage: setLanguage,
-        onTheme: setMode,
-        onRefreshTranslations: () => remoteTranslations.refresh(force: true),
-      ),
+      home: _home(),
     ),
   );
+
+  Widget _home() {
+    final auth = widget.auth;
+    final home = Home(
+      prefs: widget.prefs,
+      api: widget.api,
+      language: language,
+      mode: mode,
+      onLanguage: setLanguage,
+      onTheme: setMode,
+      onRefreshTranslations: () => remoteTranslations.refresh(force: true),
+    );
+    if (auth == null) return home;
+    return StreamBuilder<User?>(
+      stream: auth.authStateChanges(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (snapshot.data == null) return EmployeeSignIn(auth: auth);
+        return home;
+      },
+    );
+  }
 }
 
 class Home extends StatefulWidget {

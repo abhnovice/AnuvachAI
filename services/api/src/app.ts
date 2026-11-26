@@ -9,9 +9,11 @@ import {
   severities,
   teams,
 } from "./agents.js";
-import { buildDashboard, windowStart, type AuditRow } from "./analytics.js";
+import { buildDashboard, windowStart } from "./analytics.js";
 import cors from "@fastify/cors";
-import { DatabaseSync } from "node:sqlite";
+import { createHash } from "node:crypto";
+import { employeeUid, registerAccess, type Access } from "./auth.js";
+import { fail, sqliteStore, type ReportStore } from "./report-store.js";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import {
@@ -29,6 +31,7 @@ export async function buildApp(
   filename = process.env.DB_PATH ?? "anuvach.sqlite",
   now: () => Date = () => new Date(),
   agentBase = process.env.AGENTS_BASE_URL,
+  options: { store?: ReportStore; access?: Access } = {},
 ) {
   if (agentBase) {
     const url = new URL(agentBase);
@@ -40,17 +43,15 @@ export async function buildApp(
     )
       throw new Error("AGENTS_BASE_URL must be a local loopback HTTP address");
   }
-  const db = new DatabaseSync(filename);
-  db.exec(`PRAGMA journal_mode=WAL;
-    CREATE TABLE IF NOT EXISTS reports (id TEXT PRIMARY KEY, data TEXT NOT NULL, request_key TEXT UNIQUE NOT NULL, request_body TEXT NOT NULL);
-    CREATE TABLE IF NOT EXISTS audit (sequence INTEGER PRIMARY KEY AUTOINCREMENT, report_id TEXT NOT NULL, actor TEXT NOT NULL, action TEXT NOT NULL, at TEXT NOT NULL, data TEXT NOT NULL);
-    CREATE TRIGGER IF NOT EXISTS audit_no_update BEFORE UPDATE ON audit BEGIN SELECT RAISE(ABORT, 'append only'); END;
-    CREATE TRIGGER IF NOT EXISTS audit_no_delete BEFORE DELETE ON audit BEGIN SELECT RAISE(ABORT, 'append only'); END;
-    PRAGMA user_version=1;`);
+  const store = options.store ?? sqliteStore(filename);
   const app = Fastify({ bodyLimit: 131072 });
   await app.register(cors, {
-    origin: [process.env.ADMIN_ORIGIN ?? "http://localhost:5173"],
+    origin: [
+      new URL(process.env.ADMIN_ORIGIN ?? "http://localhost:5173").origin,
+    ],
+    methods: ["GET", "HEAD", "POST", "PATCH"],
   });
+  registerAccess(app, options.access);
   let worker: Promise<void> | undefined;
   let timer: ReturnType<typeof setInterval> | undefined;
   let closing = false;
@@ -58,7 +59,7 @@ export async function buildApp(
     closing = true;
     clearInterval(timer);
     await worker;
-    db.close();
+    store.close();
   });
   app.setErrorHandler((error, _req, reply) => {
     if (error instanceof z.ZodError)
@@ -72,60 +73,14 @@ export async function buildApp(
         : "Storage or server error. Retry safely.",
     });
   });
-  function fail(statusCode: number, message: string): never {
-    throw Object.assign(new Error(message), { statusCode });
-  }
-  function get(id: string): Report {
-    const row = db.prepare("SELECT data FROM reports WHERE id=?").get(id);
-    if (!row) return fail(404, "Report not found");
-    return JSON.parse(row.data as string);
-  }
-  function events(id: string) {
-    return db
-      .prepare(
-        "SELECT sequence,actor,action,at,data FROM audit WHERE report_id=? ORDER BY sequence",
-      )
-      .all(id)
-      .map((r) => ({ ...r, data: JSON.parse(r.data as string) }));
-  }
-  function transaction<T>(fn: () => T): T {
-    db.exec("BEGIN IMMEDIATE");
-    try {
-      const result = fn();
-      db.exec("COMMIT");
-      return result;
-    } catch (e) {
-      db.exec("ROLLBACK");
-      throw e;
-    }
-  }
-  function audit(id: string, actor: string, action: string, data: unknown) {
-    db.prepare(
-      "INSERT INTO audit(report_id,actor,action,at,data) VALUES(?,?,?,?,?)",
-    ).run(id, actor, action, now().toISOString(), JSON.stringify(data));
-  }
   function employeeView({ triage: _triage, ...report }: Report) {
     return report;
   }
 
-  function save(report: Report) {
-    db.prepare("UPDATE reports SET data=? WHERE id=?").run(
-      JSON.stringify(report),
-      report.id,
-    );
-  }
-
   async function processTriage(base: string) {
-    const row = db
-      .prepare(
-        `SELECT id FROM reports
-      WHERE json_extract(data, '$.triage.status') = 'pending'
-        AND COALESCE(json_extract(data, '$.triage.nextAttemptAt'), '') <= ?
-      ORDER BY COALESCE(json_extract(data, '$.triage.nextAttemptAt'), ''), rowid LIMIT 1`,
-      )
-      .get(now().toISOString());
-    if (!row) return;
-    const report = get(row.id as string);
+    const claim = await store.claim(now().toISOString());
+    if (!claim) return;
+    const { report, lease } = claim;
     const attempts = (report.triage?.attempts ?? 0) + 1;
     let triage: NonNullable<Report["triage"]>;
     try {
@@ -144,23 +99,33 @@ export async function buildApp(
               failure: "unavailable",
               nextAttemptAt: new Date(
                 now().getTime() +
-                  Math.min(60, 2 ** Math.min(attempts, 6)) * 1000,
+                  (options.store
+                    ? Math.min(600, 30 * 2 ** Math.min(attempts - 1, 5))
+                    : Math.min(60, 2 ** Math.min(attempts, 6))) *
+                    1000,
               ).toISOString(),
             };
     }
-    transaction(() => {
-      const current = get(report.id);
-      if (current.triage?.status !== "pending") return;
-      current.triage = triage;
-      current.version++;
-      save(current);
-      audit(report.id, "local-agents", "triage_" + triage.status, {
-        attempts,
-        failure: triage.failure,
-        taskId: triage.result?.taskId,
-        responder: triage.result?.responder,
-      });
-    });
+    await store.update(
+      report.id,
+      ({ report: current }) => {
+        if (current.triage?.status !== "pending") return;
+        current.triage = triage;
+        current.version++;
+        return {
+          actor: "local-agents",
+          action: "triage_" + triage.status,
+          at: now().toISOString(),
+          data: {
+            attempts,
+            failure: triage.failure,
+            taskId: triage.result?.taskId,
+            responder: triage.result?.responder,
+          },
+        };
+      },
+      lease,
+    );
   }
 
   function kickTriage() {
@@ -174,7 +139,7 @@ export async function buildApp(
 
   app.addHook("onReady", async () => {
     if (!agentBase) return;
-    timer = setInterval(kickTriage, 1000);
+    timer = setInterval(kickTriage, options.store ? 30_000 : 1000);
     timer.unref();
     kickTriage();
   });
@@ -183,6 +148,14 @@ export async function buildApp(
 
   app.post("/api/v1/reporting/turns", async (req, reply) => {
     const turn = reportingTurn.parse(req.body);
+    const uid = employeeUid(req);
+    if (uid) {
+      // Namespace client-supplied session IDs by authenticated employee.
+      const digest = createHash("sha256")
+        .update(JSON.stringify([uid, turn.sessionId]))
+        .digest("hex");
+      turn.sessionId = `${digest.slice(0, 8)}-${digest.slice(8, 12)}-4${digest.slice(13, 16)}-8${digest.slice(17, 20)}-${digest.slice(20, 32)}`;
+    }
     if (!agentBase)
       return reply.code(503).send({
         error: "Reporting assistant is unavailable. Continue with text.",
@@ -200,7 +173,7 @@ export async function buildApp(
 
   app.get("/health", async () => ({
     ok: true,
-    mode: "synthetic-demo-no-auth",
+    mode: options.access ? "firebase-authenticated" : "synthetic-demo-no-auth",
   }));
   app.post("/api/v1/reports", async (req, reply) => {
     const facts = createReport.parse(req.body);
@@ -209,48 +182,36 @@ export async function buildApp(
       .min(8)
       .max(128)
       .parse(req.headers["idempotency-key"]);
-    const body = JSON.stringify(facts);
-    const report = transaction(() => {
-      const previous = db
-        .prepare("SELECT id,request_body FROM reports WHERE request_key=?")
-        .get(key);
-      if (previous) {
-        if (previous.request_body !== body)
-          return fail(409, "Retry key belongs to a different payload");
-        return get(previous.id as string);
-      }
-      const timestamp = now().toISOString();
-      const report: Report = {
-        id: "ANV-" + randomUUID(),
-        facts,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-        status: "submitted",
-        assignment: null,
-        version: 1,
-        ...(agentBase
-          ? { triage: { status: "pending", attempts: 0 } as const }
-          : {}),
-      };
-      db.prepare("INSERT INTO reports VALUES(?,?,?,?)").run(
-        report.id,
-        JSON.stringify(report),
-        key,
-        body,
-      );
-      audit(report.id, "demo-employee", "created", facts);
+    const timestamp = now().toISOString();
+    const report: Report = {
+      id: "ANV-" + randomUUID(),
+      facts,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      status: "submitted",
+      assignment: null,
+      version: 1,
+      ...(agentBase
+        ? { triage: { status: "pending", attempts: 0 } as const }
+        : {}),
+    };
+    const owner = employeeUid(req);
+    const { entry, created } = await store.create(
+      { report, ...(owner ? { owner } : {}) },
+      key,
+      {
+        actor: owner ?? "demo-employee",
+        action: "created",
+        at: timestamp,
+        data: facts,
+      },
+    );
+    if (created) {
       reply.code(201);
-      return report;
-    });
-    if (reply.statusCode === 201) kickTriage();
-    return employeeView(report);
+      kickTriage();
+    }
+    return employeeView(entry.report);
   });
-  function allReports(): Report[] {
-    return db
-      .prepare("SELECT data FROM reports ORDER BY rowid DESC")
-      .all()
-      .map((r) => JSON.parse(r.data as string) as Report);
-  }
   const dayRange = z.enum(["30", "90", "180"]).transform(Number);
   app.get("/api/v1/dashboard", async (req) => {
     const q = z
@@ -260,16 +221,14 @@ export async function buildApp(
       })
       .strict()
       .parse(req.query);
-    const rows = db
-      .prepare(
-        "SELECT report_id,action,at,sequence,data FROM audit ORDER BY sequence",
-      )
-      .all()
-      .map((row) => ({
-        ...row,
-        data: JSON.parse(row.data as string),
-      })) as AuditRow[];
-    return buildDashboard(allReports(), rows, now(), q.days, q.incidentType);
+    const [entries, rows] = await Promise.all([store.list(), store.events()]);
+    return buildDashboard(
+      entries.map(({ report }) => report),
+      rows,
+      now(),
+      q.days,
+      q.incidentType,
+    );
   });
   app.get("/api/v1/reports", async (req) => {
     const q = z
@@ -283,7 +242,10 @@ export async function buildApp(
       .parse(req.query);
     const current = now(),
       since = q.days ? windowStart(q.days, current).getTime() : null;
-    return allReports()
+    const owner = employeeUid(req);
+    return (await store.list())
+      .filter((entry) => !owner || entry.owner === owner)
+      .map((entry) => entry.report)
       .filter(
         (r) =>
           (!q.employeeId || r.facts.employeeId === q.employeeId) &&
@@ -302,11 +264,13 @@ export async function buildApp(
       .object({ view: z.enum(["employee", "admin"]).default("employee") })
       .strict()
       .parse(req.query);
-    const report = get(id);
+    const { report, owner } = await store.get(id);
+    if (employeeUid(req) && employeeUid(req) !== owner)
+      fail(404, "Report not found");
     return q.view === "admin"
       ? {
           ...report,
-          audit: events(id),
+          audit: await store.events(id),
           policyCitations: null,
           aiSeverity: null,
         }
@@ -319,7 +283,7 @@ export async function buildApp(
     "escalations",
     "triage-review",
   ] as const) {
-    const handler = async (req: { params: unknown; body: unknown }) => {
+    const handler = async (req: import("fastify").FastifyRequest) => {
       const { id } = req.params as { id: string };
       const schema = {
         status: statusChange,
@@ -336,8 +300,7 @@ export async function buildApp(
           .strict(),
       }[kind];
       const change = schema.parse(req.body);
-      return transaction(() => {
-        const report = get(id);
+      const { report } = await store.update(id, ({ report }) => {
         if (report.version !== change.expectedVersion)
           return fail(
             409,
@@ -384,20 +347,19 @@ export async function buildApp(
           report.status = "escalated";
         report.updatedAt = now().toISOString();
         report.version++;
-        save(report);
-        audit(
-          id,
-          "demo-admin",
-          kind,
-          kind === "triage-review" ? report.triage?.review : change,
-        );
         return {
-          ...report,
-          audit: events(id),
-          policyCitations: null,
-          aiSeverity: null,
+          actor: req.identity?.uid ?? "demo-admin",
+          action: kind,
+          at: report.updatedAt,
+          data: kind === "triage-review" ? report.triage!.review! : change,
         };
       });
+      return {
+        ...report,
+        audit: await store.events(id),
+        policyCitations: null,
+        aiSeverity: null,
+      };
     };
     if (kind === "status" || kind === "assignment")
       app.patch("/api/v1/reports/:id/" + kind, handler);

@@ -7,16 +7,18 @@ import 'package:uuid/uuid.dart';
 typedef Json = Map<String, dynamic>;
 
 class Api {
-  Api({http.Client? client, String? base})
+  Api({http.Client? client, String? base, this.token})
     : client = client ?? http.Client(),
       base =
           base ??
           const String.fromEnvironment(
             'API_BASE_URL',
-            defaultValue: 'http://10.0.2.2:3000',
+            defaultValue:
+                'https://anuvachai-git-425459156696.asia-south1.run.app',
           );
   final http.Client client;
   final String base;
+  final Future<String?> Function()? token;
   Future<dynamic> call(
     String path, {
     Json? body,
@@ -24,20 +26,22 @@ class Api {
     String? method,
   }) async {
     try {
+      final credential = await token?.call();
+      if (token != null && credential == null) {
+        throw StateError('Sign in to continue.');
+      }
+      final headers = <String, String>{
+        if (credential != null) 'Authorization': 'Bearer $credential',
+        if (body != null) 'Content-Type': 'application/json',
+        'idempotency-key': ?key,
+      };
       final uri = Uri.parse('$base/api/v1$path');
       final response =
           await (method == 'DELETE'
-                  ? client.delete(uri)
+                  ? client.delete(uri, headers: headers)
                   : body == null
-                  ? client.get(uri)
-                  : client.post(
-                      uri,
-                      headers: {
-                        'Content-Type': 'application/json',
-                        'idempotency-key': ?key,
-                      },
-                      body: jsonEncode(body),
-                    ))
+                  ? client.get(uri, headers: headers)
+                  : client.post(uri, headers: headers, body: jsonEncode(body)))
               .timeout(Duration(seconds: path == '/reporting/turns' ? 38 : 12));
       if (response.statusCode >= 400) {
         throw Exception(
@@ -47,7 +51,7 @@ class Api {
       return response.statusCode == 204 ? null : jsonDecode(response.body);
     } catch (e) {
       throw Exception(
-        'Could not reach or complete the API request. Your draft is preserved. Check the local API address and retry. ($e)',
+        'Could not reach or complete the API request. Your draft is preserved. Check your connection and retry. ($e)',
       );
     }
   }

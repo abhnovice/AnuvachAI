@@ -7,7 +7,9 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 if (process.argv.length > 2)
   throw new Error("Configure the API with API_BASE_URL.");
-const api = process.env.API_BASE_URL ?? "http://10.0.2.2:3000";
+const api =
+  process.env.API_BASE_URL ??
+  "https://anuvachai-git-425459156696.asia-south1.run.app";
 const url = new URL(api);
 if (
   !["http:", "https:"].includes(url.protocol) ||
@@ -36,6 +38,7 @@ const args = [
   "--dart-define-from-file=" + firebaseConfig,
   "--split-per-abi",
   "--dart-define=API_BASE_URL=" + api,
+  "--dart-define=FIREBASE_AUTH_REQUIRED=" + (url.protocol === "https:"),
 ];
 const child = spawn(flutter, args, {
   cwd: resolve(root, "apps/mobile"),

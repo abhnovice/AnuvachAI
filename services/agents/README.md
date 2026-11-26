@@ -76,7 +76,7 @@ TRIAGE_PROVIDER=gemini .venv/bin/python -m anuvach_agents.serve
 
 # From the repository root.
 AGENTS_BASE_URL=http://127.0.0.1:8000 npm run dev:api
-npm run dev:admin
+LOCAL_API_URL=http://127.0.0.1:3000 npm run dev:admin
 
 # From apps/mobile, with the Android emulator booted.
 ../../.tooling/flutter/bin/flutter test --no-pub integration_test/agent_reporting_test.dart -d emulator-5554 --dart-define=API_BASE_URL=http://10.0.2.2:3000

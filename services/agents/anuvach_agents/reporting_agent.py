@@ -7,8 +7,8 @@ from google.adk.agents import LlmAgent
 from google.genai import types
 
 
-REPORTING_TEXT_MODEL = "gemini-3.5-flash-lite"
-REPORTING_LIVE_MODEL = "gemini-2.5-flash-native-audio-preview-12-2025"
+REPORTING_TEXT_MODEL = "gemini-3.8-flash"
+REPORTING_LIVE_MODEL = "gemini-3.8-live"
 
 
 def build_reporting_agent(

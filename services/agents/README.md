@@ -39,14 +39,14 @@ Stop both services with Ctrl+C. Local fake records are in ignored `services/agen
 
 The default `TRIAGE_PROVIDER=synthetic` runs the deterministic triage fixture over A2A. Scenario replay is deterministic even when a key is configured. Ordinary text entry uses the reporting Gemini agent when credentials are available and still saves an editable draft if Gemini is unavailable.
 
-To use real Gemini triage, set `TRIAGE_PROVIDER=gemini`. The default `REPORTING_TEXT_MODEL` and `TRIAGE_MODEL` are both `gemini-3.5-flash-lite`. Update earlier copies of `.env` that pin `TRIAGE_MODEL=gemini-2.5-flash`, or override the model settings when launching. The default `REPORTING_LIVE_MODEL` is `gemini-2.5-flash-native-audio-preview-12-2025`.
+To use real Gemini triage, set `TRIAGE_PROVIDER=gemini`. Reporting uses `gemini-3.8-flash` for text and `gemini-3.8-live` for live voice; `TRIAGE_MODEL` defaults to `gemini-3.5-flash-lite`. Update earlier copies of `.env` that pin `TRIAGE_MODEL=gemini-2.5-flash`, or override the model settings when launching.
 
 ```bash
 # From services/agents. The key is read from .env.
-TRIAGE_PROVIDER=gemini REPORTING_TEXT_MODEL=gemini-3.5-flash-lite TRIAGE_MODEL=gemini-3.5-flash-lite .venv/bin/python -m anuvach_agents.serve
+TRIAGE_PROVIDER=gemini REPORTING_TEXT_MODEL=gemini-3.8-flash REPORTING_LIVE_MODEL=gemini-3.8-live TRIAGE_MODEL=gemini-3.5-flash-lite .venv/bin/python -m anuvach_agents.serve
 
 # Opt-in reporting → confirmation → A2A triage → simulated review.
-REPORTING_TEXT_MODEL=gemini-3.5-flash-lite TRIAGE_MODEL=gemini-3.5-flash-lite .venv/bin/python -m pytest --gemini -s tests/test_gemini_gate.py
+REPORTING_TEXT_MODEL=gemini-3.8-flash TRIAGE_MODEL=gemini-3.5-flash-lite .venv/bin/python -m pytest --gemini -s tests/test_gemini_gate.py
 
 # Opt-in real Live API audio transport. Requires espeak-ng and ffmpeg.
 .venv/bin/python -m pytest --gemini-voice -s tests/test_gemini_voice.py

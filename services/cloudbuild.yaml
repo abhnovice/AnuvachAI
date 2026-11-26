@@ -1,0 +1,36 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'asia-south1-docker.pkg.dev/$PROJECT_ID/anuvach-repo/anuvach-backend:$BUILD_ID'
+      - '.'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'asia-south1-docker.pkg.dev/$PROJECT_ID/anuvach-repo/anuvach-backend:$BUILD_ID'
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'anuvach-backend'
+      - '--image=asia-south1-docker.pkg.dev/$PROJECT_ID/anuvach-repo/anuvach-backend:$BUILD_ID'
+      - '--region=asia-south1'
+      - '--platform=managed'
+      - '--no-allow-unauthenticated'
+      - '--min-instances=0'
+      - '--max-instances=1'
+      - '--cpu=2'
+      - '--memory=2Gi'
+      - '--concurrency=8'
+      - '--timeout=300s'
+      - '--no-cpu-throttling'
+      - '--port=8080'
+      - '--env-vars-file=services/cloudrun.env.yaml'
+      - '--set-secrets=GOOGLE_API_KEY=GOOGLE_API_KEY:latest'
+
+images:
+  - 'asia-south1-docker.pkg.dev/$PROJECT_ID/anuvach-repo/anuvach-backend:$BUILD_ID'

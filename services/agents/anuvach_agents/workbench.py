@@ -630,7 +630,7 @@ def create_app(
             "agents": {
                 "reporting": "employee_reporting_agent",
                 "reporting_model": os.getenv(
-                    "REPORTING_LIVE_MODEL", "gemini-2.5-flash-native-audio-preview-12-2025"
+                    "REPORTING_LIVE_MODEL", "gemini-3.8-live"
                 ),
                 "triage": "admin_triage_agent",
                 "triage_model": os.getenv("TRIAGE_MODEL", TRIAGE_MODEL),

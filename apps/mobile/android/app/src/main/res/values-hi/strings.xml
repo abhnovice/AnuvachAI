@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="microphone_rationale">माइक्रोफ़ोन की अनुमति से स्थानीय सत्र शुरू होता है। ऑडियो सहेजा या भेजा नहीं जाता।</string>
+</resources>

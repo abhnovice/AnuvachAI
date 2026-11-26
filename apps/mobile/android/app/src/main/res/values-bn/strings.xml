@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="microphone_rationale">মাইক্রোফোনের অনুমতিতে স্থানীয় সেশন শুরু হয়। অডিও সংরক্ষণ বা পাঠানো হয় না।</string>
+</resources>

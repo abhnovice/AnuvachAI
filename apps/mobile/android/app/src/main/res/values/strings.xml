@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="microphone_rationale">Microphone access starts a local microphone session. No audio is saved or sent.</string>
+</resources>

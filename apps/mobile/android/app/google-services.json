@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "425459156696",
+    "project_id": "anuvachai",
+    "storage_bucket": "anuvachai.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:425459156696:android:77259a2e1db8133f7579ad",
+        "android_client_info": {
+          "package_name": "ai.anuvach.anuvach_mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyACTWxKH6Z_FBQsGpmrGhVw3li8tZokEN8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

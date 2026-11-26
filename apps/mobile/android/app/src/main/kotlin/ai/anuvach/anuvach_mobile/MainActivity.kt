@@ -10,8 +10,16 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
+    private var localFeatures: LocalFeatures? = null
+    override fun onPause() { localFeatures?.stopMic(); super.onPause() }
+    override fun onDestroy() { localFeatures?.dispose(); super.onDestroy() }
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        localFeatures?.onPermission(requestCode, grantResults)
+    }
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        localFeatures = LocalFeatures(this, MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "ai.anuvach/local_features"))
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "ai.anuvach/device_review")
             .setMethodCallHandler { call, result ->
                 try {

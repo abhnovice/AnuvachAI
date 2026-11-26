@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'reporting.dart';
+import 'l10n/app_localizations.dart';
 
 const brandTeal = Color(0xff006b60);
 const brandMint = Color(0xffb6f1e5);
@@ -157,6 +158,40 @@ ThemeData anuvachTheme() {
   );
 }
 
+ThemeData anuvachDarkTheme() {
+  final scheme =
+      ColorScheme.fromSeed(
+        seedColor: brandTeal,
+        brightness: Brightness.dark,
+      ).copyWith(
+        primary: const Color(0xffa4e9d9),
+        onPrimary: const Color(0xff00382f),
+        primaryContainer: const Color(0xff26564a),
+        onPrimaryContainer: const Color(0xffc5f5e8),
+        surface: const Color(0xff182822),
+        onSurface: const Color(0xffe1eee6),
+      );
+  return ThemeData(
+    useMaterial3: true,
+    fontFamily: 'NotoSans',
+    colorScheme: scheme,
+    scaffoldBackgroundColor: const Color(0xff101c17),
+    navigationBarTheme: NavigationBarThemeData(
+      backgroundColor: scheme.surface,
+      indicatorColor: scheme.primaryContainer,
+    ),
+    appBarTheme: AppBarTheme(
+      backgroundColor: const Color(0xff101c17),
+      foregroundColor: scheme.onSurface,
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: const Color(0xff243c31),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(18)),
+    ),
+  );
+}
+
 class BrandMark extends StatelessWidget {
   const BrandMark({super.key, this.size = 44});
   final double size;
@@ -194,28 +229,40 @@ class SurfaceCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(26),
       border: Border.all(color: tint ? brandMint : brandLine),
     ),
-    child: child,
+    child: Theme(
+      data: Theme.of(context).brightness == Brightness.dark
+          ? anuvachTheme()
+          : Theme.of(context),
+      child: DefaultTextStyle.merge(
+        style: const TextStyle(color: brandInk),
+        child: child,
+      ),
+    ),
   );
 }
 
-Widget heading(String text) => Text(
-  text,
-  style: const TextStyle(
-    fontFamily: 'NotoSans',
-    fontSize: 23,
-    height: 1.3,
-    fontWeight: FontWeight.w600,
-    letterSpacing: -.6,
-    color: brandInk,
+Widget heading(String text) => Builder(
+  builder: (context) => Text(
+    text,
+    style: TextStyle(
+      fontFamily: 'NotoSans',
+      fontSize: 23,
+      height: 1.3,
+      fontWeight: FontWeight.w600,
+      letterSpacing: -.6,
+      color: Theme.of(context).colorScheme.onSurface,
+    ),
   ),
 );
-Widget eyebrow(String text) => Text(
-  text,
-  style: const TextStyle(
-    fontSize: 10,
-    fontWeight: FontWeight.w700,
-    letterSpacing: 1.6,
-    color: brandTeal,
+Widget eyebrow(String text) => Builder(
+  builder: (context) => Text(
+    text,
+    style: TextStyle(
+      fontSize: 10,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 1.6,
+      color: Theme.of(context).colorScheme.primary,
+    ),
   ),
 );
 Widget statusPill(String status) => Container(
@@ -316,7 +363,7 @@ class FlowSteps extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              ['Describe', 'Review', 'Submit'][i],
+              [AppLocalizations.of(context)!.stepDescribe, AppLocalizations.of(context)!.stepReview, AppLocalizations.of(context)!.stepSubmit][i],
               style: TextStyle(
                 fontSize: 11,
                 color: i <= current ? brandTeal : brandMuted,
@@ -344,7 +391,7 @@ Widget page(
     leading: navigation == null
         ? null
         : const Padding(
-            padding: EdgeInsets.fromLTRB(20, 16, 0, 16),
+            padding: EdgeInsetsDirectional.fromSTEB(20, 16, 0, 16),
             child: BrandMark(size: 36),
           ),
     leadingWidth: navigation == null ? null : 62,
@@ -357,7 +404,7 @@ Widget page(
         constraints: const BoxConstraints(maxWidth: 720),
         child: ListView(
           key: PageStorageKey(storageId ?? title),
-          padding: const EdgeInsets.fromLTRB(22, 12, 22, 28),
+          padding: const EdgeInsetsDirectional.fromSTEB(22, 12, 22, 28),
           children: children
               .map(
                 (w) => Padding(
@@ -375,16 +422,16 @@ Widget page(
     ),
   ),
 );
-Widget facts(Json data) => Column(
+Widget facts(Json data) => Builder(builder: (context) => Column(
   crossAxisAlignment: CrossAxisAlignment.stretch,
   children: [
     SurfaceCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          eyebrow('SUBMITTED STATEMENTS'),
+          eyebrow(AppLocalizations.of(context)!.submittedStatements),
           const SizedBox(height: 8),
-          heading('Employee reported'),
+          heading(AppLocalizations.of(context)!.employeeReported),
           const SizedBox(height: 18),
           for (final key in [
             'description',
@@ -400,17 +447,17 @@ Widget facts(Json data) => Column(
                 children: [
                   Text(
                     {
-                      'description': 'Description',
-                      'language': 'Report language',
-                      'incidentType': 'Incident type',
-                      'appName': 'App name',
-                      'evidenceNotes': 'Evidence notes',
+                      'description': AppLocalizations.of(context)!.descriptionLabel,
+                      'language': AppLocalizations.of(context)!.reportLanguageLabel,
+                      'incidentType': AppLocalizations.of(context)!.incidentTypeLabel,
+                      'appName': AppLocalizations.of(context)!.appNameLabel,
+                      'evidenceNotes': AppLocalizations.of(context)!.evidenceNotesLabel,
                     }[key]!,
                     style: const TextStyle(fontSize: 11, color: brandMuted),
                   ),
                   const SizedBox(height: 5),
                   SelectableText(
-                    data[key] == '' ? 'Not supplied' : '${data[key]}',
+                    data[key] == '' ? AppLocalizations.of(context)!.notSupplied : '${data[key]}',
                     style: const TextStyle(
                       fontFamily: 'NotoSans',
                       fontSize: 14,
@@ -421,9 +468,9 @@ Widget facts(Json data) => Column(
                 ],
               ),
             ),
-          const Text(
-            'Employee identity: demo-employee',
-            style: TextStyle(fontSize: 11, color: brandMuted),
+          Text(
+            AppLocalizations.of(context)!.demoEmployeeIdentity,
+            style: const TextStyle(fontSize: 11, color: brandMuted),
           ),
         ],
       ),
@@ -433,27 +480,27 @@ Widget facts(Json data) => Column(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          eyebrow('OPTIONAL CHECKS'),
+          eyebrow(AppLocalizations.of(context)!.optionalChecks),
           const SizedBox(height: 8),
-          heading('Device observed'),
+          heading(AppLocalizations.of(context)!.deviceObserved),
           const SizedBox(height: 14),
           if ((data['observations'] as List).isEmpty)
-            const Text('No automatic device facts included.'),
+            Text(AppLocalizations.of(context)!.noDeviceFacts),
           for (final o in data['observations'] as List)
             InfoRow(
               icon: Icons.phonelink_lock_outlined,
               title:
-                  'Secure screen lock: ${o['value'] ? 'configured' : 'not configured'}',
+                  '${AppLocalizations.of(context)!.secureScreenLock}: ${o['value'] ? AppLocalizations.of(context)!.configured : AppLocalizations.of(context)!.notConfigured}',
               text:
-                  'Android public API · client-reported\nChecked: ${o['checkedAt']}',
+                  '${AppLocalizations.of(context)!.publicApiClientReported}\n${AppLocalizations.of(context)!.checkedAt}: ${o['checkedAt']}',
             ),
           const SizedBox(height: 12),
-          const Text(
-            'These observations do not establish remote access, compromise, or whether a permission was used.',
-            style: TextStyle(fontSize: 12, color: brandMuted),
+          Text(
+            AppLocalizations.of(context)!.observationDisclaimer,
+            style: const TextStyle(fontSize: 12, color: brandMuted),
           ),
         ],
       ),
     ),
   ],
-);
+));

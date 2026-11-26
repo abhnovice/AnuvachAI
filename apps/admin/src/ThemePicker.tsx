@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
+import { useLocalization } from "./localization";
 type Theme = "light" | "dark" | "system";
 export function ThemePicker() {
+  const { t } = useLocalization();
   const [theme, setTheme] = useState<Theme>(() => {
     try {
       const saved = localStorage.getItem("anuvach-theme");
@@ -26,15 +28,15 @@ export function ThemePicker() {
   }, [theme]);
   return (
     <label className="theme-picker">
-      Appearance
+      {t("appearance")}
       <select
-        aria-label="Appearance"
+        aria-label={t("appearance")}
         value={theme}
         onChange={(e) => setTheme(e.target.value as Theme)}
       >
-        <option value="light">Light</option>
-        <option value="dark">Dark</option>
-        <option value="system">System</option>
+        <option value="light">{t("light")}</option>
+        <option value="dark">{t("dark")}</option>
+        <option value="system">{t("system")}</option>
       </select>
     </label>
   );

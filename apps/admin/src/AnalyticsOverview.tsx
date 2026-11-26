@@ -1,24 +1,11 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import type { DashboardData } from "../../../services/api/src/analytics";
 import { Icon } from "./Icon";
+import { useLocalization } from "./localization";
 import "./analytics.css";
 import "./queue-layout.css";
 
 export type { DashboardData };
-const names: Record<string, string> = {
-  support_call: "Support call",
-  suspicious_message: "Suspicious message",
-  mistaken_report: "Mistaken report",
-  other: "Other",
-  submitted: "Submitted",
-  in_review: "In review",
-  awaiting_employee: "Awaiting employee",
-  escalated: "Escalated",
-  closed: "Closed",
-  security: "Security",
-  data_protection: "Data protection",
-  unassigned: "Unassigned",
-};
 const colors = ["#006b60", "#4a9eae", "#84cbbb", "#b6cf92"];
 const states = [
   "submitted",
@@ -43,9 +30,10 @@ function DataTable({
   headers: string[];
   rows: (string | number)[][];
 }) {
+  const { t } = useLocalization();
   return (
     <details className="chart-data">
-      <summary>View values &amp; definitions</summary>
+      <summary>{t("viewValues")}</summary>
       <div>
         <table>
           <thead>
@@ -440,6 +428,11 @@ export function AnalyticsOverview({
   onType: (value: string) => void;
   onStatus: (status: string, type?: string) => void;
 }) {
+  const { t, enumLabel } = useLocalization();
+  const names = new Proxy({} as Record<string, string>, {
+    get: (_target, key) =>
+      typeof key === "string" ? enumLabel(key) : undefined,
+  });
   const [brush, setBrush] = useState<[number, number] | null>(null);
   const [category, setCategory] = useState<string | null>(null);
   useEffect(() => {
@@ -454,14 +447,14 @@ export function AnalyticsOverview({
   return (
     <section
       className="analytics-overview"
-      aria-label="Incident analytics"
+      aria-label={t("analytics")}
       aria-busy={loading}
     >
       <div className="overview-scope">
         <div>
           <span className="synthetic-label">
             <span />
-            Synthetic demonstration data
+            {t("syntheticData")}
           </span>
           <p>
             {data
@@ -471,30 +464,30 @@ export function AnalyticsOverview({
                 " " +
                 new Date(data.scope.end).getUTCFullYear() +
                 " · UTC"
-              : "Reports and audit history from the local API"}
+              : t("localApiHistory")}
           </p>
         </div>
         <div className="overview-controls">
           <label>
-            Reporting window
+            {t("reportingWindow")}
             <select
-              aria-label="Reporting window"
+              aria-label={t("reportingWindow")}
               value={days}
               onChange={(e) => onDays(e.target.value)}
             >
-              <option value="30">Last 30 days</option>
-              <option value="90">Last 90 days</option>
-              <option value="180">Last 180 days</option>
+              <option value="30">{t("last30")}</option>
+              <option value="90">{t("last90")}</option>
+              <option value="180">{t("last180")}</option>
             </select>
           </label>
           <label>
-            Incident category
+            {t("incidentCategory")}
             <select
-              aria-label="Dashboard incident type"
+              aria-label={t("dashboardIncidentType")}
               value={type}
               onChange={(e) => onType(e.target.value)}
             >
-              <option value="">All incident types</option>
+              <option value="">{t("allIncidentTypes")}</option>
               {[
                 "support_call",
                 "suspicious_message",
@@ -514,20 +507,20 @@ export function AnalyticsOverview({
           {loading ? (
             <>
               <span className="loading-line" />
-              <p>Loading report analytics…</p>
+              <p>{t("loadingAnalytics")}</p>
             </>
           ) : (
-            <p>Analytics unavailable. Refresh the queue to retry.</p>
+            <p>{t("analyticsUnavailable")}</p>
           )}
         </div>
       ) : (
         <>
           <div className="brush-controls">
-            <span>Brush weeks</span>
+            <span>{t("brushWeeks")}</span>
             <label>
-              From{" "}
+              {t("from")}{" "}
               <select
-                aria-label="Brush from week"
+                aria-label={t("brushFromWeek")}
                 value={effectiveBrush?.[0] ?? 0}
                 onChange={(e) => {
                   const value = Number(e.target.value);
@@ -551,9 +544,9 @@ export function AnalyticsOverview({
               </select>
             </label>
             <label>
-              Through{" "}
+              {t("through")}{" "}
               <select
-                aria-label="Brush through week"
+                aria-label={t("brushThroughWeek")}
                 value={
                   effectiveBrush?.[1] ?? Math.max(0, data.weekly.length - 1)
                 }
@@ -573,12 +566,12 @@ export function AnalyticsOverview({
               </select>
             </label>
             <button disabled={!effectiveBrush} onClick={() => setBrush(null)}>
-              Clear brush
+              {t("clearBrush")}
             </button>
             <small>
               {effectiveBrush
                 ? `Highlighting ${data.weekly[effectiveBrush[0]].date}–${data.weekly[effectiveBrush[1]].endDate} UTC. Monthly bars represent whole overlapping months; totals remain unchanged.`
-                : "Drag across either weekly chart or choose weeks. Totals remain unchanged."}
+                : t("dragBrushHint")}
             </small>
           </div>
           <div className="metric-grid">
@@ -586,16 +579,16 @@ export function AnalyticsOverview({
               type="button"
               className="metric-card"
               onClick={() => onStatus("")}
-              aria-label="View reports received"
+              aria-label={t("viewReceived")}
             >
               <div className="metric-label">
                 <Icon name="reports" />
-                Reports received
+                {t("reportsReceived")}
               </div>
               <strong>{m!.received}</strong>
               <div className="metric-context">
                 {m!.receivedChangePercent === null
-                  ? "No previous-period baseline"
+                  ? t("noPreviousBaseline")
                   : (m!.receivedChangePercent >= 0 ? "+" : "") +
                     m!.receivedChangePercent.toFixed(0) +
                     "% vs preceding period"}
@@ -608,11 +601,11 @@ export function AnalyticsOverview({
               type="button"
               className="metric-card"
               onClick={() => onStatus("open")}
-              aria-label="View open reports"
+              aria-label={t("viewOpen")}
             >
               <div className="metric-label">
                 <Icon name="clock" />
-                Still open
+                {t("stillOpen")}
               </div>
               <strong>{m!.open}</strong>
               <div className="metric-context">
@@ -627,11 +620,11 @@ export function AnalyticsOverview({
               type="button"
               className="metric-card"
               onClick={() => onStatus("closed")}
-              aria-label="View closed reports"
+              aria-label={t("viewClosed")}
             >
               <div className="metric-label">
                 <Icon name="check" />
-                Currently closed
+                {t("currentlyClosed")}
               </div>
               <strong>
                 {m!.closed}
@@ -650,11 +643,11 @@ export function AnalyticsOverview({
               type="button"
               className="metric-card"
               onClick={() => onStatus("closed")}
-              aria-label="View reports contributing to closure time"
+              aria-label={t("viewClosureTime")}
             >
               <div className="metric-label">
                 <Icon name="refresh" />
-                Mean time to close
+                {t("meanClose")}
               </div>
               <strong>{fmtHours(m!.meanCloseHours)}</strong>
               <div className="metric-context">
@@ -695,9 +688,9 @@ export function AnalyticsOverview({
           )}
           <div className="analytics-grid">
             <ChartCard
-              title="Incoming reports"
-              subtitle="New reports in consecutive seven-day buckets"
-              definition="Counts reports by receipt time within the selected window. The final bucket may be shorter than seven days."
+              title={t("incomingReports")}
+              subtitle={t("chartSubtitle1")}
+              definition={t("chartDefinition1")}
               headers={["From (UTC)", "Through (UTC)", "Received"]}
               rows={data.weekly.map((r) => [r.date, r.endDate, r.received])}
             >
@@ -713,9 +706,9 @@ export function AnalyticsOverview({
               />
             </ChartCard>
             <ChartCard
-              title="Incident mix"
-              subtitle="Employee-selected categories · click to filter"
-              definition="Each report appears in exactly one category. Percentages use reports received in the selected window."
+              title={t("incidentMix")}
+              subtitle={t("chartSubtitle2")}
+              definition={t("chartDefinition2")}
               headers={["Category", "Reports", "Share"]}
               rows={data.incidentMix.map((r) => [
                 names[r.type],
@@ -824,9 +817,9 @@ export function AnalyticsOverview({
               </div>
             </ChartCard>
             <ChartCard
-              title="Received vs closed"
-              subtitle="Activity by calendar month within this window"
-              definition="Received counts new reports; closed counts transitions into closed, including reports received before this window. Partial months are included."
+              title={t("receivedClosed")}
+              subtitle={t("chartSubtitle3")}
+              definition={t("chartDefinition3")}
               headers={["Month", "Received", "Closed transitions"]}
               rows={data.monthly.map((r) => [r.label, r.received, r.closed])}
             >
@@ -855,9 +848,9 @@ export function AnalyticsOverview({
               </div>
             </ChartCard>
             <ChartCard
-              title="Closure & turnaround"
-              subtitle="Currently closed reports received in this window"
-              definition="The gauge shows the closed share, not an SLA target. Duration bins use receipt to latest closure; reopened reports are excluded until closed again."
+              title={t("closureTurnaround")}
+              subtitle={t("chartSubtitle4")}
+              definition={t("chartDefinition4")}
               headers={["Duration", "Closed reports"]}
               rows={data.turnaround.map((r) => [r.label, r.count])}
             >
@@ -906,7 +899,7 @@ export function AnalyticsOverview({
                   </text>
                 </svg>
                 <div>
-                  <span>Median turnaround</span>
+                  <span>{t("medianTurnaround")}</span>
                   <strong>{fmtHours(m!.medianCloseHours)}</strong>
                   <small>{m!.closeSampleSize} recorded closures</small>
                 </div>
@@ -937,9 +930,9 @@ export function AnalyticsOverview({
               )}
             </ChartCard>
             <ChartCard
-              title="Status by incident type"
-              subtitle="Current workflow state · click a cell for its queue"
-              definition="Counts the current statuses of reports received in this window. Status indicates workflow, not severity or a security conclusion."
+              title={t("statusByType")}
+              subtitle={t("chartSubtitle5")}
+              definition={t("chartDefinition5")}
               headers={["Type", ...states.map((s) => names[s])]}
               rows={data.statusMatrix.map((r) => [
                 names[r.type],
@@ -1021,15 +1014,15 @@ export function AnalyticsOverview({
                 </table>
               </div>
               <div className="heatmap-scale">
-                <span>Fewer</span>
+                <span>{t("fewer")}</span>
                 <i />
-                <span>More reports</span>
+                <span>{t("moreReports")}</span>
               </div>
             </ChartCard>
             <ChartCard
-              title="Open & closed workload"
-              subtitle="Historical state at the end of each plotted bucket"
-              definition="Includes all matching reports received by each snapshot, even before this reporting window. Closed is an administrative status; reopening moves a report back to open."
+              title={t("openClosedWorkload")}
+              subtitle={t("chartSubtitle6")}
+              definition={t("chartDefinition6")}
               headers={["Snapshot (UTC)", "Open", "Closed"]}
               rows={data.weekly.map((r) => [r.endDate, r.open, r.closed])}
             >
@@ -1049,13 +1042,13 @@ export function AnalyticsOverview({
             </ChartCard>
           </div>
           <div className="assignment-summary">
-            <span>Responsibility in this cohort</span>
+            <span>{t("responsibilityCohort")}</span>
             {data.assignments.map((r) => (
               <span key={r.team}>
                 {names[r.team]} <strong>{r.count}</strong>
               </span>
             ))}
-            <small>Team assignment is separate from employee identity.</small>
+            <small>{t("assignmentIdentityNote")}</small>
           </div>
         </>
       )}

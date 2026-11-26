@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:anuvach_mobile/main.dart';
 import 'package:anuvach_mobile/reporting.dart';
+import 'package:anuvach_mobile/l10n/app_localizations.dart';
 
 void main() {
   testWidgets(
@@ -19,7 +20,13 @@ void main() {
         base: Platform.environment['LIVE_API_URL'] ?? 'http://127.0.0.1:3101',
       );
       final draft = Draft(await SharedPreferences.getInstance(), api);
-      await tester.pumpWidget(MaterialApp(home: ReportForm(draft: draft)));
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: ReportForm(draft: draft),
+        ),
+      );
       await tester.enterText(
         find.byKey(const ValueKey('description')),
         'LIVE-E2E synthetic IT support call asked me to share a remote-access code.',

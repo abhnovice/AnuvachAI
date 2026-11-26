@@ -1,12 +1,14 @@
 import type { Report } from "./App";
+import { useLocalization } from "./localization";
 const label = (value: string) => value.replaceAll("_", " ");
 export function TicketJourney({ report }: { report: Report }) {
+  const { t, enumLabel } = useLocalization();
   return (
-    <section className="ticket-journey" aria-label="Ticket journey">
+    <section className="ticket-journey" aria-label={t("ticketJourney")}>
       <div className="journey-heading">
-        <h3>Ticket journey</h3>
+        <h3>{t("ticketJourney")}</h3>
         <span className={"badge status-" + report.status}>
-          {label(report.status)}
+          {enumLabel(report.status)}
         </span>
       </div>
       <ol className="journey-timeline">
@@ -39,7 +41,7 @@ export function TicketJourney({ report }: { report: Report }) {
           </li>
         ))}
       </ol>
-      {!report.audit?.length && <p>No audit events available.</p>}
+      {!report.audit?.length && <p>{t("noAudit")}</p>}
     </section>
   );
 }

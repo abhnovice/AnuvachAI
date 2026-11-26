@@ -1,6 +1,7 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
+import { LocalizationProvider } from "./localization";
 import "./style.css";
 import "./pages.css";
 import "./compact.css";
@@ -12,8 +13,11 @@ import "./view-layout.css";
 import "./flow.css";
 import "./chart-polish.css";
 import "./brush.css";
+import "./localization.css";
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <App />
+    <LocalizationProvider>
+      <App />
+    </LocalizationProvider>
   </React.StrictMode>,
 );

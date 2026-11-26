@@ -6,6 +6,7 @@ import { Icon } from "./Icon";
 import { TicketJourney } from "./TicketJourney";
 import { ThemePicker } from "./ThemePicker";
 import { MaterialNavIcon } from "./MaterialNavIcon";
+import { LanguagePicker, useLocalization } from "./localization";
 export type Report = {
   id: string;
   status: string;
@@ -80,6 +81,25 @@ export async function request<T>(
   return response.json();
 }
 export function App() {
+  const { t, enumLabel } = useLocalization();
+  const statusLabel = (value: string) => {
+    switch (value) {
+      case "submitted":
+        return t("submitted");
+      case "in_review":
+        return t("inReview");
+      case "awaiting_employee":
+        return t("awaitingEmployee");
+      case "escalated":
+        return t("escalations");
+      case "closed":
+        return t("closed");
+      case "open":
+        return t("allOpen");
+      default:
+        return label(value);
+    }
+  };
   const [collapsed, setCollapsed] = useState(false);
   const [reportsExpanded, setReportsExpanded] = useState(true);
   const [page, setPage] = useState(() =>
@@ -139,9 +159,14 @@ export function App() {
           { duration: 420, easing: "cubic-bezier(.16,1,.3,1)" },
         ).finished;
       }
+    } catch {
+      // View transitions and animations can be cancelled by the browser.
+      // Ensure the requested destination still becomes active.
+      commit();
     } finally {
       transitionBusy.current = false;
       delete root.dataset.transitioning;
+      delete root.dataset.flow;
     }
   }
   usePageScroll(page, navigate);
@@ -291,12 +316,12 @@ export function App() {
           <button
             className={page === "dashboard" ? "nav-item active" : "nav-item"}
             aria-current={page === "dashboard" ? "page" : undefined}
-            aria-label="Dashboard"
-            title="Dashboard"
+            aria-label={t("dashboard")}
+            title={t("dashboard")}
             onClick={() => navigate("dashboard")}
           >
             <MaterialNavIcon name="dashboard" />
-            <span>Dashboard</span>
+            <span>{t("dashboard")}</span>
           </button>
           <div className="report-nav-row">
             <button
@@ -314,7 +339,7 @@ export function App() {
               }}
             >
               <MaterialNavIcon name="reports" />
-              <span>All reports</span>
+              <span>{t("allReports")}</span>
             </button>
             <button
               className="report-group-toggle"
@@ -354,7 +379,7 @@ export function App() {
               }}
             >
               <MaterialNavIcon name="review" />
-              <span>In review</span>
+              <span>{t("inReview")}</span>
             </button>
             <button
               className={
@@ -373,7 +398,24 @@ export function App() {
               }}
             >
               <MaterialNavIcon name="escalations" />
-              <span>Escalations</span>
+              <span>{t("escalations")}</span>
+            </button>
+            <button
+              className={
+                page === "reports" && status === "closed"
+                  ? "nav-item active"
+                  : "nav-item"
+              }
+              aria-current={
+                page === "reports" && status === "closed" ? "page" : undefined
+              }
+              onClick={() => {
+                navigate("reports");
+                setStatus("closed");
+              }}
+            >
+              <MaterialNavIcon name="closed" />
+              <span>{t("closed")}</span>
             </button>
           </div>
         </nav>
@@ -391,6 +433,7 @@ export function App() {
             reported facts separate from device observations.
           </p>
         </div>
+        <LanguagePicker />
         <ThemePicker />
         <div className="sidebar-footer">
           <span className="demo-dot" />
@@ -414,7 +457,7 @@ export function App() {
             disabled={loading}
           >
             <Icon name="refresh" size={18} />
-            Refresh queue
+            {t("refreshQueue")}
           </button>
         </div>
         <div
@@ -430,7 +473,7 @@ export function App() {
               navigate("reports");
             }}
           >
-            View reports <Icon name="arrow" size={16} />
+            {t("viewReports")} <Icon name="arrow" size={16} />
           </button>
           <AnalyticsOverview
             data={overview}
@@ -453,7 +496,7 @@ export function App() {
           inert={page !== "reports"}
         >
           <div className="analytics-section-title">
-            <h2>Reports requiring review</h2>
+            <h2>{t("reportsReview")}</h2>
           </div>
           {error && (
             <div role="alert" className="error">
@@ -473,7 +516,8 @@ export function App() {
           >
             <section className="panel queue" id="report-queue">
               <h2>
-                Report queue <span className="count">{reports.length}</span>
+                {t("reportQueue")}{" "}
+                <span className="count">{reports.length}</span>
               </h2>
               <p className="section-description">
                 Reports received in the selected window. The status filter below
@@ -481,32 +525,32 @@ export function App() {
               </p>
               <div className="filters">
                 <label>
-                  Status
+                  {t("status")}
                   <select
-                    aria-label="Status"
+                    aria-label={t("status")}
                     value={status}
                     onChange={(e) => setStatus(e.target.value)}
                   >
-                    <option value="">All statuses</option>
-                    <option value="open">All open</option>
+                    <option value="">{t("allStatuses")}</option>
+                    <option value="open">{t("allOpen")}</option>
                     {statuses.map((s) => (
                       <option key={s} value={s}>
-                        {label(s)}
+                        {statusLabel(s)}
                       </option>
                     ))}
                   </select>
                 </label>
                 <label>
-                  Incident type
+                  {t("incidentType")}
                   <select
-                    aria-label="Incident type"
+                    aria-label={t("incidentType")}
                     value={type}
                     onChange={(e) => setType(e.target.value)}
                   >
-                    <option value="">All types</option>
+                    <option value="">{t("allTypes")}</option>
                     {types.map((t) => (
                       <option key={t} value={t}>
-                        {label(t)}
+                        {enumLabel(t)}
                       </option>
                     ))}
                   </select>
@@ -514,8 +558,8 @@ export function App() {
               </div>
               {(status || type) && (
                 <p className="queue-scope-note">
-                  Showing {status ? label(status) : "all statuses"} ·{" "}
-                  {type ? label(type) : "all types"}
+                  Showing {status ? statusLabel(status) : t("allStatuses")} ·{" "}
+                  {type ? enumLabel(type) : t("allTypes")}
                   <button
                     className="queue-reset"
                     onClick={() => {
@@ -523,25 +567,25 @@ export function App() {
                       setType("");
                     }}
                   >
-                    Clear filters
+                    {t("clearFilters")}
                   </button>
                 </p>
               )}
-              {loading && <p role="status">Loading reports…</p>}
+              {loading && <p role="status">{t("loadingReports")}</p>}
               {!loading && !reports.length && !error && (
-                <p>No reports match these filters.</p>
+                <p>{t("emptyReports")}</p>
               )}
               <div className="table-scroll">
                 <table>
                   <thead>
                     <tr>
                       <th title="Receipt times use your browser’s local time zone">
-                        Ticket / received
+                        {t("ticketReceived")}
                       </th>
-                      <th>Type</th>
-                      <th>Status</th>
-                      <th>Assignment</th>
-                      <th>Elapsed</th>
+                      <th>{t("type")}</th>
+                      <th>{t("status")}</th>
+                      <th>{t("assignment")}</th>
+                      <th>{t("elapsed")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -566,18 +610,18 @@ export function App() {
                             {new Date(r.createdAt).toLocaleString()}
                           </small>
                         </td>
-                        <td>{label(r.facts.incidentType)}</td>
+                        <td>{enumLabel(r.facts.incidentType)}</td>
                         <td>
                           <span className={"badge status-" + r.status}>
-                            {label(r.status)}
+                            {statusLabel(r.status)}
                           </span>
                         </td>
                         <td>
                           {r.assignment?.team
-                            ? label(r.assignment.team)
-                            : "Unassigned"}
+                            ? enumLabel(r.assignment.team)
+                            : t("unassigned")}
                           <small>
-                            {r.assignment?.reviewer || "No reviewer"}
+                            {r.assignment?.reviewer || t("noReviewer")}
                           </small>
                         </td>
                         <td>
@@ -618,22 +662,22 @@ export function App() {
                 </div>
               )}
             </section>
-            <section className="panel detail" aria-label="Report detail">
+            <section className="panel detail" aria-label={t("reportDetail")}>
               {detail && (
                 <>
                   <div className="detail-top">
-                    <h2>Report detail</h2>
+                    <h2>{t("reportDetail")}</h2>
                     <button
                       onClick={() => void open(detail.id)}
                       disabled={busy}
                     >
-                      Refresh detail
+                      {t("refreshDetail")}
                     </button>
                   </div>
                   <p className="id">{detail.id}</p>
                   <p>
                     <span className={"badge status-" + detail.status}>
-                      {label(detail.status)}
+                      {statusLabel(detail.status)}
                     </span>
                   </p>
                   <small>
@@ -644,25 +688,25 @@ export function App() {
                   <TicketJourney report={detail} />
                   <h3>
                     <Icon name="message" size={18} />
-                    Employee statements
+                    {t("employeeStatements")}
                   </h3>
                   <p className="statement">{detail.facts.description}</p>
                   <dl>
-                    <dt>Report language</dt>
+                    <dt>{t("reportLanguage")}</dt>
                     <dd>{detail.facts.language}</dd>
-                    <dt>Incident type</dt>
-                    <dd>{label(detail.facts.incidentType)}</dd>
-                    <dt>App name</dt>
-                    <dd>{detail.facts.appName || "Not supplied"}</dd>
-                    <dt>Evidence notes</dt>
-                    <dd>{detail.facts.evidenceNotes || "Not supplied"}</dd>
+                    <dt>{t("incidentType")}</dt>
+                    <dd>{enumLabel(detail.facts.incidentType)}</dd>
+                    <dt>{t("appName")}</dt>
+                    <dd>{detail.facts.appName || t("notSupplied")}</dd>
+                    <dt>{t("evidenceNotes")}</dt>
+                    <dd>{detail.facts.evidenceNotes || t("notSupplied")}</dd>
                   </dl>
                   <h3>
                     <Icon name="shield" size={18} />
-                    Device observations
+                    {t("deviceObservations")}
                   </h3>
                   {!detail.facts.observations.length ? (
-                    <p>No automatic checks supplied.</p>
+                    <p>{t("noChecks")}</p>
                   ) : (
                     detail.facts.observations.map((o, i) => (
                       <p key={i}>
@@ -680,14 +724,12 @@ export function App() {
                     compromise, or permission use.
                   </p>
                   <p>
-                    Policy citations:{" "}
-                    <strong>not available in this stage</strong>
+                    {t("policyCitations")} <strong>{t("notAvailable")}</strong>
                     <br />
-                    AI-assigned severity:{" "}
-                    <strong>not available in this stage</strong>
+                    {t("severity")} <strong>{t("notAvailable")}</strong>
                   </p>
                   <fieldset disabled={busy}>
-                    <legend>Administrator actions · Demo administrator</legend>
+                    <legend>{t("adminActions")}</legend>
                     <form
                       onSubmit={(e) => {
                         e.preventDefault();
@@ -695,9 +737,9 @@ export function App() {
                       }}
                     >
                       <label>
-                        New status
+                        {t("newStatus")}
                         <select
-                          aria-label="New status"
+                          aria-label={t("newStatus")}
                           value={newStatus}
                           onChange={(e) => setNewStatus(e.target.value)}
                         >
@@ -705,12 +747,12 @@ export function App() {
                             .filter((s) => s !== "escalated")
                             .map((s) => (
                               <option key={s} value={s}>
-                                {label(s)}
+                                {statusLabel(s)}
                               </option>
                             ))}
                         </select>
                       </label>
-                      <button>Save status</button>
+                      <button>{t("saveStatus")}</button>
                     </form>
                     <form
                       onSubmit={(e) => {
@@ -719,27 +761,27 @@ export function App() {
                       }}
                     >
                       <label>
-                        Responsible team
+                        {t("responsibleTeam")}
                         <select
-                          aria-label="Responsible team"
+                          aria-label={t("responsibleTeam")}
                           value={team}
                           onChange={(e) => setTeam(e.target.value)}
                         >
-                          <option value="security">Security</option>
+                          <option value="security">{t("security")}</option>
                           <option value="data_protection">
-                            Data protection
+                            {t("dataProtection")}
                           </option>
                         </select>
                       </label>
                       <label>
-                        Reviewer
+                        {t("reviewer")}
                         <input
                           maxLength={100}
                           value={reviewer}
                           onChange={(e) => setReviewer(e.target.value)}
                         />
                       </label>
-                      <button>Save assignment</button>
+                      <button>{t("saveAssignment")}</button>
                     </form>
                     <form
                       onSubmit={(e) => {
@@ -748,7 +790,7 @@ export function App() {
                       }}
                     >
                       <label>
-                        Administrator note
+                        {t("adminNote")}
                         <textarea
                           required
                           maxLength={5000}
@@ -756,7 +798,7 @@ export function App() {
                           onChange={(e) => setNote(e.target.value)}
                         />
                       </label>
-                      <button>Add note</button>
+                      <button>{t("addNote")}</button>
                     </form>
                     <form
                       onSubmit={(e) => {
@@ -765,20 +807,22 @@ export function App() {
                       }}
                     >
                       <label>
-                        Escalation decision
+                        {t("escalationDecision")}
                         <select
-                          aria-label="Escalation decision"
+                          aria-label={t("escalationDecision")}
                           value={decision}
                           onChange={(e) => setDecision(e.target.value)}
                         >
-                          <option value="escalate">Escalate for review</option>
+                          <option value="escalate">
+                            {t("escalateForReview")}
+                          </option>
                           <option value="do_not_escalate">
-                            Do not escalate
+                            {t("doNotEscalate")}
                           </option>
                         </select>
                       </label>
                       <label>
-                        Decision reason
+                        {t("decisionReason")}
                         <textarea
                           required
                           minLength={3}
@@ -787,7 +831,7 @@ export function App() {
                           onChange={(e) => setReason(e.target.value)}
                         />
                       </label>
-                      <button>Review escalation decision</button>
+                      <button>{t("reviewEscalation")}</button>
                     </form>
                   </fieldset>
                 </>
@@ -810,14 +854,14 @@ export function App() {
             aria-labelledby="confirm-title"
             className="panel modal"
           >
-            <h2 id="confirm-title">Confirm escalation decision</h2>
+            <h2 id="confirm-title">{t("confirmEscalation")}</h2>
             <p>{detail.id}</p>
             <p>
               {label(decision)}: {reason}
             </p>
-            <p>This decision will be persisted and audited.</p>
+            <p>{t("decisionAudited")}</p>
             <button autoFocus disabled={busy} onClick={() => setConfirm(false)}>
-              Cancel
+              {t("cancel")}
             </button>{" "}
             <button
               disabled={busy}
@@ -829,7 +873,7 @@ export function App() {
                 })
               }
             >
-              Confirm decision
+              {t("confirmDecision")}
             </button>
           </section>
         </div>

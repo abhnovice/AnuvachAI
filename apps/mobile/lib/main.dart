@@ -1,8 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+import 'remote_localization_service.dart';
+import 'remote_app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'reporting.dart';
 import 'device_review.dart';
 import 'design.dart';
+import 'language.dart';
+import 'new_tabs.dart';
+import 'l10n/app_localizations.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -10,23 +18,106 @@ Future<void> main() async {
   runApp(AnuvachApp(prefs: prefs, api: Api()));
 }
 
-class AnuvachApp extends StatelessWidget {
+class AnuvachApp extends StatefulWidget {
   const AnuvachApp({super.key, required this.prefs, required this.api});
   final SharedPreferences prefs;
   final Api api;
   @override
-  Widget build(BuildContext context) => MaterialApp(
-    title: 'Anuvach.AI',
-    debugShowCheckedModeBanner: false,
-    theme: anuvachTheme(),
-    home: Home(prefs: prefs, api: api),
+  State<AnuvachApp> createState() => _AnuvachAppState();
+}
+
+class _AnuvachAppState extends State<AnuvachApp> {
+  late final LocaleController localeController = LocaleController(widget.prefs);
+  late final RemoteLocalizationService remoteTranslations =
+      RemoteLocalizationService(widget.prefs);
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeRemote();
+  }
+
+  Future<void> _initializeRemote() async {
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      if (mounted) await remoteTranslations.initialize();
+    } catch (error) {
+      debugPrint('Firebase unavailable: $error');
+    }
+  }
+
+  String get language => localeController.locale.languageCode;
+  late ThemeMode mode = ThemeMode.values.firstWhere(
+    (m) => m.name == widget.prefs.getString('theme_mode'),
+    orElse: () => ThemeMode.system,
+  );
+  void setLanguage(String value) {
+    localeController.setLanguage(value);
+  }
+
+  @override
+  void dispose() {
+    localeController.dispose();
+    remoteTranslations.dispose();
+    super.dispose();
+  }
+
+  void setMode(ThemeMode value) {
+    setState(() => mode = value);
+    widget.prefs.setString('theme_mode', value.name);
+  }
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: Listenable.merge([localeController, remoteTranslations]),
+    builder: (context, _) => MaterialApp(
+      title: 'Anuvach.AI',
+      debugShowCheckedModeBanner: false,
+      theme: anuvachTheme(),
+      darkTheme: anuvachDarkTheme(),
+      themeMode: mode,
+      locale: localeController.locale,
+      localizationsDelegates: [
+        RemoteAppLocalizationsDelegate(
+          remoteTranslations.overrides,
+          remoteTranslations.revision,
+        ),
+        ...AppLocalizations.localizationsDelegates,
+      ],
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Home(
+        prefs: widget.prefs,
+        api: widget.api,
+        language: language,
+        mode: mode,
+        onLanguage: setLanguage,
+        onTheme: setMode,
+        onRefreshTranslations: () => remoteTranslations.refresh(force: true),
+      ),
+    ),
   );
 }
 
 class Home extends StatefulWidget {
-  const Home({super.key, required this.prefs, required this.api});
+  const Home({
+    super.key,
+    required this.prefs,
+    required this.api,
+    required this.language,
+    required this.mode,
+    required this.onLanguage,
+    required this.onTheme,
+    this.onRefreshTranslations,
+  });
   final SharedPreferences prefs;
   final Api api;
+  final String language;
+  final ThemeMode mode;
+  final ValueChanged<String> onLanguage;
+  final ValueChanged<ThemeMode> onTheme;
+  final Future<bool> Function()? onRefreshTranslations;
   @override
   State<Home> createState() => _HomeState();
 }
@@ -37,6 +128,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
   String? error;
   bool loading = false;
   int tab = 0;
+  final chatMessages = <String>[];
   late bool consent = widget.prefs.getBool('consent') ?? false;
   @override
   void initState() {
@@ -86,11 +178,12 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     if (!consent) {
+      final strings = AppLocalizations.of(context)!;
       return page(context, 'Anuvach.AI', [
         const Center(child: BrandMark(size: 64)),
-        Center(child: eyebrow('EMPLOYEE INCIDENT REPORTING')),
-        const Text(
-          'A clear account.\nA safer next step.',
+        Center(child: eyebrow(strings.consentEyebrow)),
+        Text(
+          strings.consentHeadline,
           textAlign: TextAlign.center,
           style: TextStyle(
             fontFamily: 'NotoSans',
@@ -101,45 +194,43 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
             color: brandInk,
           ),
         ),
-        const Text(
-          'Something felt wrong? Start here.\nDescribe it in your words, then review before sharing.',
-          textAlign: TextAlign.center,
-        ),
-        const SurfaceCard(
+        Text(strings.consentIntro, textAlign: TextAlign.center),
+        SurfaceCard(
           child: Column(
             children: [
               InfoRow(
                 icon: Icons.edit_note_outlined,
-                title: 'Your words, your report',
-                text:
-                    'Description, language, incident type, and optional app and evidence notes.',
+                title: strings.consentWordsTitle,
+                text: strings.consentWordsText,
               ),
-              Divider(height: 12),
+              const Divider(height: 12),
               InfoRow(
                 icon: Icons.fact_check_outlined,
-                title: 'You choose what to share',
-                text:
-                    'Device checks are optional. Nothing is submitted until you review and confirm.',
+                title: strings.consentChoiceTitle,
+                text: strings.consentChoiceText,
               ),
-              Divider(height: 12),
+              const Divider(height: 12),
               InfoRow(
                 icon: Icons.storage_outlined,
-                title: 'Stored locally for this demo',
-                text:
-                    'Drafts stay on this device. Submitted reports go to the local API for administrator review.',
+                title: strings.consentStorageTitle,
+                text: strings.consentStorageText,
               ),
             ],
           ),
         ),
-        const Row(
+        Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.info_outline, size: 18, color: brandTeal),
-            SizedBox(width: 10),
+            const Icon(Icons.info_outline, size: 18, color: brandTeal),
+            const SizedBox(width: 10),
             Expanded(
               child: Text(
-                'Synthetic demonstration only. Do not enter real employee information. No sign-in or production access controls. No audio is recorded or analysed.',
-                style: TextStyle(fontSize: 12, height: 1.5, color: brandMuted),
+                strings.consentNotice,
+                style: const TextStyle(
+                  fontSize: 12,
+                  height: 1.5,
+                  color: brandMuted,
+                ),
               ),
             ),
           ],
@@ -151,7 +242,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
             setState(() => consent = true);
             load();
           },
-          child: const Text('I understand · Continue'),
+          child: Text(strings.consentContinue),
         ),
       ]);
     }
@@ -159,27 +250,83 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
       selectedIndex: tab,
       onDestinationSelected: (value) {
         setState(() => tab = value);
-        if (value != 2) load();
+        if (value == 1) load();
       },
-      destinations: const [
+      destinations: [
         NavigationDestination(
-          icon: Icon(Icons.home_outlined),
-          selectedIcon: Icon(Icons.home_rounded),
-          label: 'Home',
+          icon: const Icon(Icons.search),
+          selectedIcon: const Icon(Icons.search_rounded),
+          label: AppLocalizations.of(context)!.check,
         ),
         NavigationDestination(
-          icon: Icon(Icons.article_outlined),
-          selectedIcon: Icon(Icons.article_rounded),
-          label: 'Reports',
+          icon: const Icon(Icons.article_outlined),
+          selectedIcon: const Icon(Icons.article_rounded),
+          label: AppLocalizations.of(context)!.reports,
         ),
         NavigationDestination(
-          icon: Icon(Icons.help_outline),
-          selectedIcon: Icon(Icons.help_rounded),
-          label: 'Help',
+          icon: const Icon(Icons.apps_outlined),
+          selectedIcon: const Icon(Icons.apps_rounded),
+          label: AppLocalizations.of(context)!.apps,
         ),
       ],
     );
-    if (tab == 2) return Help(api: widget.api, navigation: navigation);
+    if (tab != 1) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(
+            tab == 0
+                ? AppLocalizations.of(context)!.check
+                : AppLocalizations.of(context)!.apps,
+          ),
+          actions: [
+            if (kDebugMode && widget.onRefreshTranslations != null)
+              IconButton(
+                tooltip: 'Refresh translations (debug)',
+                icon: const Icon(Icons.translate),
+                onPressed: () => widget.onRefreshTranslations!(),
+              ),
+            IconButton(
+              tooltip: AppLocalizations.of(context)!.settings,
+              icon: const Icon(Icons.tune),
+              onPressed: () => showModalBottomSheet<void>(
+                context: context,
+                isScrollControlled: true,
+                builder: (context) => StatefulBuilder(
+                  builder: (context, setSheetState) => PreferencesSheet(
+                    language: widget.language,
+                    theme: widget.mode,
+                    onLanguage: (v) {
+                      widget.onLanguage(v);
+                      setSheetState(() {});
+                    },
+                    onTheme: (v) {
+                      widget.onTheme(v);
+                      setSheetState(() {});
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        bottomNavigationBar: navigation,
+        body: SafeArea(
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 250),
+            child: tab == 0
+                ? CheckTab(
+                    key: const ValueKey('check'),
+                    language: widget.language,
+                    messages: chatMessages,
+                  )
+                : AccessTab(
+                    key: const ValueKey('access'),
+                    language: widget.language,
+                  ),
+          ),
+        ),
+      );
+    }
     return page(
       context,
       'Anuvach.AI',
@@ -289,10 +436,10 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
             Expanded(
               child: Text(
                 tab == 0 ? 'Recent reports' : 'Report history',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
-                  color: brandInk,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
             ),
@@ -327,6 +474,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
           ),
         for (final r in (tab == 0 ? reports.take(3) : reports))
           Card(
+            color: Colors.white,
             child: InkWell(
               borderRadius: BorderRadius.circular(26),
               onTap: () async {
@@ -453,30 +601,31 @@ class _ReportFormState extends State<ReportForm> {
   }
 
   @override
-  Widget build(BuildContext context) => page(context, 'Describe the incident', [
+  Widget build(
+    BuildContext context,
+  ) => page(context, AppLocalizations.of(context)!.describeIncident, [
     const FlowSteps(current: 0),
     const SizedBox(height: 4),
-    heading('What happened?'),
-    const Text(
-      'Use synthetic details only. Example: an unexpected IT-support caller asked you to install a remote-access app or share a code.',
-    ),
+    heading(AppLocalizations.of(context)!.whatHappened),
+    Text(AppLocalizations.of(context)!.syntheticExample),
     if (error != null)
       Text(
         error!,
         style: TextStyle(color: Theme.of(context).colorScheme.error),
       ),
-    if (draft.locked)
-      const Text(
-        'A submission may already have reached the API. Retry the preserved reviewed report to retrieve its ticket safely. Editing is paused until this is resolved.',
-      ),
+    if (draft.locked) Text(AppLocalizations.of(context)!.pendingSubmission),
     Form(
       key: form,
       child: Column(
         children: [
           for (final spec in [
-            ('description', 'What happened?', 5000),
-            ('appName', 'App name (optional)', 200),
-            ('evidenceNotes', 'Evidence notes (optional)', 5000),
+            ('description', AppLocalizations.of(context)!.whatHappened, 5000),
+            ('appName', AppLocalizations.of(context)!.appNameOptional, 200),
+            (
+              'evidenceNotes',
+              AppLocalizations.of(context)!.evidenceNotesOptional,
+              5000,
+            ),
           ])
             Padding(
               padding: const EdgeInsets.only(bottom: 16),
@@ -489,7 +638,7 @@ class _ReportFormState extends State<ReportForm> {
                 decoration: InputDecoration(labelText: spec.$2),
                 validator: (v) =>
                     spec.$1 == 'description' && (v ?? '').trim().length < 10
-                    ? 'Describe the incident in at least 10 characters.'
+                    ? AppLocalizations.of(context)!.descriptionTooShort
                     : null,
                 onChanged: (v) {
                   draft.update(spec.$1, v);
@@ -499,13 +648,21 @@ class _ReportFormState extends State<ReportForm> {
             ),
           DropdownButtonFormField<String>(
             initialValue: draft.fields['language'],
-            decoration: const InputDecoration(labelText: 'Report language'),
-            items: const [
-              DropdownMenuItem(value: 'english', child: Text('English')),
-              DropdownMenuItem(value: 'hindi', child: Text('Hindi')),
+            decoration: InputDecoration(
+              labelText: AppLocalizations.of(context)!.reportLanguageLabel,
+            ),
+            items: [
+              DropdownMenuItem(
+                value: 'english',
+                child: Text(AppLocalizations.of(context)!.englishLanguage),
+              ),
+              DropdownMenuItem(
+                value: 'hindi',
+                child: Text(AppLocalizations.of(context)!.hindiLanguage),
+              ),
               DropdownMenuItem(
                 value: 'mixed',
-                child: Text('Mixed English / Hindi'),
+                child: Text(AppLocalizations.of(context)!.mixedLanguage),
               ),
             ],
             onChanged: draft.locked
@@ -518,7 +675,9 @@ class _ReportFormState extends State<ReportForm> {
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
             initialValue: draft.fields['incidentType'],
-            decoration: const InputDecoration(labelText: 'Incident type'),
+            decoration: InputDecoration(
+              labelText: AppLocalizations.of(context)!.incidentTypeLabel,
+            ),
             items: [
               for (final t in [
                 'support_call',
@@ -526,7 +685,20 @@ class _ReportFormState extends State<ReportForm> {
                 'mistaken_report',
                 'other',
               ])
-                DropdownMenuItem(value: t, child: Text(t.replaceAll('_', ' '))),
+                DropdownMenuItem(
+                  value: t,
+                  child: Text(switch (t) {
+                    'support_call' => AppLocalizations.of(context)!.supportCall,
+                    'suspicious_message' => AppLocalizations.of(
+                      context,
+                    )!.suspiciousMessage,
+                    'mistaken_report' => AppLocalizations.of(
+                      context,
+                    )!.mistakenReport,
+                    'other' => AppLocalizations.of(context)!.otherIncident,
+                    _ => t,
+                  }),
+                ),
             ],
             onChanged: draft.locked
                 ? null
@@ -542,12 +714,12 @@ class _ReportFormState extends State<ReportForm> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          heading('Optional device review'),
+          heading(AppLocalizations.of(context)!.optionalDeviceReview),
           const SizedBox(height: 12),
           Text(
             device.available
-                ? 'With your consent, check whether Android reports a secure screen lock. This does not check installed remote-access apps or permission use.'
-                : 'Automatic device checks are unavailable on iOS in this stage. Review installed apps and permissions manually in Settings, or contact your known helpdesk.',
+                ? AppLocalizations.of(context)!.androidDeviceReview
+                : AppLocalizations.of(context)!.iosDeviceReview,
           ),
           if (device.available)
             OutlinedButton(
@@ -557,18 +729,24 @@ class _ReportFormState extends State<ReportForm> {
                       final agreed = await showDialog<bool>(
                         context: context,
                         builder: (context) => AlertDialog(
-                          title: const Text('Allow this one check?'),
-                          content: const Text(
-                            'Read secure screen-lock configuration now and include its result and timestamp in your report. No runtime permission is needed.',
+                          title: Text(
+                            AppLocalizations.of(context)!.allowOneCheck,
+                          ),
+                          content: Text(
+                            AppLocalizations.of(context)!.checkExplanation,
                           ),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.pop(context, false),
-                              child: const Text('Cancel'),
+                              child: Text(
+                                AppLocalizations.of(context)!.cancelAction,
+                              ),
                             ),
                             FilledButton(
                               onPressed: () => Navigator.pop(context, true),
-                              child: const Text('Check and include'),
+                              child: Text(
+                                AppLocalizations.of(context)!.checkAndInclude,
+                              ),
                             ),
                           ],
                         ),
@@ -588,7 +766,9 @@ class _ReportFormState extends State<ReportForm> {
                       }
                     },
               child: Text(
-                checking ? 'Checking…' : 'Review and consent to device check',
+                checking
+                    ? AppLocalizations.of(context)!.checking
+                    : AppLocalizations.of(context)!.reviewDeviceCheck,
               ),
             ),
           if ((draft.fields['observations'] as List).isNotEmpty) ...[
@@ -603,7 +783,7 @@ class _ReportFormState extends State<ReportForm> {
                       save();
                       setState(() {});
                     },
-              child: const Text('Remove device observation'),
+              child: Text(AppLocalizations.of(context)!.removeObservation),
             ),
           ],
         ],
@@ -628,7 +808,7 @@ class _ReportFormState extends State<ReportForm> {
               );
               if (submitted == true && context.mounted) Navigator.pop(context);
             },
-      child: const Text('Review report'),
+      child: Text(AppLocalizations.of(context)!.reviewReport),
     ),
   ]);
 }
@@ -648,20 +828,17 @@ class _ReviewState extends State<Review> {
     listenable: widget.draft,
     builder: (context, _) {
       final d = widget.draft;
+      final strings = AppLocalizations.of(context)!;
       return PopScope(
         canPop: !d.busy,
-        child: page(context, 'Review before sending', [
+        child: page(context, strings.reviewBeforeSending, [
           const FlowSteps(current: 1),
-          const Text(
-            'These are the exact report facts to be sent. The API adds a ticket ID, timestamps and initial status.',
-          ),
+          Text(strings.reviewFactsDescription),
           facts(snapshot),
-          const Text('Submission includes your explicit confirmation: true.'),
+          Text(strings.reviewConfirmationIncluded),
           CheckboxListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text(
-              'I confirm these facts and want to create this ticket.',
-            ),
+            title: Text(strings.reviewConfirmFacts),
             value: d.confirmed,
             onChanged: d.busy ? null : (v) => d.confirm(v ?? false),
           ),
@@ -689,7 +866,7 @@ class _ReviewState extends State<Review> {
                       if (mounted) setState(() => error = e.toString());
                     }
                   },
-            child: Text(d.busy ? 'Submitting…' : 'Confirm and submit'),
+            child: Text(d.busy ? strings.submitting : strings.confirmAndSubmit),
           ),
           TextButton(
             onPressed: d.busy
@@ -698,7 +875,9 @@ class _ReviewState extends State<Review> {
                     d.confirm(false);
                     Navigator.pop(context, false);
                   },
-            child: Text(d.locked ? 'Back · draft preserved' : 'Back to edit'),
+            child: Text(
+              d.locked ? strings.backDraftPreserved : strings.backToEdit,
+            ),
           ),
         ]),
       );
@@ -753,8 +932,10 @@ class _ReportDetailState extends State<ReportDetail>
   }
 
   @override
-  Widget build(BuildContext context) => page(context, 'Report detail', [
-    eyebrow('TICKET DETAILS'),
+  Widget build(
+    BuildContext context,
+  ) => page(context, AppLocalizations.of(context)!.detailTitle, [
+    eyebrow(AppLocalizations.of(context)!.ticketDetails),
     SelectableText(
       widget.id,
       style: const TextStyle(fontSize: 11, color: brandMuted),
@@ -763,7 +944,7 @@ class _ReportDetailState extends State<ReportDetail>
     if (error != null) Text(error!),
     OutlinedButton(
       onPressed: loading ? null : load,
-      child: const Text('Refresh status'),
+      child: Text(AppLocalizations.of(context)!.refreshStatus),
     ),
     if (report != null) ...[
       SurfaceCard(
@@ -771,7 +952,7 @@ class _ReportDetailState extends State<ReportDetail>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            eyebrow('LATEST UPDATE'),
+            eyebrow(AppLocalizations.of(context)!.latestUpdate),
             const SizedBox(height: 12),
             heading(
               'Status: ${(report!['status'] as String).replaceAll('_', ' ')}',
@@ -794,23 +975,18 @@ class Help extends StatelessWidget {
   @override
   Widget build(
     BuildContext context,
-  ) => page(context, 'Help, privacy and settings', [
-    const SurfaceCard(
+  ) => page(context, AppLocalizations.of(context)!.helpTitle, [
+    SurfaceCard(
       tint: true,
       child: InfoRow(
         icon: Icons.shield_outlined,
-        title: 'You stay in control.',
-        text:
-            'Know what is shared, what is stored, and what this stage can check.',
+        title: AppLocalizations.of(context)!.stayInControl,
+        text: AppLocalizations.of(context)!.helpIntro,
       ),
     ),
-    heading('Your report, explained'),
-    const Text(
-      'Use synthetic data only. Drafts are stored locally in app preferences, without encryption. Submitted facts are stored by the local API in SQLite. Administrator notes stay in the administrator view. This demonstration has no authentication.',
-    ),
-    const Text(
-      'Opening settings does not change any setting. On Android you can inspect this app’s settings; on iOS you can open this app’s Settings page. Review other apps and permissions manually through system Settings. A visible permission does not prove it was used.',
-    ),
+    heading(AppLocalizations.of(context)!.reportExplained),
+    Text(AppLocalizations.of(context)!.helpStorage),
+    Text(AppLocalizations.of(context)!.helpSettings),
     OutlinedButton(
       onPressed: () async {
         try {
@@ -820,28 +996,26 @@ class Help extends StatelessWidget {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
-                  'Could not open settings. Open system Settings manually. $e',
+                  AppLocalizations.of(context)!.settingsOpenError,
                 ),
               ),
             );
           }
         }
       },
-      child: const Text('Open this app’s settings'),
+      child: Text(AppLocalizations.of(context)!.openAppSettings),
     ),
     ExpansionTile(
-      title: const Text('Demo connection'),
+      title: Text(AppLocalizations.of(context)!.demoConnection),
       children: [
         Padding(
           padding: const EdgeInsets.all(16),
           child: Text(
-            'API address: ${api.base}\nSet API_BASE_URL at build/run time.',
+            '${AppLocalizations.of(context)!.apiAddressLabel}: ${api.base}\n${AppLocalizations.of(context)!.apiBuildHint}',
           ),
         ),
       ],
     ),
-    const Text(
-      'Security and data protection are separate reviewer roles in the demonstration model. Real employee data requires server-enforced access control and a defined retention policy.',
-    ),
+    Text(AppLocalizations.of(context)!.helpRoles),
   ], navigation: navigation);
 }

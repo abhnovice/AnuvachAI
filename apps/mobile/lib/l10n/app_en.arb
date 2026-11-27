@@ -155,5 +155,9 @@
   "voiceStart": "Start voice",
   "voiceEnd": "End voice",
   "voiceApply": "Apply correction",
-  "voiceType": "Type a message"
+  "voiceType": "Type a message",
+  "noReports": "No reports yet",
+  "reportHistoryHint": "Submitted tickets and their latest status will appear here.",
+  "refreshReports": "Refresh reports",
+  "tryAgain": "Try again"
 }

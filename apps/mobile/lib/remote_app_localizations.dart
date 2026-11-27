@@ -377,6 +377,19 @@ class RemoteAppLocalizations extends AppLocalizations {
   String get voiceApply => values['voiceApply'] ?? base.voiceApply;
   @override
   String get voiceType => values['voiceType'] ?? base.voiceType;
+
+  @override
+  String get noReports => values['noReports'] ?? base.noReports;
+
+  @override
+  String get reportHistoryHint =>
+      values['reportHistoryHint'] ?? base.reportHistoryHint;
+
+  @override
+  String get refreshReports => values['refreshReports'] ?? base.refreshReports;
+
+  @override
+  String get tryAgain => values['tryAgain'] ?? base.tryAgain;
 }
 
 // Supports ICU cardinal plural messages with the count argument, including

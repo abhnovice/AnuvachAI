@@ -451,4 +451,17 @@ class AppLocalizationsKn extends AppLocalizations {
 
   @override
   String get voiceType => 'ಸಂದೇಶ ಟೈಪ್ ಮಾಡಿ';
+
+  @override
+  String get noReports => 'ಇನ್ನೂ ವರದಿಗಳಿಲ್ಲ';
+
+  @override
+  String get reportHistoryHint =>
+      'ಸಲ್ಲಿಸಿದ ಟಿಕೆಟ್‌ಗಳು ಮತ್ತು ಅವುಗಳ ಇತ್ತೀಚಿನ ಸ್ಥಿತಿ ಇಲ್ಲಿ ಕಾಣಿಸುತ್ತವೆ.';
+
+  @override
+  String get refreshReports => 'ವರದಿಗಳನ್ನು ರಿಫ್ರೆಶ್ ಮಾಡಿ';
+
+  @override
+  String get tryAgain => 'ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ';
 }

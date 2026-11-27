@@ -449,4 +449,17 @@ class AppLocalizationsBn extends AppLocalizations {
 
   @override
   String get voiceType => 'বার্তা লিখুন';
+
+  @override
+  String get noReports => 'এখনো কোনো রিপোর্ট নেই';
+
+  @override
+  String get reportHistoryHint =>
+      'জমা দেওয়া টিকিট ও তাদের সর্বশেষ অবস্থা এখানে দেখা যাবে।';
+
+  @override
+  String get refreshReports => 'রিপোর্ট রিফ্রেশ করুন';
+
+  @override
+  String get tryAgain => 'আবার চেষ্টা করুন';
 }

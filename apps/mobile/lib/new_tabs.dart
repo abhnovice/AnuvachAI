@@ -270,10 +270,10 @@ class _CheckTabState extends State<CheckTab> {
               ),
             ),
             Material(
-              color: colors.surface,
+              color: colors.surfaceContainerLow,
               shape: RoundedRectangleBorder(
                 borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(30),
+                  top: Radius.circular(22),
                 ),
                 side: BorderSide(color: colors.outlineVariant),
               ),
@@ -298,24 +298,19 @@ class _CheckTabState extends State<CheckTab> {
                         ),
                       ),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 6),
-                      child: _VoiceControl(
-                        phase: phase,
-                        diameter: MediaQuery.viewInsetsOf(context).bottom > 0
-                            ? 48
-                            : empty
-                            ? 76
-                            : 60,
-                        duration: motion,
-                        label: voice.active
-                            ? strings.voiceEnd
-                            : strings.voiceStart,
-                        onPressed: voice.microphone,
-                      ),
-                    ),
+                    const SizedBox(height: 8),
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
+                        _VoiceControl(
+                          phase: voice.phase,
+                          duration: motion,
+                          label: voice.active
+                              ? strings.voiceEnd
+                              : strings.voiceStart,
+                          onPressed: voice.microphone,
+                        ),
+                        const SizedBox(width: 8),
                         Expanded(
                           child: TextField(
                             controller: controller,
@@ -339,10 +334,18 @@ class _CheckTabState extends State<CheckTab> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        IconButton.filled(
-                          onPressed: busy ? null : () => send(controller.text),
-                          tooltip: strings.send,
-                          icon: const Icon(Icons.arrow_upward_rounded),
+                        ListenableBuilder(
+                          listenable: controller,
+                          builder: (context, _) => IconButton.filled(
+                            onPressed: busy || controller.text.trim().isEmpty
+                                ? null
+                                : () => send(controller.text),
+                            tooltip: strings.send,
+                            style: IconButton.styleFrom(
+                              minimumSize: const Size.square(48),
+                            ),
+                            icon: const Icon(Icons.arrow_upward_rounded),
+                          ),
                         ),
                       ],
                     ),
@@ -365,13 +368,16 @@ class _CheckTabState extends State<CheckTab> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const BrandMark(size: 84),
+          const BrandMark(size: 68),
           const SizedBox(height: 22),
-          Text(
-            strings.voiceWelcome,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.headlineMedium?.copyWith(
-              color: theme.colorScheme.onSurface,
+          Semantics(
+            header: true,
+            child: Text(
+              strings.voiceWelcome,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.headlineMedium?.copyWith(
+                color: theme.colorScheme.onSurface,
+              ),
             ),
           ),
           const SizedBox(height: 8),
@@ -439,7 +445,7 @@ class _ConversationBubble extends StatelessWidget {
           ? AlignmentDirectional.centerEnd
           : AlignmentDirectional.centerStart,
       child: FractionallySizedBox(
-        widthFactor: .91,
+        widthFactor: employee ? .89 : .95,
         child: Container(
           margin: const EdgeInsets.only(bottom: 10),
           padding: const EdgeInsetsDirectional.fromSTEB(16, 12, 16, 12),
@@ -453,7 +459,7 @@ class _ConversationBubble extends StatelessWidget {
               bottomStart: Radius.circular(employee ? 23 : 7),
               bottomEnd: Radius.circular(employee ? 7 : 23),
             ),
-            border: Border.all(color: colors.outlineVariant),
+            border: employee ? null : Border.all(color: colors.outlineVariant),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -485,14 +491,12 @@ class _ConversationBubble extends StatelessWidget {
 class _VoiceControl extends StatelessWidget {
   const _VoiceControl({
     required this.phase,
-    required this.diameter,
     required this.duration,
     required this.label,
     this.onPressed,
   });
 
   final VoicePhase phase;
-  final double diameter;
   final Duration duration;
   final String label;
   final VoidCallback? onPressed;
@@ -510,65 +514,22 @@ class _VoiceControl extends StatelessWidget {
       VoicePhase.ending => Icons.call_end_rounded,
       VoicePhase.error => Icons.refresh_rounded,
     };
-    return CustomPaint(
-      painter: _VoiceDial(tint),
-      child: AnimatedContainer(
+    return IconButton.filledTonal(
+      onPressed: onPressed,
+      tooltip: label,
+      style: IconButton.styleFrom(
+        minimumSize: const Size.square(48),
+        backgroundColor: phase == VoicePhase.error
+            ? colors.errorContainer
+            : colors.primaryContainer,
+        foregroundColor: tint,
+      ),
+      icon: AnimatedSwitcher(
         duration: duration,
-        curve: Curves.easeOutCubic,
-        width: diameter + 20,
-        height: diameter + 20,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: tint.withValues(alpha: .08),
-          border: Border.all(color: tint.withValues(alpha: .24)),
-        ),
-        padding: const EdgeInsets.all(9),
-        child: IconButton.filled(
-          onPressed: onPressed,
-          tooltip: label,
-          style: IconButton.styleFrom(
-            backgroundColor: tint,
-            foregroundColor: phase == VoicePhase.error
-                ? colors.onError
-                : colors.onPrimary,
-          ),
-          icon: AnimatedSwitcher(
-            duration: duration,
-            child: Icon(icon, key: ValueKey(icon), size: 30),
-          ),
-        ),
+        child: Icon(icon, key: ValueKey(icon)),
       ),
     );
   }
-}
-
-class _VoiceDial extends CustomPainter {
-  const _VoiceDial(this.tint);
-
-  final Color tint;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = size.center(Offset.zero);
-    final radius = size.shortestSide / 2;
-    final brush = Paint()
-      ..strokeWidth = 1.4
-      ..strokeCap = StrokeCap.round;
-    for (var index = 0; index < 32; index++) {
-      final angle = math.pi * index / 16;
-      final direction = Offset(math.cos(angle), math.sin(angle));
-      final major = index % 4 == 0;
-      brush.color = tint.withValues(alpha: major ? .5 : .22);
-      canvas.drawLine(
-        center + direction * (radius - (major ? 7 : 4)),
-        center + direction * (radius - 1),
-        brush,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(_VoiceDial oldDelegate) => oldDelegate.tint != tint;
 }
 
 class AccessTab extends StatefulWidget {
@@ -756,7 +717,7 @@ class _PreferencesSheetState extends State<PreferencesSheet> {
   late ThemeMode theme = widget.theme;
   @override
   Widget build(BuildContext context) => SafeArea(
-    child: Padding(
+    child: SingleChildScrollView(
       padding: const EdgeInsets.all(22),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -766,6 +727,8 @@ class _PreferencesSheetState extends State<PreferencesSheet> {
             style: Theme.of(context).textTheme.titleLarge,
           ),
           DropdownButtonFormField<String>(
+            isExpanded: true,
+            itemHeight: null,
             initialValue: language,
             decoration: InputDecoration(
               labelText: AppLocalizations.of(context)!.language,
@@ -784,6 +747,8 @@ class _PreferencesSheetState extends State<PreferencesSheet> {
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<ThemeMode>(
+            isExpanded: true,
+            itemHeight: null,
             initialValue: theme,
             decoration: InputDecoration(
               labelText: AppLocalizations.of(context)!.theme,

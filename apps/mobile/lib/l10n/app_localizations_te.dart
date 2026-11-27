@@ -460,4 +460,17 @@ class AppLocalizationsTe extends AppLocalizations {
 
   @override
   String get voiceType => 'సందేశాన్ని టైప్ చేయండి';
+
+  @override
+  String get noReports => 'ఇంకా నివేదికలు లేవు';
+
+  @override
+  String get reportHistoryHint =>
+      'సమర్పించిన టికెట్లు, వాటి తాజా స్థితి ఇక్కడ కనిపిస్తాయి.';
+
+  @override
+  String get refreshReports => 'నివేదికలను నవీకరించండి';
+
+  @override
+  String get tryAgain => 'మళ్లీ ప్రయత్నించండి';
 }

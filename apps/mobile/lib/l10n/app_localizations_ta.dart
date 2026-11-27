@@ -467,4 +467,17 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get voiceType => 'செய்தியைத் தட்டச்சு செய்யவும்';
+
+  @override
+  String get noReports => 'இன்னும் அறிக்கைகள் இல்லை';
+
+  @override
+  String get reportHistoryHint =>
+      'சமர்ப்பித்த டிக்கெட்டுகளும் அவற்றின் தற்போதைய நிலையும் இங்கே தெரியும்.';
+
+  @override
+  String get refreshReports => 'அறிக்கைகளைப் புதுப்பிக்கவும்';
+
+  @override
+  String get tryAgain => 'மீண்டும் முயலவும்';
 }

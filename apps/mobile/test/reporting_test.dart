@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'package:anuvach_mobile/design.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -147,6 +149,152 @@ void main() {
       await tester.pumpAndSettle();
       expect(calls, 0);
       expect(draft.confirmed, false);
+    },
+  );
+  testWidgets(
+    'Check, Reports and Apps keep the conversation and draft reachable',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({'consent': true});
+      final prefs = await SharedPreferences.getInstance();
+      final api = Api(
+        client: MockClient((request) async {
+          if (request.url.path.endsWith('/turns')) {
+            return http.Response('{"reply":"When did this happen?"}', 200);
+          }
+          expect(request.method, 'GET');
+          return http.Response('[]', 200);
+        }),
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: anuvachTheme(),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Home(
+            prefs: prefs,
+            api: api,
+            language: 'en',
+            mode: ThemeMode.light,
+            onLanguage: (_) {},
+            onTheme: (_) {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      const statement = 'A synthetic caller asked for a code.';
+      await tester.enterText(find.byType(TextField), statement);
+      await tester.pump();
+      await tester.tap(find.byTooltip('Send'));
+      await tester.pumpAndSettle();
+
+      final navigation = find.byType(NavigationBar);
+      Future<void> select(String label) async {
+        await tester.tap(
+          find.descendant(of: navigation, matching: find.text(label)),
+        );
+        await tester.pumpAndSettle();
+      }
+
+      await select('Reports');
+      expect(find.text('No reports yet'), findsOneWidget);
+      await select('Access');
+      expect(tester.widget<NavigationBar>(navigation).selectedIndex, 2);
+      await select('Check');
+      expect(find.text(statement), findsOneWidget);
+      await tester.tap(find.text('Use in report'));
+      await tester.pumpAndSettle();
+      expect(find.text(statement), findsOneWidget);
+      expect(Draft(prefs, api).fields['description'], statement);
+    },
+  );
+
+  testWidgets(
+    'Review saves the failed submission and shows an ID after acknowledgement',
+    (tester) async {
+      const statement = 'A synthetic support caller asked for a code.';
+      final response = Completer<http.Response>();
+      final requests = <http.Request>[];
+      final prefs = await SharedPreferences.getInstance();
+      final api = Api(
+        client: MockClient((request) async {
+          if (request.method == 'POST') {
+            requests.add(request);
+            if (requests.length == 1) {
+              return http.Response('{"error":"offline"}', 503);
+            }
+            return response.future;
+          }
+          return http.Response(
+            jsonEncode({
+              'id': 'ANV-ACK',
+              'facts': {...jsonDecode(requests.last.body) as Json},
+              'status': 'submitted',
+              'createdAt': '2026-11-27T10:00:00Z',
+              'updatedAt': '2026-11-27T10:00:00Z',
+            }),
+            200,
+          );
+        }),
+      );
+      final original = Draft(prefs, api)..update('description', statement);
+      await original.save();
+      final draft = Draft(prefs, api);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: anuvachTheme(),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: ReportForm(draft: draft),
+        ),
+      );
+      expect(find.text(statement), findsOneWidget);
+
+      Future<void> reveal(Finder finder) async {
+        await tester.scrollUntilVisible(
+          finder,
+          225,
+          scrollable: find.byType(Scrollable).first,
+        );
+      }
+
+      final review = find.text('Review report');
+      await reveal(review);
+      await tester.tap(review);
+      await tester.pumpAndSettle();
+      expect(find.text(statement), findsOneWidget);
+      final confirmation = find.byType(CheckboxListTile);
+      final submit = find.widgetWithText(FilledButton, 'Confirm and submit');
+      await reveal(submit);
+      expect(tester.widget<FilledButton>(submit).onPressed, isNull);
+      expect(requests, isEmpty);
+      await tester.ensureVisible(confirmation);
+      await tester.tap(confirmation);
+      await tester.pump();
+      await tester.ensureVisible(submit);
+      await tester.tap(submit);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Your draft is preserved'), findsOneWidget);
+      expect(find.text('ANV-ACK'), findsNothing);
+      expect(draft.locked, true);
+      expect(Draft(prefs, api).fields['description'], statement);
+      await tester.ensureVisible(submit);
+      await tester.tap(submit);
+      await tester.pump();
+      expect(requests, hasLength(2));
+      expect(
+        requests.first.headers['idempotency-key'],
+        requests.last.headers['idempotency-key'],
+      );
+      expect(requests.first.body, requests.last.body);
+      expect(jsonDecode(requests.last.body)['confirmed'], true);
+      expect(find.text('ANV-ACK'), findsNothing);
+
+      response.complete(http.Response('{"id":"ANV-ACK"}', 201));
+      await tester.pumpAndSettle();
+      expect(find.text('ANV-ACK'), findsOneWidget);
+      expect(find.text('Submitted'), findsOneWidget);
+      expect(prefs.getString('draft'), isNull);
     },
   );
 }

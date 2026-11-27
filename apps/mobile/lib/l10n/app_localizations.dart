@@ -951,6 +951,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Type a message'**
   String get voiceType;
+
+  /// No description provided for @noReports.
+  ///
+  /// In en, this message translates to:
+  /// **'No reports yet'**
+  String get noReports;
+
+  /// No description provided for @reportHistoryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Submitted tickets and their latest status will appear here.'**
+  String get reportHistoryHint;
+
+  /// No description provided for @refreshReports.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh reports'**
+  String get refreshReports;
+
+  /// No description provided for @tryAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get tryAgain;
 }
 
 class _AppLocalizationsDelegate

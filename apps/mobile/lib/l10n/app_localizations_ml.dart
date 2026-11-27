@@ -451,4 +451,17 @@ class AppLocalizationsMl extends AppLocalizations {
 
   @override
   String get voiceType => 'സന്ദേശം ടൈപ്പ് ചെയ്യുക';
+
+  @override
+  String get noReports => 'ഇതുവരെ റിപ്പോർട്ടുകളില്ല';
+
+  @override
+  String get reportHistoryHint =>
+      'സമർപ്പിച്ച ടിക്കറ്റുകളും അവയുടെ ഏറ്റവും പുതിയ നിലയും ഇവിടെ കാണാം.';
+
+  @override
+  String get refreshReports => 'റിപ്പോർട്ടുകൾ പുതുക്കുക';
+
+  @override
+  String get tryAgain => 'വീണ്ടും ശ്രമിക്കുക';
 }

@@ -451,4 +451,17 @@ class AppLocalizationsPa extends AppLocalizations {
 
   @override
   String get voiceType => 'ਸੁਨੇਹਾ ਲਿਖੋ';
+
+  @override
+  String get noReports => 'ਹਾਲੇ ਕੋਈ ਰਿਪੋਰਟ ਨਹੀਂ ਹੈ';
+
+  @override
+  String get reportHistoryHint =>
+      'ਜਮ੍ਹਾਂ ਕੀਤੀਆਂ ਟਿਕਟਾਂ ਅਤੇ ਉਨ੍ਹਾਂ ਦੀ ਨਵੀਨਤਮ ਸਥਿਤੀ ਇੱਥੇ ਦਿਸੇਗੀ।';
+
+  @override
+  String get refreshReports => 'ਰਿਪੋਰਟਾਂ ਤਾਜ਼ਾ ਕਰੋ';
+
+  @override
+  String get tryAgain => 'ਮੁੜ ਕੋਸ਼ਿਸ਼ ਕਰੋ';
 }

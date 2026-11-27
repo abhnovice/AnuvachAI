@@ -450,4 +450,17 @@ class AppLocalizationsUr extends AppLocalizations {
 
   @override
   String get voiceType => 'پیغام لکھیں';
+
+  @override
+  String get noReports => 'ابھی کوئی رپورٹ نہیں ہے';
+
+  @override
+  String get reportHistoryHint =>
+      'جمع کیے گئے ٹکٹ اور ان کی تازہ ترین حالت یہاں دکھائی دے گی۔';
+
+  @override
+  String get refreshReports => 'رپورٹس تازہ کریں';
+
+  @override
+  String get tryAgain => 'دوبارہ کوشش کریں';
 }

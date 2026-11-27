@@ -2,91 +2,106 @@ import 'package:flutter/material.dart';
 import 'reporting.dart';
 import 'l10n/app_localizations.dart';
 
-const brandTeal = Color(0xff006b60);
-const brandMint = Color(0xffb6f1e5);
-const brandInk = Color(0xff14211d);
-const brandMuted = Color(0xff475952);
-const brandCanvas = Color(0xfff4f9f7);
-const brandLine = Color(0xffd4e0db);
+const _teal = Color(0xff006b64);
 
-ThemeData anuvachTheme() {
-  final scheme = ColorScheme.fromSeed(seedColor: brandTeal).copyWith(
-    primary: brandTeal,
-    onPrimary: Colors.white,
-    primaryContainer: brandMint,
-    onPrimaryContainer: const Color(0xff002822),
-    surface: Colors.white,
-    secondaryContainer: const Color(0xffd2ede5),
-    surfaceContainerLow: const Color(0xfff4f8f6),
-    surfaceContainer: const Color(0xffeef4f1),
-    surfaceContainerHigh: const Color(0xffe7efeb),
-    onSurface: brandInk,
-    onSurfaceVariant: brandMuted,
-    outlineVariant: brandLine,
-    surfaceTint: Colors.transparent,
-  );
+ThemeData anuvachTheme() => _theme(Brightness.light);
+ThemeData anuvachDarkTheme() => _theme(Brightness.dark);
+
+ThemeData _theme(Brightness brightness) {
+  final dark = brightness == Brightness.dark;
+  final canvas = dark ? const Color(0xff0e1620) : const Color(0xfff6f9fa);
+  final scheme = ColorScheme.fromSeed(seedColor: _teal, brightness: brightness)
+      .copyWith(
+        primary: dark ? const Color(0xff76e3d6) : _teal,
+        onPrimary: dark ? const Color(0xff003832) : Colors.white,
+        primaryContainer: dark
+            ? const Color(0xff12453f)
+            : const Color(0xffcdf5ee),
+        onPrimaryContainer: dark
+            ? const Color(0xffb6f3e9)
+            : const Color(0xff003b35),
+        surface: canvas,
+        secondaryContainer: dark
+            ? const Color(0xff203c41)
+            : const Color(0xffdeeeed),
+        surfaceContainerLow: dark ? const Color(0xff141f2a) : Colors.white,
+        surfaceContainer: dark
+            ? const Color(0xff192632)
+            : const Color(0xffedf3f5),
+        surfaceContainerHigh: dark
+            ? const Color(0xff223342)
+            : const Color(0xffe5edef),
+        onSurface: dark ? const Color(0xffe7eef5) : const Color(0xff142430),
+        onSurfaceVariant: dark
+            ? const Color(0xffb2c2cc)
+            : const Color(0xff435761),
+        outlineVariant: dark
+            ? const Color(0xff374a57)
+            : const Color(0xffcddadf),
+        surfaceTint: Colors.transparent,
+      );
   final base = ThemeData(
     useMaterial3: true,
     fontFamily: 'NotoSans',
     colorScheme: scheme,
   );
   return base.copyWith(
-    scaffoldBackgroundColor: brandCanvas,
+    scaffoldBackgroundColor: canvas,
     textTheme: base.textTheme
         .copyWith(
-          headlineMedium: const TextStyle(
+          headlineMedium: TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.w600,
             letterSpacing: -.8,
-            color: brandInk,
+            color: scheme.onSurface,
             height: 1.2,
           ),
-          titleLarge: const TextStyle(
+          titleLarge: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.w600,
             letterSpacing: -.5,
-            color: brandInk,
+            color: scheme.onSurface,
           ),
-          titleMedium: const TextStyle(
+          titleMedium: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            color: brandInk,
+            color: scheme.onSurface,
           ),
-          bodyLarge: const TextStyle(
+          bodyLarge: TextStyle(
             fontSize: 15,
             height: 1.55,
-            color: brandInk,
+            color: scheme.onSurface,
           ),
-          bodyMedium: const TextStyle(
+          bodyMedium: TextStyle(
             fontSize: 14,
             height: 1.55,
-            color: brandMuted,
+            color: scheme.onSurfaceVariant,
           ),
-          bodySmall: const TextStyle(
+          bodySmall: TextStyle(
             fontSize: 12,
             height: 1.5,
-            color: brandMuted,
+            color: scheme.onSurfaceVariant,
           ),
         )
         .apply(fontFamily: 'NotoSans'),
-    appBarTheme: const AppBarTheme(
-      backgroundColor: brandCanvas,
+    appBarTheme: AppBarTheme(
+      backgroundColor: canvas,
       surfaceTintColor: Colors.transparent,
-      foregroundColor: brandInk,
+      foregroundColor: scheme.onSurface,
       centerTitle: false,
       elevation: 0,
       titleTextStyle: TextStyle(
         fontFamily: 'NotoSans',
         fontSize: 19,
         fontWeight: FontWeight.w600,
-        color: brandInk,
+        color: scheme.onSurface,
       ),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         minimumSize: const Size(0, 52),
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-        textStyle: const TextStyle(
+        textStyle: TextStyle(
           fontFamily: 'NotoSans',
           fontSize: 14,
           fontWeight: FontWeight.w600,
@@ -98,14 +113,14 @@ ThemeData anuvachTheme() {
       style: OutlinedButton.styleFrom(
         minimumSize: const Size(0, 50),
         padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
-        side: const BorderSide(color: brandLine),
+        side: BorderSide(color: scheme.outlineVariant),
         shape: const StadiumBorder(),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         minimumSize: const Size(48, 48),
-        textStyle: const TextStyle(
+        textStyle: TextStyle(
           fontFamily: 'NotoSans',
           fontWeight: FontWeight.w600,
         ),
@@ -113,35 +128,35 @@ ThemeData anuvachTheme() {
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: const Color(0xfff4f8f6),
+      fillColor: scheme.surfaceContainerLow,
       contentPadding: const EdgeInsets.all(18),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(18),
-        borderSide: const BorderSide(color: brandLine),
+        borderSide: BorderSide(color: scheme.outlineVariant),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(18),
-        borderSide: const BorderSide(color: brandLine),
+        borderSide: BorderSide(color: scheme.outlineVariant),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(18),
-        borderSide: const BorderSide(color: brandTeal, width: 1.5),
+        borderSide: BorderSide(color: scheme.primary, width: 1.5),
       ),
-      labelStyle: const TextStyle(color: brandMuted),
-      counterStyle: const TextStyle(fontSize: 10, color: brandMuted),
+      labelStyle: TextStyle(color: scheme.onSurfaceVariant),
+      counterStyle: TextStyle(fontSize: 10, color: scheme.onSurfaceVariant),
     ),
     cardTheme: CardThemeData(
       elevation: 0,
       margin: EdgeInsets.zero,
-      color: Colors.white,
+      color: scheme.surfaceContainerLow,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(26),
-        side: const BorderSide(color: brandLine),
+        side: BorderSide(color: scheme.outlineVariant),
       ),
     ),
     navigationBarTheme: NavigationBarThemeData(
-      backgroundColor: Colors.white,
-      indicatorColor: const Color(0xffd2ede5),
+      backgroundColor: scheme.surfaceContainerLow,
+      indicatorColor: scheme.secondaryContainer,
       elevation: 0,
       labelTextStyle: WidgetStateProperty.resolveWith(
         (states) => TextStyle(
@@ -150,53 +165,16 @@ ThemeData anuvachTheme() {
           fontWeight: states.contains(WidgetState.selected)
               ? FontWeight.w600
               : FontWeight.w400,
-          color: states.contains(WidgetState.selected) ? brandTeal : brandMuted,
+          color: states.contains(WidgetState.selected)
+              ? scheme.primary
+              : scheme.onSurfaceVariant,
         ),
       ),
     ),
-    dividerTheme: const DividerThemeData(color: brandLine, space: 28),
-    listTileTheme: const ListTileThemeData(
+    dividerTheme: DividerThemeData(color: scheme.outlineVariant, space: 28),
+    listTileTheme: ListTileThemeData(
       contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      iconColor: brandTeal,
-    ),
-  );
-}
-
-ThemeData anuvachDarkTheme() {
-  final scheme =
-      ColorScheme.fromSeed(
-        seedColor: brandTeal,
-        brightness: Brightness.dark,
-      ).copyWith(
-        primary: const Color(0xffa4e9d9),
-        onPrimary: const Color(0xff00382f),
-        primaryContainer: const Color(0xff26564a),
-        onPrimaryContainer: const Color(0xffc5f5e8),
-        surface: const Color(0xff1a2521),
-        surfaceContainerLow: const Color(0xff17231d),
-        surfaceContainer: const Color(0xff1d2c24),
-        surfaceContainerHigh: const Color(0xff26372d),
-        outlineVariant: const Color(0xff3c5147),
-        secondaryContainer: const Color(0xff25483e),
-        onSurface: const Color(0xffe1eee6),
-      );
-  return ThemeData(
-    useMaterial3: true,
-    fontFamily: 'NotoSans',
-    colorScheme: scheme,
-    scaffoldBackgroundColor: const Color(0xff101c17),
-    navigationBarTheme: NavigationBarThemeData(
-      backgroundColor: scheme.surface,
-      indicatorColor: scheme.primaryContainer,
-    ),
-    appBarTheme: AppBarTheme(
-      backgroundColor: const Color(0xff101c17),
-      foregroundColor: scheme.onSurface,
-    ),
-    inputDecorationTheme: InputDecorationTheme(
-      filled: true,
-      fillColor: const Color(0xff243c31),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(18)),
+      iconColor: scheme.primary,
     ),
   );
 }
@@ -213,7 +191,9 @@ class BrandMark extends StatelessWidget {
       width: size,
       height: size,
       fit: BoxFit.contain,
-      color: Theme.of(context).brightness == Brightness.light ? brandTeal : null,
+      color: Theme.of(context).brightness == Brightness.light
+          ? Theme.of(context).colorScheme.primary
+          : null,
       colorBlendMode: BlendMode.srcIn,
       excludeFromSemantics: true,
     ),
@@ -231,35 +211,26 @@ class SurfaceCard extends StatelessWidget {
   final bool tint;
   final double padding;
   @override
-  Widget build(BuildContext context) => Container(
-    padding: EdgeInsets.all(padding),
-    decoration: BoxDecoration(
-      color: tint ? brandMint : Colors.white,
-      borderRadius: BorderRadius.circular(26),
-      border: Border.all(color: tint ? brandMint : brandLine),
-    ),
-    child: Theme(
-      data: Theme.of(context).brightness == Brightness.dark
-          ? anuvachTheme()
-          : Theme.of(context),
-      child: DefaultTextStyle.merge(
-        style: const TextStyle(color: brandInk),
-        child: child,
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      padding: EdgeInsets.all(padding),
+      decoration: BoxDecoration(
+        color: tint ? colors.surfaceContainer : colors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: colors.outlineVariant),
       ),
-    ),
-  );
+      child: child,
+    );
+  }
 }
 
 Widget heading(String text) => Builder(
-  builder: (context) => Text(
-    text,
-    style: TextStyle(
-      fontFamily: 'NotoSans',
-      fontSize: 23,
-      height: 1.3,
-      fontWeight: FontWeight.w600,
-      letterSpacing: -.6,
-      color: Theme.of(context).colorScheme.onSurface,
+  builder: (context) => Semantics(
+    header: true,
+    child: Text(
+      text,
+      style: Theme.of(context).textTheme.titleLarge?.copyWith(height: 1.3),
     ),
   ),
 );
@@ -274,20 +245,35 @@ Widget eyebrow(String text) => Builder(
     ),
   ),
 );
-Widget statusPill(String status) => Container(
-  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-  decoration: BoxDecoration(
-    color: const Color(0xffd2ede5),
-    borderRadius: BorderRadius.circular(30),
-  ),
-  child: Text(
-    status.replaceAll('_', ' '),
-    style: const TextStyle(
-      fontSize: 11,
-      fontWeight: FontWeight.w600,
-      color: brandTeal,
-    ),
-  ),
+String reportStatus(AppLocalizations strings, String status) =>
+    switch (status) {
+      'submitted' => strings.statusSubmitted,
+      'in_review' => strings.statusInReview,
+      'awaiting_employee' => strings.statusAwaitingEmployee,
+      'escalated' => strings.statusEscalated,
+      'closed' => strings.statusClosed,
+      _ => status.replaceAll('_', ' '),
+    };
+
+Widget statusPill(String status) => Builder(
+  builder: (context) {
+    final theme = Theme.of(context);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primaryContainer,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        child: Text(
+          reportStatus(AppLocalizations.of(context)!, status),
+          style: theme.textTheme.labelMedium?.copyWith(
+            color: theme.colorScheme.onPrimaryContainer,
+          ),
+        ),
+      ),
+    );
+  },
 );
 
 class InfoRow extends StatelessWidget {
@@ -307,11 +293,15 @@ class InfoRow extends StatelessWidget {
       children: [
         Container(
           padding: const EdgeInsets.all(10),
-          decoration: const BoxDecoration(
-            color: brandCanvas,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainer,
             shape: BoxShape.circle,
           ),
-          child: Icon(icon, size: 20, color: brandTeal),
+          child: Icon(
+            icon,
+            size: 20,
+            color: Theme.of(context).colorScheme.primary,
+          ),
         ),
         const SizedBox(width: 14),
         Expanded(
@@ -320,10 +310,10 @@ class InfoRow extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: brandInk,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: 3),
@@ -340,53 +330,49 @@ class FlowSteps extends StatelessWidget {
   const FlowSteps({super.key, required this.current});
   final int current;
   @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      for (var i = 0; i < 3; i++) ...[
-        if (i > 0)
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final strings = AppLocalizations.of(context)!;
+    final labels = [
+      strings.stepDescribe,
+      strings.stepReview,
+      strings.stepSubmit,
+    ];
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var i = 0; i < labels.length; i++)
           Expanded(
-            child: Container(
-              height: 1,
-              color: brandLine,
-              margin: const EdgeInsets.symmetric(horizontal: 8),
-            ),
-          ),
-        Column(
-          children: [
-            Container(
-              width: 30,
-              height: 30,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: i <= current ? brandTeal : const Color(0xffe3ece7),
-              ),
-              child: Text(
-                '${i + 1}',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: i <= current ? Colors.white : brandMuted,
-                  fontWeight: FontWeight.w600,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 3),
+              child: Semantics(
+                selected: i == current,
+                child: Column(
+                  children: [
+                    Divider(
+                      height: 8,
+                      thickness: 3,
+                      color: i <= current
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.outlineVariant,
+                    ),
+                    Text(
+                      labels[i],
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: i == current
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-            const SizedBox(height: 6),
-            Text(
-              [
-                AppLocalizations.of(context)!.stepDescribe,
-                AppLocalizations.of(context)!.stepReview,
-                AppLocalizations.of(context)!.stepSubmit,
-              ][i],
-              style: TextStyle(
-                fontSize: 11,
-                color: i <= current ? brandTeal : brandMuted,
-              ),
-            ),
-          ],
-        ),
+          ),
       ],
-    ],
-  );
+    );
+  }
 }
 
 Widget page(
@@ -422,11 +408,7 @@ Widget page(
               .map(
                 (w) => Padding(
                   padding: const EdgeInsets.only(bottom: 18),
-                  child: w is Form
-                      ? SurfaceCard(child: w)
-                      : w is Text && (w.data?.length ?? 0) > 130
-                      ? SurfaceCard(padding: 18, child: w)
-                      : w,
+                  child: w,
                 ),
               )
               .toList(),
@@ -435,7 +417,7 @@ Widget page(
     ),
   ),
 );
-Widget facts(Json data) => Builder(
+Widget facts(Json data, {bool submitted = true}) => Builder(
   builder: (context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
@@ -443,8 +425,10 @@ Widget facts(Json data) => Builder(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            eyebrow(AppLocalizations.of(context)!.submittedStatements),
-            const SizedBox(height: 8),
+            if (submitted) ...[
+              eyebrow(AppLocalizations.of(context)!.submittedStatements),
+              const SizedBox(height: 8),
+            ],
             heading(AppLocalizations.of(context)!.employeeReported),
             const SizedBox(height: 18),
             for (final key in [
@@ -475,26 +459,27 @@ Widget facts(Json data) => Builder(
                           context,
                         )!.evidenceNotesLabel,
                       }[key]!,
-                      style: const TextStyle(fontSize: 11, color: brandMuted),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
                     const SizedBox(height: 5),
                     SelectableText(
                       data[key] == ''
                           ? AppLocalizations.of(context)!.notSupplied
                           : '${data[key]}',
-                      style: const TextStyle(
-                        fontFamily: 'NotoSans',
-                        fontSize: 14,
-                        height: 1.5,
-                        color: brandInk,
-                      ),
+                      style: Theme.of(context).textTheme.bodyLarge,
                     ),
                   ],
                 ),
               ),
             Text(
               AppLocalizations.of(context)!.demoEmployeeIdentity,
-              style: const TextStyle(fontSize: 11, color: brandMuted),
+              style: TextStyle(
+                fontSize: 11,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),
@@ -521,7 +506,10 @@ Widget facts(Json data) => Builder(
             const SizedBox(height: 12),
             Text(
               AppLocalizations.of(context)!.observationDisclaimer,
-              style: const TextStyle(fontSize: 12, color: brandMuted),
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),

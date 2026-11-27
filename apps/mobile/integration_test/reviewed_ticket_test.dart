@@ -24,7 +24,7 @@ void main() {
         home: ReportDetail(api: api, id: id),
       ),
     );
-    final status = find.text('Status: in review');
+    final status = find.text('In review');
     for (var i = 0; i < 60 && status.evaluate().isEmpty; i++) {
       await tester.pump(const Duration(milliseconds: 100));
       await Future<void>.delayed(const Duration(milliseconds: 100));

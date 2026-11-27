@@ -47,6 +47,7 @@ void main() {
       );
       expect(requests, isEmpty);
       await tester.enterText(find.byType(TextField), 'Suspicious call');
+      await tester.pump();
       await tester.tap(find.byTooltip('Send'));
       await tester.pumpAndSettle();
       expect(find.text('When did the call happen?'), findsOneWidget);

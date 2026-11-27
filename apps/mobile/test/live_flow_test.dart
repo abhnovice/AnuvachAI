@@ -55,11 +55,11 @@ void main() {
         );
         await tester.pump(const Duration(milliseconds: 100));
         if (find.text('Report detail').evaluate().isNotEmpty &&
-            find.text('Status: submitted').evaluate().isNotEmpty) {
+            find.text('Submitted').evaluate().isNotEmpty) {
           break;
         }
         if (find.text('Report detail').evaluate().isNotEmpty &&
-            find.text('Status: in review').evaluate().isNotEmpty) {
+            find.text('In review').evaluate().isNotEmpty) {
           break;
         }
       }
@@ -84,7 +84,7 @@ void main() {
         var i = 0;
         i < 40 &&
             (find.byType(LinearProgressIndicator).evaluate().isNotEmpty ||
-                find.text('Status: in review').evaluate().isEmpty);
+                find.text('In review').evaluate().isEmpty);
         i++
       ) {
         await tester.runAsync(
@@ -93,7 +93,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 100));
       }
       expect(
-        find.text('Status: in review'),
+        find.text('In review'),
         findsOneWidget,
         reason: tester.allWidgets
             .whereType<Text>()

@@ -463,4 +463,17 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get voiceType => 'संदेश लिखें';
+
+  @override
+  String get noReports => 'अभी कोई रिपोर्ट नहीं है';
+
+  @override
+  String get reportHistoryHint =>
+      'भेजे गए टिकट और उनकी नवीनतम स्थिति यहाँ दिखेगी।';
+
+  @override
+  String get refreshReports => 'रिपोर्ट रीफ़्रेश करें';
+
+  @override
+  String get tryAgain => 'फिर कोशिश करें';
 }

@@ -460,4 +460,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get voiceType => 'Type a message';
+
+  @override
+  String get noReports => 'No reports yet';
+
+  @override
+  String get reportHistoryHint =>
+      'Submitted tickets and their latest status will appear here.';
+
+  @override
+  String get refreshReports => 'Refresh reports';
+
+  @override
+  String get tryAgain => 'Try again';
 }

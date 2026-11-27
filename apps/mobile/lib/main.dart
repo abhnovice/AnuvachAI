@@ -280,20 +280,18 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final strings = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
     if (!consent) {
       return page(context, 'Anuvach.AI', [
         const Center(child: BrandMark(size: 64)),
         Center(child: eyebrow(strings.consentEyebrow)),
-        Text(
-          strings.consentHeadline,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontFamily: 'NotoSans',
-            fontSize: 28,
-            height: 1.18,
-            fontWeight: FontWeight.w600,
-            letterSpacing: -1.2,
-            color: brandInk,
+        Semantics(
+          header: true,
+          child: Text(
+            strings.consentHeadline,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.headlineMedium,
           ),
         ),
         Text(strings.consentIntro, textAlign: TextAlign.center),
@@ -323,16 +321,12 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.info_outline, size: 18, color: brandTeal),
+            Icon(Icons.info_outline, size: 18, color: colors.primary),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 strings.consentNotice,
-                style: const TextStyle(
-                  fontSize: 12,
-                  height: 1.5,
-                  color: brandMuted,
-                ),
+                style: theme.textTheme.bodySmall,
               ),
             ),
           ],
@@ -363,8 +357,8 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
       },
       destinations: [
         NavigationDestination(
-          icon: const Icon(Icons.graphic_eq_outlined),
-          selectedIcon: const Icon(Icons.graphic_eq_rounded),
+          icon: const Icon(Icons.chat_bubble_outline_rounded),
+          selectedIcon: const Icon(Icons.chat_bubble_rounded),
           label: AppLocalizations.of(context)!.check,
         ),
         NavigationDestination(
@@ -426,7 +420,10 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
             ),
           ],
         ),
-        bottomNavigationBar: navigation,
+        bottomNavigationBar:
+            tab == 0 && MediaQuery.viewInsetsOf(context).bottom > 0
+            ? null
+            : navigation,
         body: SafeArea(
           child: tab == 0
               ? CheckTab(
@@ -460,31 +457,54 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
         if (draft.storageWarning != null) Text(draft.storageWarning!),
         if (loading) const LinearProgressIndicator(minHeight: 2),
         if (error != null)
-          SurfaceCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(Icons.cloud_off_outlined, color: brandMuted),
-                const SizedBox(height: 8),
-                Text(error!, style: const TextStyle(fontSize: 12)),
-                TextButton(onPressed: load, child: const Text('Try again')),
-              ],
+          Semantics(
+            liveRegion: true,
+            child: SurfaceCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.cloud_off_outlined, color: colors.error),
+                  const SizedBox(height: 8),
+                  Text(error!, style: theme.textTheme.bodySmall),
+                  TextButton(onPressed: load, child: Text(strings.tryAgain)),
+                ],
+              ),
             ),
           ),
         if (!loading && error == null && reports.isEmpty)
-          const SurfaceCard(
-            child: InfoRow(
-              icon: Icons.inbox_outlined,
-              title: 'No reports yet.',
-              text:
-                  'Once submitted, your tickets and their latest status will appear here.',
-            ),
+          InfoRow(
+            icon: Icons.inbox_outlined,
+            title: strings.noReports,
+            text: strings.reportHistoryHint,
           ),
         for (final r in reports)
           Card(
-            color: Colors.white,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(26),
+            child: ListTile(
+              leading: const Icon(Icons.article_outlined),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              title: Text(
+                incidentLabel(strings, r['facts']['incidentType'] as String),
+              ),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 4),
+                  Text(r['id'], style: theme.textTheme.bodySmall),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 6,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      statusPill(r['status'] as String),
+                      Text(
+                        (r['createdAt'] as String).split('T').first,
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
               onTap: () async {
                 await Navigator.push(
                   context,
@@ -492,63 +512,8 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                     builder: (_) => ReportDetail(api: widget.api, id: r['id']),
                   ),
                 );
-                load();
+                if (mounted) load();
               },
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.article_outlined,
-                          size: 20,
-                          color: brandTeal,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            (r['facts']['incidentType'] as String).replaceAll(
-                              '_',
-                              ' ',
-                            ),
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: brandInk,
-                            ),
-                          ),
-                        ),
-                        const Icon(
-                          Icons.arrow_forward_rounded,
-                          size: 18,
-                          color: brandMuted,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      r['id'],
-                      style: const TextStyle(fontSize: 10, color: brandMuted),
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        statusPill(r['status']),
-                        const Spacer(),
-                        Text(
-                          (r['createdAt'] as String).substring(0, 10),
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: brandMuted,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
             ),
           ),
       ],
@@ -556,7 +521,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
       storageId: 'employee:$tab',
       actions: [
         IconButton(
-          tooltip: 'Refresh reports',
+          tooltip: strings.refreshReports,
           onPressed: loading ? null : load,
           icon: const Icon(Icons.refresh_rounded),
         ),
@@ -564,6 +529,14 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
     );
   }
 }
+
+String incidentLabel(AppLocalizations strings, String type) => switch (type) {
+  'support_call' => strings.supportCall,
+  'suspicious_message' => strings.suspiciousMessage,
+  'mistaken_report' => strings.mistakenReport,
+  'other' => strings.otherIncident,
+  _ => type.replaceAll('_', ' '),
+};
 
 List<Widget> reportingTranscript(Json? reporting) {
   if (reporting == null) return [];
@@ -632,278 +605,290 @@ class _ReportFormState extends State<ReportForm> {
     }
   }
 
-  @override
-  Widget build(
-    BuildContext context,
-  ) => page(context, AppLocalizations.of(context)!.describeIncident, [
-    const FlowSteps(current: 0),
-    const SizedBox(height: 4),
-    heading(AppLocalizations.of(context)!.whatHappened),
-    Text(AppLocalizations.of(context)!.syntheticExample),
-    if (error != null)
-      Text(
-        error!,
-        style: TextStyle(color: Theme.of(context).colorScheme.error),
-      ),
-    if (draft.locked) Text(AppLocalizations.of(context)!.pendingSubmission),
-    Form(
-      key: form,
-      child: Column(
-        children: [
-          for (final spec in [
-            ('description', AppLocalizations.of(context)!.whatHappened, 5000),
-            ('appName', AppLocalizations.of(context)!.appNameOptional, 200),
-            (
-              'evidenceNotes',
-              AppLocalizations.of(context)!.evidenceNotesOptional,
-              5000,
-            ),
-          ])
-            Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: TextFormField(
-                key: spec.$1 == 'description'
-                    ? const ValueKey('description')
-                    : ValueKey((spec.$1, voiceDraftRevision)),
-                controller: spec.$1 == 'description' ? description : null,
-                initialValue: spec.$1 == 'description'
-                    ? null
-                    : draft.fields[spec.$1],
-                enabled: !draft.locked && !reviewing,
-                maxLines: spec.$1 == 'appName' ? 1 : 4,
-                maxLength: spec.$3,
-                decoration: InputDecoration(labelText: spec.$2),
-                textDirection: spec.$1 != 'appName' && reportLanguage == 'ur'
-                    ? TextDirection.rtl
-                    : null,
-                validator: (v) =>
-                    spec.$1 == 'description' && (v ?? '').trim().length < 10
-                    ? AppLocalizations.of(context)!.descriptionTooShort
-                    : null,
-                onChanged: (v) {
-                  draft.update(spec.$1, v);
-                  save();
-                },
-              ),
-            ),
-          DropdownButtonFormField<String>(
-            key: ValueKey(('language', voiceDraftRevision)),
-            initialValue: draft.fields['language'],
-            decoration: InputDecoration(
-              labelText: AppLocalizations.of(context)!.reportLanguageLabel,
-            ),
-            items: [
-              DropdownMenuItem(
-                value: 'english',
-                child: Text(AppLocalizations.of(context)!.englishLanguage),
-              ),
-              DropdownMenuItem(
-                value: 'hindi',
-                child: Text(AppLocalizations.of(context)!.hindiLanguage),
-              ),
-              DropdownMenuItem(
-                value: 'mixed',
-                child: Text(AppLocalizations.of(context)!.mixedLanguage),
-              ),
-              for (final language in languages.entries)
-                if (language.key != 'en' && language.key != 'hi')
-                  DropdownMenuItem(
-                    value: language.key,
-                    child: Text(language.value),
-                  ),
-            ],
-            onChanged: draft.locked
-                ? null
-                : (v) {
-                    draft.update('language', v);
-                    setState(() {});
-                    save();
-                  },
-          ),
-          const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            key: ValueKey(('incidentType', voiceDraftRevision)),
-            initialValue: draft.fields['incidentType'],
-            decoration: InputDecoration(
-              labelText: AppLocalizations.of(context)!.incidentTypeLabel,
-            ),
-            items: [
-              for (final t in [
-                'support_call',
-                'suspicious_message',
-                'mistaken_report',
-                'other',
-              ])
-                DropdownMenuItem(
-                  value: t,
-                  child: Text(switch (t) {
-                    'support_call' => AppLocalizations.of(context)!.supportCall,
-                    'suspicious_message' => AppLocalizations.of(
-                      context,
-                    )!.suspiciousMessage,
-                    'mistaken_report' => AppLocalizations.of(
-                      context,
-                    )!.mistakenReport,
-                    'other' => AppLocalizations.of(context)!.otherIncident,
-                    _ => t,
-                  }),
-                ),
-            ],
-            onChanged: draft.locked
-                ? null
-                : (v) {
-                    draft.update('incidentType', v);
-                    save();
-                  },
-          ),
-        ],
-      ),
-    ),
-    ReportVoice(
-      key: const ValueKey('report-voice'),
-      api: draft.api,
-      language: reportLanguage,
+  Widget reportField(String key, String label, int limit) {
+    final isDescription = key == 'description';
+    return TextFormField(
+      key: isDescription
+          ? const ValueKey('description')
+          : ValueKey((key, voiceDraftRevision)),
+      controller: isDescription ? description : null,
+      initialValue: isDescription ? null : draft.fields[key],
       enabled: !draft.locked && !reviewing,
-      reviewTicket: useVoiceDraft,
-    ),
-    ListenableBuilder(
-      listenable: draft,
-      builder: (context, _) => Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          OutlinedButton(
-            onPressed:
-                draft.locked ||
-                    draft.assisting ||
-                    (draft.fields['description'] as String).trim().isEmpty
-                ? null
-                : () async {
-                    setState(() => error = null);
-                    try {
-                      await draft.askAgent(reportLanguage);
-                    } catch (_) {
-                      if (mounted) {
-                        setState(
-                          () => error =
-                              'Reporting assistant unavailable. You can continue with text.',
-                        );
-                      }
-                    }
-                  },
-            child: Text(
-              draft.assisting
-                  ? 'Asking reporting assistant…'
-                  : 'Ask reporting assistant',
+      minLines: key == 'appName' ? 1 : 3,
+      maxLines: key == 'appName' ? 1 : 6,
+      maxLength: limit,
+      decoration: InputDecoration(labelText: label),
+      textDirection: key != 'appName' && reportLanguage == 'ur'
+          ? TextDirection.rtl
+          : null,
+      validator: isDescription
+          ? (value) => (value ?? '').trim().length < 10
+                ? AppLocalizations.of(context)!.descriptionTooShort
+                : null
+          : null,
+      onChanged: (value) {
+        draft.update(key, value);
+        save();
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppLocalizations.of(context)!;
+    return page(context, strings.describeIncident, [
+      const FlowSteps(current: 0),
+      const SizedBox(height: 4),
+      heading(AppLocalizations.of(context)!.whatHappened),
+      Text(AppLocalizations.of(context)!.syntheticExample),
+      if (error != null)
+        Text(
+          error!,
+          style: TextStyle(color: Theme.of(context).colorScheme.error),
+        ),
+      if (draft.locked) Text(AppLocalizations.of(context)!.pendingSubmission),
+      Form(
+        key: form,
+        child: Column(
+          children: [
+            reportField('description', strings.descriptionLabel, 5000),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              key: ValueKey(('language', voiceDraftRevision)),
+              isExpanded: true,
+              itemHeight: null,
+              initialValue: draft.fields['language'],
+              decoration: InputDecoration(
+                labelText: AppLocalizations.of(context)!.reportLanguageLabel,
+              ),
+              items: [
+                DropdownMenuItem(
+                  value: 'english',
+                  child: Text(AppLocalizations.of(context)!.englishLanguage),
+                ),
+                DropdownMenuItem(
+                  value: 'hindi',
+                  child: Text(AppLocalizations.of(context)!.hindiLanguage),
+                ),
+                DropdownMenuItem(
+                  value: 'mixed',
+                  child: Text(AppLocalizations.of(context)!.mixedLanguage),
+                ),
+                for (final language in languages.entries)
+                  if (language.key != 'en' && language.key != 'hi')
+                    DropdownMenuItem(
+                      value: language.key,
+                      child: Text(language.value),
+                    ),
+              ],
+              onChanged: draft.locked
+                  ? null
+                  : (v) {
+                      draft.update('language', v);
+                      setState(() {});
+                      save();
+                    },
             ),
-          ),
-          ...reportingTranscript(draft.fields['reporting'] as Json?),
-        ],
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              key: ValueKey(('incidentType', voiceDraftRevision)),
+              isExpanded: true,
+              itemHeight: null,
+              initialValue: draft.fields['incidentType'],
+              decoration: InputDecoration(
+                labelText: AppLocalizations.of(context)!.incidentTypeLabel,
+              ),
+              items: [
+                for (final t in [
+                  'support_call',
+                  'suspicious_message',
+                  'mistaken_report',
+                  'other',
+                ])
+                  DropdownMenuItem(
+                    value: t,
+                    child: Text(incidentLabel(strings, t)),
+                  ),
+              ],
+              onChanged: draft.locked
+                  ? null
+                  : (v) {
+                      draft.update('incidentType', v);
+                      save();
+                    },
+            ),
+            const SizedBox(height: 12),
+            ExpansionTile(
+              title: Text(
+                '${strings.appNameLabel} · ${strings.evidenceNotesLabel}',
+              ),
+              leading: const Icon(Icons.notes_rounded),
+              tilePadding: EdgeInsets.zero,
+              childrenPadding: const EdgeInsets.only(top: 8),
+              maintainState: true,
+              initiallyExpanded: [
+                draft.fields['appName'],
+                draft.fields['evidenceNotes'],
+              ].any((value) => value is String && value.isNotEmpty),
+              children: [
+                reportField('appName', strings.appNameOptional, 200),
+                const SizedBox(height: 12),
+                reportField(
+                  'evidenceNotes',
+                  strings.evidenceNotesOptional,
+                  5000,
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
-    ),
-    SurfaceCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          heading(AppLocalizations.of(context)!.optionalDeviceReview),
-          const SizedBox(height: 12),
-          Text(
-            device.available
-                ? AppLocalizations.of(context)!.androidDeviceReview
-                : AppLocalizations.of(context)!.iosDeviceReview,
-          ),
-          if (device.available)
+      ReportVoice(
+        key: const ValueKey('report-voice'),
+        api: draft.api,
+        language: reportLanguage,
+        enabled: !draft.locked && !reviewing,
+        reviewTicket: useVoiceDraft,
+      ),
+      ListenableBuilder(
+        listenable: draft,
+        builder: (context, _) => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
             OutlinedButton(
-              onPressed: draft.locked || checking
+              onPressed:
+                  draft.locked ||
+                      draft.assisting ||
+                      (draft.fields['description'] as String).trim().isEmpty
                   ? null
                   : () async {
-                      final agreed = await showDialog<bool>(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          title: Text(
-                            AppLocalizations.of(context)!.allowOneCheck,
-                          ),
-                          content: Text(
-                            AppLocalizations.of(context)!.checkExplanation,
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context, false),
-                              child: Text(
-                                AppLocalizations.of(context)!.cancelAction,
-                              ),
-                            ),
-                            FilledButton(
-                              onPressed: () => Navigator.pop(context, true),
-                              child: Text(
-                                AppLocalizations.of(context)!.checkAndInclude,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                      if (agreed != true || !mounted) return;
-                      setState(() => checking = true);
+                      setState(() => error = null);
                       try {
-                        final observation = await device.checkSecureLock();
-                        draft.update('observations', [observation]);
-                        await save();
-                      } catch (e) {
+                        await draft.askAgent(reportLanguage);
+                      } catch (_) {
                         if (mounted) {
-                          setState(() => error = 'Check unavailable: $e');
+                          setState(
+                            () => error =
+                                'Reporting assistant unavailable. You can continue with text.',
+                          );
                         }
-                      } finally {
-                        if (mounted) setState(() => checking = false);
                       }
                     },
               child: Text(
-                checking
-                    ? AppLocalizations.of(context)!.checking
-                    : AppLocalizations.of(context)!.reviewDeviceCheck,
+                draft.assisting
+                    ? 'Asking reporting assistant…'
+                    : 'Ask reporting assistant',
               ),
             ),
-          if ((draft.fields['observations'] as List).isNotEmpty) ...[
-            Text(
-              'Included check: secure screen lock · ${draft.fields['observations'][0]['checkedAt']}',
-            ),
-            TextButton(
-              onPressed: draft.locked
-                  ? null
-                  : () {
-                      draft.update('observations', <dynamic>[]);
-                      save();
-                      setState(() {});
-                    },
-              child: Text(AppLocalizations.of(context)!.removeObservation),
-            ),
+            ...reportingTranscript(draft.fields['reporting'] as Json?),
           ],
-        ],
+        ),
       ),
-    ),
-    FilledButton(
-      onPressed: checking
-          ? null
-          : () async {
-              if (!form.currentState!.validate()) return;
-              try {
-                await draft.save();
-              } catch (e) {
-                setState(() => error = e.toString());
-                return;
-              }
-              draft.review();
-              if (!context.mounted) return;
-              setState(() => reviewing = true);
-              final submitted = await Navigator.push<bool>(
-                context,
-                MaterialPageRoute(builder: (_) => Review(draft: draft)),
-              );
-              if (!context.mounted) return;
-              setState(() => reviewing = false);
-              if (submitted == true) Navigator.pop(context);
-            },
-      child: Text(AppLocalizations.of(context)!.reviewReport),
-    ),
-  ]);
+      SurfaceCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            heading(AppLocalizations.of(context)!.optionalDeviceReview),
+            const SizedBox(height: 12),
+            Text(
+              device.available
+                  ? AppLocalizations.of(context)!.androidDeviceReview
+                  : AppLocalizations.of(context)!.iosDeviceReview,
+            ),
+            if (device.available)
+              OutlinedButton(
+                onPressed: draft.locked || checking
+                    ? null
+                    : () async {
+                        final agreed = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: Text(
+                              AppLocalizations.of(context)!.allowOneCheck,
+                            ),
+                            content: Text(
+                              AppLocalizations.of(context)!.checkExplanation,
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: Text(
+                                  AppLocalizations.of(context)!.cancelAction,
+                                ),
+                              ),
+                              FilledButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: Text(
+                                  AppLocalizations.of(context)!.checkAndInclude,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (agreed != true || !mounted) return;
+                        setState(() => checking = true);
+                        try {
+                          final observation = await device.checkSecureLock();
+                          draft.update('observations', [observation]);
+                          await save();
+                        } catch (e) {
+                          if (mounted) {
+                            setState(() => error = 'Check unavailable: $e');
+                          }
+                        } finally {
+                          if (mounted) setState(() => checking = false);
+                        }
+                      },
+                child: Text(
+                  checking
+                      ? AppLocalizations.of(context)!.checking
+                      : AppLocalizations.of(context)!.reviewDeviceCheck,
+                ),
+              ),
+            if ((draft.fields['observations'] as List).isNotEmpty) ...[
+              Text(
+                'Included check: secure screen lock · ${draft.fields['observations'][0]['checkedAt']}',
+              ),
+              TextButton(
+                onPressed: draft.locked
+                    ? null
+                    : () {
+                        draft.update('observations', <dynamic>[]);
+                        save();
+                        setState(() {});
+                      },
+                child: Text(AppLocalizations.of(context)!.removeObservation),
+              ),
+            ],
+          ],
+        ),
+      ),
+      FilledButton(
+        onPressed: checking
+            ? null
+            : () async {
+                if (!form.currentState!.validate()) return;
+                try {
+                  await draft.save();
+                } catch (e) {
+                  setState(() => error = e.toString());
+                  return;
+                }
+                draft.review();
+                if (!context.mounted) return;
+                setState(() => reviewing = true);
+                final submitted = await Navigator.push<bool>(
+                  context,
+                  MaterialPageRoute(builder: (_) => Review(draft: draft)),
+                );
+                if (!context.mounted) return;
+                setState(() => reviewing = false);
+                if (submitted == true) Navigator.pop(context);
+              },
+        child: Text(AppLocalizations.of(context)!.reviewReport),
+      ),
+    ]);
+  }
 }
 
 class Review extends StatefulWidget {
@@ -927,14 +912,25 @@ class _ReviewState extends State<Review> {
         child: page(context, strings.reviewBeforeSending, [
           const FlowSteps(current: 1),
           Text(strings.reviewFactsDescription),
-          facts(snapshot),
+          facts(snapshot, submitted: false),
           ...reportingTranscript(snapshot['reporting'] as Json?),
-          Text(strings.reviewConfirmationIncluded),
-          CheckboxListTile(
-            contentPadding: EdgeInsets.zero,
-            title: Text(strings.reviewConfirmFacts),
-            value: d.confirmed,
-            onChanged: d.busy ? null : (v) => d.confirm(v ?? false),
+          SurfaceCard(
+            tint: true,
+            padding: 16,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(strings.reviewConfirmationIncluded),
+                const SizedBox(height: 8),
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  title: Text(strings.reviewConfirmFacts),
+                  value: d.confirmed,
+                  onChanged: d.busy ? null : (v) => d.confirm(v ?? false),
+                ),
+              ],
+            ),
           ),
           if (error != null)
             Text(
@@ -1026,40 +1022,46 @@ class _ReportDetailState extends State<ReportDetail>
   }
 
   @override
-  Widget build(
-    BuildContext context,
-  ) => page(context, AppLocalizations.of(context)!.detailTitle, [
-    eyebrow(AppLocalizations.of(context)!.ticketDetails),
-    SelectableText(
-      widget.id,
-      style: const TextStyle(fontSize: 11, color: brandMuted),
-    ),
-    if (loading) const LinearProgressIndicator(),
-    if (error != null) Text(error!),
-    OutlinedButton(
-      onPressed: loading ? null : load,
-      child: Text(AppLocalizations.of(context)!.refreshStatus),
-    ),
-    if (report != null) ...[
+  Widget build(BuildContext context) {
+    final strings = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+    final current = report;
+    return page(context, strings.detailTitle, [
       SurfaceCard(
-        tint: true,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            eyebrow(AppLocalizations.of(context)!.latestUpdate),
-            const SizedBox(height: 12),
-            heading(
-              'Status: ${(report!['status'] as String).replaceAll('_', ' ')}',
-            ),
-            Text(
-              'Submitted: ${report!['createdAt']}\nUpdated: ${report!['updatedAt']}\nTimes shown in UTC.',
-            ),
+            eyebrow(strings.ticketDetails),
+            const SizedBox(height: 6),
+            SelectableText(widget.id, style: theme.textTheme.titleMedium),
+            if (current != null) ...[
+              const Divider(),
+              Semantics(
+                liveRegion: true,
+                child: statusPill(current['status'] as String),
+              ),
+              const SizedBox(height: 12),
+              Text('${strings.submittedAt}: ${current['createdAt']}'),
+              Text('${strings.updatedAt}: ${current['updatedAt']}'),
+              Text(strings.timesInUtc, style: theme.textTheme.bodySmall),
+            ],
           ],
         ),
       ),
-      facts(report!['facts'] as Json),
-    ],
-  ]);
+      if (loading) const LinearProgressIndicator(minHeight: 2),
+      if (error != null)
+        Semantics(
+          liveRegion: true,
+          child: Text(error!, style: TextStyle(color: theme.colorScheme.error)),
+        ),
+      OutlinedButton.icon(
+        onPressed: loading ? null : load,
+        icon: const Icon(Icons.refresh_rounded),
+        label: Text(strings.refreshStatus),
+      ),
+      if (current != null) facts(current['facts'] as Json),
+    ]);
+  }
 }
 
 class Help extends StatelessWidget {

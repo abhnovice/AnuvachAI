@@ -405,4 +405,62 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get apiBuildHint => 'बिल्ड या रन करते समय API_BASE_URL सेट करें।';
+
+  @override
+  String get voiceWelcome => 'आइए बात करें।';
+
+  @override
+  String get voiceWelcomeHint =>
+      'बताइए क्या हुआ। आप बोल सकते हैं या लिख सकते हैं।';
+
+  @override
+  String get voiceAssistant => 'अनुवाच सहायक';
+
+  @override
+  String get voiceYou => 'आप';
+
+  @override
+  String get voiceReady => 'सुनने के लिए तैयार';
+
+  @override
+  String get voiceConnecting => 'जुड़ रहा है…';
+
+  @override
+  String get voiceListening => 'सुन रहा है';
+
+  @override
+  String get voiceThinking => 'सोच रहा है…';
+
+  @override
+  String get voiceSpeaking => 'बोल रहा है';
+
+  @override
+  String get voiceEnding => 'बात पूरी कर रहा है…';
+
+  @override
+  String get voiceUnavailable => 'आवाज़ उपलब्ध नहीं है। आप लिख सकते हैं।';
+
+  @override
+  String get voicePartial => 'लाइव प्रतिलेख';
+
+  @override
+  String get voiceCorrect => 'प्रतिलेख सुधारें';
+
+  @override
+  String get voiceUse => 'रिपोर्ट में जोड़ें';
+
+  @override
+  String get voiceDraft => 'रिपोर्ट का मसौदा देखें';
+
+  @override
+  String get voiceStart => 'आवाज़ शुरू करें';
+
+  @override
+  String get voiceEnd => 'आवाज़ बंद करें';
+
+  @override
+  String get voiceApply => 'सुधार लागू करें';
+
+  @override
+  String get voiceType => 'संदेश लिखें';
 }

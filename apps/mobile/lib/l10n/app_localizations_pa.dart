@@ -393,4 +393,62 @@ class AppLocalizationsPa extends AppLocalizations {
 
   @override
   String get apiBuildHint => 'ਬਿਲਡ ਸੰਸਕਰਣ ਅਤੇ API ਜਾਣਕਾਰੀ';
+
+  @override
+  String get voiceWelcome => 'ਆਓ ਗੱਲ ਕਰੀਏ।';
+
+  @override
+  String get voiceWelcomeHint =>
+      'ਦੱਸੋ ਕੀ ਹੋਇਆ। ਤੁਸੀਂ ਬੋਲ ਸਕਦੇ ਹੋ ਜਾਂ ਲਿਖ ਸਕਦੇ ਹੋ।';
+
+  @override
+  String get voiceAssistant => 'ਅਨੁਵਾਚ ਸਹਾਇਕ';
+
+  @override
+  String get voiceYou => 'ਤੁਸੀਂ';
+
+  @override
+  String get voiceReady => 'ਸੁਣਨ ਲਈ ਤਿਆਰ';
+
+  @override
+  String get voiceConnecting => 'ਜੁੜ ਰਿਹਾ ਹੈ…';
+
+  @override
+  String get voiceListening => 'ਸੁਣ ਰਿਹਾ ਹੈ';
+
+  @override
+  String get voiceThinking => 'ਸੋਚ ਰਿਹਾ ਹੈ…';
+
+  @override
+  String get voiceSpeaking => 'ਬੋਲ ਰਿਹਾ ਹੈ';
+
+  @override
+  String get voiceEnding => 'ਗੱਲ ਮੁਕਾ ਰਿਹਾ ਹੈ…';
+
+  @override
+  String get voiceUnavailable => 'ਆਵਾਜ਼ ਉਪਲਬਧ ਨਹੀਂ। ਤੁਸੀਂ ਲਿਖ ਸਕਦੇ ਹੋ।';
+
+  @override
+  String get voicePartial => 'ਲਾਈਵ ਲਿਖਤ';
+
+  @override
+  String get voiceCorrect => 'ਲਿਖਤ ਠੀਕ ਕਰੋ';
+
+  @override
+  String get voiceUse => 'ਰਿਪੋਰਟ ਵਿੱਚ ਸ਼ਾਮਲ ਕਰੋ';
+
+  @override
+  String get voiceDraft => 'ਰਿਪੋਰਟ ਦਾ ਖਰੜਾ ਵੇਖੋ';
+
+  @override
+  String get voiceStart => 'ਆਵਾਜ਼ ਸ਼ੁਰੂ ਕਰੋ';
+
+  @override
+  String get voiceEnd => 'ਆਵਾਜ਼ ਬੰਦ ਕਰੋ';
+
+  @override
+  String get voiceApply => 'ਸੋਧ ਲਾਗੂ ਕਰੋ';
+
+  @override
+  String get voiceType => 'ਸੁਨੇਹਾ ਲਿਖੋ';
 }

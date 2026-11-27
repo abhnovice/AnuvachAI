@@ -211,3 +211,53 @@ def test_voice_ticket_tool_returns_a_draft_without_creating_a_ticket(tmp_path, m
         assert event["draft"]["app_name"] == "ExampleApp"
         assert event["draft"]["unknowns"] == ["Sender identity"]
     assert client.get("/api/tickets").json() == []
+
+
+def test_live_opening_and_closing_cues_are_spoken_without_drafting(tmp_path, monkeypatch):
+    import base64
+    import time
+
+    from google.adk.events import Event
+    from google.adk.runners import Runner
+    from google.genai import types
+
+    monkeypatch.setenv("GOOGLE_API_KEY", "fake-test-only")
+    cues = []
+
+    async def simulated_live(self, *, live_request_queue, **kwargs):
+        while True:
+            request = await live_request_queue.get()
+            if request.close:
+                return
+            if request.content:
+                cues.append(request.content.parts[0].text)
+                yield Event(author="agent", content=types.Content(parts=[
+                    types.Part.from_bytes(data=b"\x00\x00", mime_type="audio/pcm;rate=24000"),
+                ]), turn_complete=True)
+
+    monkeypatch.setattr(Runner, "run_live", simulated_live)
+    store = SQLiteFakeAdapters(tmp_path / "voice-cues.sqlite")
+    with TestClient(create_app(store)) as client:
+        with client.websocket_connect("/api/live?language=hi&preview=1") as voice:
+            assert voice.receive_json()["state"] == "Microphone stream open"
+            voice.send_json({"type": "greet"})
+            assert voice.receive_json()["type"] == "audio"
+            assert voice.receive_json()["state"] == "listening"
+            voice.send_json({"type": "finish"})
+            assert voice.receive_json()["type"] == "audio"
+            assert voice.receive_json()["state"] == "closed_turn"
+        with client.websocket_connect("/api/live?language=en&preview=1") as voice:
+            assert voice.receive_json()["state"] == "Microphone stream open"
+            voice.send_json({"type": "greet"})
+            voice.send_json({
+                "type": "audio",
+                "data": base64.b64encode(b"\x00\x04" * 320).decode(),
+            })
+            time.sleep(1.65)
+            voice.send_json({"type": "finish"})
+            assert voice.receive_json()["type"] == "audio"
+            assert voice.receive_json()["state"] == "closed_turn"
+    assert len(cues) == 3
+    assert "सब ठीक है?" in cues[0]
+    assert "latest spoken language" in cues[1]
+    assert store.list_confirmed_tickets() == []

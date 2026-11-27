@@ -34,7 +34,8 @@ test(
       socket.on("message", (data) => {
         const message = JSON.parse(data.toString());
         input.push(message);
-        if (message.type === "audio_end" && query.ticket_draft === "1") {
+        if (message.type === "greet") return;
+        if (message.type === "finish" && query.ticket_draft === "1") {
           socket.send(
             JSON.stringify({
               type: "ticket_draft",
@@ -81,6 +82,7 @@ test(
           type: "state",
           state: "ready",
         });
+        socket.send("greet");
         const interrupted = once(socket, "message");
         socket.send(Buffer.from([1, 0, 255, 255]));
         const [event] = await interrupted;
@@ -103,10 +105,12 @@ test(
       }
       assert.deepEqual(languages, ["ur", "ur"]);
       assert.deepEqual(input, [
+        { type: "greet" },
         { type: "audio", data: "AQD//w==" },
-        { type: "audio_end" },
+        { type: "finish" },
+        { type: "greet" },
         { type: "audio", data: "AQD//w==" },
-        { type: "audio_end" },
+        { type: "finish" },
       ]);
     } finally {
       await app.close();

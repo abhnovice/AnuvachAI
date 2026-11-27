@@ -408,4 +408,63 @@ class AppLocalizationsTa extends AppLocalizations {
   @override
   String get apiBuildHint =>
       'உருவாக்கும் அல்லது இயக்கும் போது API_BASE_URL அமைக்கவும்.';
+
+  @override
+  String get voiceWelcome => 'பேசித் தீர்ப்போம்.';
+
+  @override
+  String get voiceWelcomeHint =>
+      'என்ன நடந்தது என்று சொல்லுங்கள். பேசலாம் அல்லது தட்டச்சு செய்யலாம்.';
+
+  @override
+  String get voiceAssistant => 'அனுவாச் உதவியாளர்';
+
+  @override
+  String get voiceYou => 'நீங்கள்';
+
+  @override
+  String get voiceReady => 'கேட்கத் தயார்';
+
+  @override
+  String get voiceConnecting => 'இணைக்கிறது…';
+
+  @override
+  String get voiceListening => 'கேட்கிறது';
+
+  @override
+  String get voiceThinking => 'சிந்திக்கிறது…';
+
+  @override
+  String get voiceSpeaking => 'பேசுகிறது';
+
+  @override
+  String get voiceEnding => 'முடிக்கிறது…';
+
+  @override
+  String get voiceUnavailable =>
+      'குரல் வசதி கிடைக்கவில்லை. தட்டச்சு செய்யலாம்.';
+
+  @override
+  String get voicePartial => 'நேரடி உரை';
+
+  @override
+  String get voiceCorrect => 'உரையைத் திருத்தவும்';
+
+  @override
+  String get voiceUse => 'அறிக்கையில் சேர்க்கவும்';
+
+  @override
+  String get voiceDraft => 'வரைவு அறிக்கையைப் பார்க்கவும்';
+
+  @override
+  String get voiceStart => 'குரலைத் தொடங்கவும்';
+
+  @override
+  String get voiceEnd => 'குரலை நிறுத்தவும்';
+
+  @override
+  String get voiceApply => 'திருத்தத்தைப் பயன்படுத்தவும்';
+
+  @override
+  String get voiceType => 'செய்தியைத் தட்டச்சு செய்யவும்';
 }

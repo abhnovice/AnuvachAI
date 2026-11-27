@@ -4,6 +4,7 @@ import asyncio
 import base64
 import json
 import os
+import struct
 import time
 import uuid
 from datetime import UTC, datetime
@@ -94,6 +95,18 @@ LANGUAGE_NAMES = {
     "ml": "Malayalam",
     "ur": "Urdu",
     "pa": "Punjabi",
+}
+
+LIVE_GREETINGS = {
+    "en": "Hey, talk to me, everything okay?",
+    "hi": "अरे, मुझसे बात करो, सब ठीक है?",
+    "ta": "ஹே, என்னிடம் பேசு, எல்லாம் சரியா?",
+    "te": "హే, నాతో మాట్లాడు, అంతా బాగుందా?",
+    "bn": "এই, আমার সঙ্গে কথা বলো, সব ঠিক আছে তো?",
+    "kn": "ಹೇ, ನನ್ನ ಜೊತೆ ಮಾತಾಡು, ಎಲ್ಲವೂ ಸರಿಯಾಗಿದೆಯಾ?",
+    "ml": "ഹേയ്, എന്നോട് സംസാരിക്കൂ, എല്ലാം ശരിയാണോ?",
+    "ur": "ارے، مجھ سے بات کرو، سب ٹھیک ہے؟",
+    "pa": "ਹੇ, ਮੇਰੇ ਨਾਲ ਗੱਲ ਕਰ, ਸਭ ਠੀਕ ਹੈ?",
 }
 
 SCENARIOS = {
@@ -772,14 +785,60 @@ def create_app(
             output_audio_transcription=types.AudioTranscriptionConfig(),
         )
 
+        opening_requested = asyncio.Event()
+        closing_requested = asyncio.Event()
+        turn_finished = asyncio.Event()
+        turn_finished.set()
+        heard_employee = False
+        opening_audio_detected = False
+        opening_finished = False
+        closing_sent = False
+        closing_spoke = False
+
+        def send_cue(text: str) -> None:
+            turn_finished.clear()
+            queue.send_content(types.Content(
+                role="user", parts=[types.Part.from_text(text=text)],
+            ))
+
+        async def opening() -> None:
+            nonlocal opening_finished
+            await opening_requested.wait()
+            # Give speech detection a short head start over the greeting.
+            await asyncio.sleep(1.5)
+            opening_finished = True
+            if not (heard_employee or opening_audio_detected or closing_requested.is_set()):
+                send_cue(f"[App opening cue] Say exactly: {LIVE_GREETINGS[language]}")
+
+        async def closing() -> None:
+            nonlocal closing_sent
+            await closing_requested.wait()
+            try:
+                await asyncio.wait_for(turn_finished.wait(), timeout=3)
+            except TimeoutError:
+                pass
+            closing_sent = True
+            send_cue(
+                "[App closing cue] The employee stopped the microphone. "
+                "Give one brief, warm spoken goodbye in the employee's latest spoken language. "
+                "Do not ask a question or draft a ticket."
+            )
+
         async def send_events() -> None:
-            nonlocal first_audio
+            nonlocal first_audio, heard_employee, closing_spoke
             async for event in runner.run_live(
                 user_id=user_id,
                 session_id=session_id,
                 live_request_queue=queue,
                 run_config=run_config,
             ):
+                if (
+                    event.input_transcription and event.input_transcription.text
+                    or event.voice_activity
+                    and event.voice_activity.voice_activity_type == types.VoiceActivityType.ACTIVITY_START
+                ):
+                    heard_employee = True
+                    turn_finished.clear()
                 if event.error_code:
                     raise RuntimeError("Gemini Live event failed")
                 if event.usage_metadata:
@@ -789,6 +848,8 @@ def create_app(
                 parts = event.content.parts if event.content and not event.interrupted else None
                 for part in parts or []:
                     if part.inline_data and part.inline_data.data:
+                        if closing_sent:
+                            closing_spoke = True
                         first_audio_event = first_audio is None and first_input is not None
                         if first_audio_event:
                             first_audio = (time.perf_counter() - first_input) * 1000
@@ -835,10 +896,14 @@ def create_app(
                                 "type": "ticket_draft", "draft": response.response["draft"],
                             })
                 if event.turn_complete:
-                    await websocket.send_json({"type": "state", "state": "listening"})
+                    turn_finished.set()
+                    await websocket.send_json({
+                        "type": "state",
+                        "state": "closed_turn" if closing_sent and closing_spoke else "listening",
+                    })
 
         async def receive_events() -> None:
-            nonlocal first_input
+            nonlocal first_input, opening_audio_detected
             while True:
                 message = await websocket.receive_json()
                 if message.get("type") == "audio":
@@ -852,15 +917,26 @@ def create_app(
                         first_input = time.perf_counter()
                         if not preview:
                             app.state.draft_starts.setdefault(report_id, first_input)
+                    # Gemini can deliver the activity event after the first utterance.
+                    # Only use local PCM energy to give speech priority over the greeting.
+                    if not (opening_audio_detected or heard_employee or opening_finished):
+                        energy = sum(sample * sample for (sample,) in struct.iter_unpack("<h", raw))
+                        opening_audio_detected = energy > (len(raw) // 2) * 250**2
                     queue.send_realtime(types.Blob(data=raw, mime_type="audio/pcm;rate=16000"))
                 elif message.get("type") == "audio_end":
                     queue.send_audio_stream_end()
+                elif message.get("type") == "greet":
+                    opening_requested.set()
+                elif message.get("type") == "finish" and not closing_requested.is_set():
+                    queue.send_audio_stream_end()
+                    closing_requested.set()
 
         await websocket.send_json({
             "type": "state", "state": "Microphone stream open", "session_id": session_id,
             "report_id": report_id,
         })
         tasks = [asyncio.create_task(send_events()), asyncio.create_task(receive_events())]
+        cue_tasks = [asyncio.create_task(opening()), asyncio.create_task(closing())]
         failure = None
         try:
             done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
@@ -881,9 +957,9 @@ def create_app(
                 pass
         finally:
             queue.close()
-            for task in tasks:
+            for task in [*tasks, *cue_tasks]:
                 task.cancel()
-            await asyncio.gather(*tasks, return_exceptions=True)
+            await asyncio.gather(*tasks, *cue_tasks, return_exceptions=True)
             log_tool("reporting_voice", failure is None and first_audio is not None, {
                 "responder": "Gemini responder", "model": model, "report_id": report_id,
                 "language": language, "time_to_first_audio_ms": first_audio,

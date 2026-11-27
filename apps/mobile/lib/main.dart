@@ -279,8 +279,8 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppLocalizations.of(context)!;
     if (!consent) {
-      final strings = AppLocalizations.of(context)!;
       return page(context, 'Anuvach.AI', [
         const Center(child: BrandMark(size: 64)),
         Center(child: eyebrow(strings.consentEyebrow)),
@@ -348,7 +348,14 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
         ),
       ]);
     }
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
     final navigation = NavigationBar(
+      height: MediaQuery.textScalerOf(
+        context,
+      ).scale(62).clamp(64, 94).toDouble(),
+      animationDuration: reduceMotion
+          ? Duration.zero
+          : const Duration(milliseconds: 200),
       selectedIndex: tab,
       onDestinationSelected: (value) {
         setState(() => tab = value);
@@ -356,8 +363,8 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
       },
       destinations: [
         NavigationDestination(
-          icon: const Icon(Icons.search),
-          selectedIcon: const Icon(Icons.search_rounded),
+          icon: const Icon(Icons.graphic_eq_outlined),
+          selectedIcon: const Icon(Icons.graphic_eq_rounded),
           label: AppLocalizations.of(context)!.check,
         ),
         NavigationDestination(
@@ -375,10 +382,18 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
     if (tab != 1) {
       return Scaffold(
         appBar: AppBar(
-          title: Text(
-            tab == 0
-                ? AppLocalizations.of(context)!.check
-                : AppLocalizations.of(context)!.apps,
+          title: Row(
+            children: [
+              const ExcludeSemantics(child: BrandMark(size: 36)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  tab == 0 ? 'Anuvach.AI' : strings.apps,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ),
           actions: [
             if (kDebugMode && widget.onRefreshTranslations != null)
@@ -413,23 +428,20 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
         ),
         bottomNavigationBar: navigation,
         body: SafeArea(
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 250),
-            child: tab == 0
-                ? CheckTab(
-                    key: const ValueKey('check'),
-                    language: widget.language,
-                    messages: chatMessages,
-                    api: widget.api,
-                    sessionId: checkSessionId,
-                    reviewStatement: reviewCheckStatement,
-                    reviewVoiceTicket: reviewVoiceTicket,
-                  )
-                : AccessTab(
-                    key: const ValueKey('access'),
-                    language: widget.language,
-                  ),
-          ),
+          child: tab == 0
+              ? CheckTab(
+                  key: const ValueKey('check'),
+                  language: widget.language,
+                  messages: chatMessages,
+                  api: widget.api,
+                  sessionId: checkSessionId,
+                  reviewStatement: reviewCheckStatement,
+                  reviewVoiceTicket: reviewVoiceTicket,
+                )
+              : AccessTab(
+                  key: const ValueKey('access'),
+                  language: widget.language,
+                ),
         ),
       );
     }
@@ -437,125 +449,15 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
       context,
       'Anuvach.AI',
       [
-        eyebrow('SYNTHETIC DEMO · EMPLOYEE'),
-        if (tab == 0) ...[
-          const SizedBox(height: 2),
-          heading('Let’s take the\nnext step together.'),
-          const Text(
-            'Unexpected call or suspicious request?\nTell your security team what happened.',
+        heading(strings.reports),
+        OutlinedButton.icon(
+          onPressed: startReport,
+          icon: const Icon(Icons.add_rounded, size: 19),
+          label: Text(
+            draft.locked ? strings.pendingSubmission : strings.describeIncident,
           ),
-          SurfaceCard(
-            tint: true,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    eyebrow('START A REPORT'),
-                    const Spacer(),
-                    const Icon(
-                      Icons.edit_note_rounded,
-                      color: brandTeal,
-                      size: 30,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'You don’t need to\nhave all the answers.',
-                  style: TextStyle(
-                    fontSize: 24,
-                    height: 1.25,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: -.6,
-                    color: brandInk,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Describe what you noticed. Review every fact before creating a ticket.',
-                  style: TextStyle(
-                    color: Color(0xff16483f),
-                    fontSize: 13,
-                    height: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 22),
-                FilledButton.icon(
-                  onPressed: startReport,
-                  icon: const Icon(Icons.add_rounded, size: 19),
-                  label: Text(
-                    draft.locked
-                        ? 'Retry reviewed report'
-                        : 'Report an incident',
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SurfaceCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.graphic_eq_rounded, color: brandTeal),
-                    const SizedBox(width: 10),
-                    const Expanded(
-                      child: Text(
-                        'Voice conversation',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: brandInk,
-                        ),
-                      ),
-                    ),
-                    statusPill('Coming in Stage 3'),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'A place to talk it through, in a later stage.',
-                  style: TextStyle(fontSize: 13),
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'No microphone access or audio analysis in this stage.',
-                  style: TextStyle(fontSize: 11, color: brandMuted),
-                ),
-              ],
-            ),
-          ),
-        ] else ...[
-          heading('Your reports'),
-          const Text('Follow each ticket from submission to review.'),
-          OutlinedButton.icon(
-            onPressed: startReport,
-            icon: const Icon(Icons.add_rounded, size: 19),
-            label: const Text('Report an incident'),
-          ),
-        ],
-        if (draft.storageWarning != null) Text(draft.storageWarning!),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                tab == 0 ? 'Recent reports' : 'Report history',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-              ),
-            ),
-            if (tab == 0)
-              TextButton(
-                onPressed: () => setState(() => tab = 1),
-                child: const Text('View all'),
-              ),
-          ],
         ),
+        if (draft.storageWarning != null) Text(draft.storageWarning!),
         if (loading) const LinearProgressIndicator(minHeight: 2),
         if (error != null)
           SurfaceCard(
@@ -578,7 +480,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                   'Once submitted, your tickets and their latest status will appear here.',
             ),
           ),
-        for (final r in (tab == 0 ? reports.take(3) : reports))
+        for (final r in reports)
           Card(
             color: Colors.white,
             child: InkWell(
@@ -647,28 +549,6 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                   ],
                 ),
               ),
-            ),
-          ),
-        if (tab == 0)
-          const SurfaceCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                InfoRow(
-                  icon: Icons.shield_outlined,
-                  title: 'Safety guidance',
-                  text: 'Pause. Verify through a known contact.',
-                ),
-                Text(
-                  'If an unexpected caller asks you to install an app or share a code, pause and contact your organisation’s known helpdesk. Avoid putting passwords or session codes in a report.',
-                  style: TextStyle(fontSize: 13),
-                ),
-                SizedBox(height: 12),
-                Text(
-                  'General guidance · not an incident conclusion',
-                  style: TextStyle(fontSize: 11, color: brandMuted),
-                ),
-              ],
             ),
           ),
       ],

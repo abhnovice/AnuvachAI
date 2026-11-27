@@ -16,6 +16,10 @@ ThemeData anuvachTheme() {
     primaryContainer: brandMint,
     onPrimaryContainer: const Color(0xff002822),
     surface: Colors.white,
+    secondaryContainer: const Color(0xffd2ede5),
+    surfaceContainerLow: const Color(0xfff4f8f6),
+    surfaceContainer: const Color(0xffeef4f1),
+    surfaceContainerHigh: const Color(0xffe7efeb),
     onSurface: brandInk,
     onSurfaceVariant: brandMuted,
     outlineVariant: brandLine,
@@ -168,7 +172,12 @@ ThemeData anuvachDarkTheme() {
         onPrimary: const Color(0xff00382f),
         primaryContainer: const Color(0xff26564a),
         onPrimaryContainer: const Color(0xffc5f5e8),
-        surface: const Color(0xff182822),
+        surface: const Color(0xff1a2521),
+        surfaceContainerLow: const Color(0xff17231d),
+        surfaceContainer: const Color(0xff1d2c24),
+        surfaceContainerHigh: const Color(0xff26372d),
+        outlineVariant: const Color(0xff3c5147),
+        secondaryContainer: const Color(0xff25483e),
         onSurface: const Color(0xffe1eee6),
       );
   return ThemeData(
@@ -197,7 +206,7 @@ class BrandMark extends StatelessWidget {
   final double size;
   @override
   Widget build(BuildContext context) => Semantics(
-    label: 'Anuvach.AI placeholder brand mark',
+    label: 'Anuvach.AI',
     image: true,
     child: Container(
       width: size,
@@ -363,7 +372,11 @@ class FlowSteps extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              [AppLocalizations.of(context)!.stepDescribe, AppLocalizations.of(context)!.stepReview, AppLocalizations.of(context)!.stepSubmit][i],
+              [
+                AppLocalizations.of(context)!.stepDescribe,
+                AppLocalizations.of(context)!.stepReview,
+                AppLocalizations.of(context)!.stepSubmit,
+              ][i],
               style: TextStyle(
                 fontSize: 11,
                 color: i <= current ? brandTeal : brandMuted,
@@ -422,85 +435,97 @@ Widget page(
     ),
   ),
 );
-Widget facts(Json data) => Builder(builder: (context) => Column(
-  crossAxisAlignment: CrossAxisAlignment.stretch,
-  children: [
-    SurfaceCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          eyebrow(AppLocalizations.of(context)!.submittedStatements),
-          const SizedBox(height: 8),
-          heading(AppLocalizations.of(context)!.employeeReported),
-          const SizedBox(height: 18),
-          for (final key in [
-            'description',
-            'language',
-            'incidentType',
-            'appName',
-            'evidenceNotes',
-          ])
-            Padding(
-              padding: const EdgeInsets.only(bottom: 18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    {
-                      'description': AppLocalizations.of(context)!.descriptionLabel,
-                      'language': AppLocalizations.of(context)!.reportLanguageLabel,
-                      'incidentType': AppLocalizations.of(context)!.incidentTypeLabel,
-                      'appName': AppLocalizations.of(context)!.appNameLabel,
-                      'evidenceNotes': AppLocalizations.of(context)!.evidenceNotesLabel,
-                    }[key]!,
-                    style: const TextStyle(fontSize: 11, color: brandMuted),
-                  ),
-                  const SizedBox(height: 5),
-                  SelectableText(
-                    data[key] == '' ? AppLocalizations.of(context)!.notSupplied : '${data[key]}',
-                    style: const TextStyle(
-                      fontFamily: 'NotoSans',
-                      fontSize: 14,
-                      height: 1.5,
-                      color: brandInk,
+Widget facts(Json data) => Builder(
+  builder: (context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      SurfaceCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            eyebrow(AppLocalizations.of(context)!.submittedStatements),
+            const SizedBox(height: 8),
+            heading(AppLocalizations.of(context)!.employeeReported),
+            const SizedBox(height: 18),
+            for (final key in [
+              'description',
+              'language',
+              'incidentType',
+              'appName',
+              'evidenceNotes',
+            ])
+              Padding(
+                padding: const EdgeInsets.only(bottom: 18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      {
+                        'description': AppLocalizations.of(
+                          context,
+                        )!.descriptionLabel,
+                        'language': AppLocalizations.of(
+                          context,
+                        )!.reportLanguageLabel,
+                        'incidentType': AppLocalizations.of(
+                          context,
+                        )!.incidentTypeLabel,
+                        'appName': AppLocalizations.of(context)!.appNameLabel,
+                        'evidenceNotes': AppLocalizations.of(
+                          context,
+                        )!.evidenceNotesLabel,
+                      }[key]!,
+                      style: const TextStyle(fontSize: 11, color: brandMuted),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 5),
+                    SelectableText(
+                      data[key] == ''
+                          ? AppLocalizations.of(context)!.notSupplied
+                          : '${data[key]}',
+                      style: const TextStyle(
+                        fontFamily: 'NotoSans',
+                        fontSize: 14,
+                        height: 1.5,
+                        color: brandInk,
+                      ),
+                    ),
+                  ],
+                ),
               ),
+            Text(
+              AppLocalizations.of(context)!.demoEmployeeIdentity,
+              style: const TextStyle(fontSize: 11, color: brandMuted),
             ),
-          Text(
-            AppLocalizations.of(context)!.demoEmployeeIdentity,
-            style: const TextStyle(fontSize: 11, color: brandMuted),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-    const SizedBox(height: 18),
-    SurfaceCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          eyebrow(AppLocalizations.of(context)!.optionalChecks),
-          const SizedBox(height: 8),
-          heading(AppLocalizations.of(context)!.deviceObserved),
-          const SizedBox(height: 14),
-          if ((data['observations'] as List).isEmpty)
-            Text(AppLocalizations.of(context)!.noDeviceFacts),
-          for (final o in data['observations'] as List)
-            InfoRow(
-              icon: Icons.phonelink_lock_outlined,
-              title:
-                  '${AppLocalizations.of(context)!.secureScreenLock}: ${o['value'] ? AppLocalizations.of(context)!.configured : AppLocalizations.of(context)!.notConfigured}',
-              text:
-                  '${AppLocalizations.of(context)!.publicApiClientReported}\n${AppLocalizations.of(context)!.checkedAt}: ${o['checkedAt']}',
+      const SizedBox(height: 18),
+      SurfaceCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            eyebrow(AppLocalizations.of(context)!.optionalChecks),
+            const SizedBox(height: 8),
+            heading(AppLocalizations.of(context)!.deviceObserved),
+            const SizedBox(height: 14),
+            if ((data['observations'] as List).isEmpty)
+              Text(AppLocalizations.of(context)!.noDeviceFacts),
+            for (final o in data['observations'] as List)
+              InfoRow(
+                icon: Icons.phonelink_lock_outlined,
+                title:
+                    '${AppLocalizations.of(context)!.secureScreenLock}: ${o['value'] ? AppLocalizations.of(context)!.configured : AppLocalizations.of(context)!.notConfigured}',
+                text:
+                    '${AppLocalizations.of(context)!.publicApiClientReported}\n${AppLocalizations.of(context)!.checkedAt}: ${o['checkedAt']}',
+              ),
+            const SizedBox(height: 12),
+            Text(
+              AppLocalizations.of(context)!.observationDisclaimer,
+              style: const TextStyle(fontSize: 12, color: brandMuted),
             ),
-          const SizedBox(height: 12),
-          Text(
-            AppLocalizations.of(context)!.observationDisclaimer,
-            style: const TextStyle(fontSize: 12, color: brandMuted),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  ],
-));
+    ],
+  ),
+);

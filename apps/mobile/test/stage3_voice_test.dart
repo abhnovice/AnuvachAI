@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:anuvach_mobile/local_features.dart';
 import 'package:anuvach_mobile/report_voice.dart';
@@ -88,7 +87,8 @@ void main() {
     await tester.pump();
     expect(find.text('Speaking'), findsOneWidget);
     await native('voicePcm', Uint8List(640));
-    expect(socket.sent.single, hasLength(640));
+    expect(socket.sent.first, 'greet');
+    expect(socket.sent.last, hasLength(640));
     socket.emit({
       'type': 'transcript',
       'role': 'employee',
@@ -117,7 +117,7 @@ void main() {
     await tester.pump();
     expect(find.textContaining('Still listening'), findsOneWidget);
     await native('voicePcm', Uint8List(640));
-    expect(socket.sent, hasLength(2));
+    expect(socket.sent, hasLength(3));
     final proposal = {
       'description': 'ஒருவர் ExampleApp குறியீட்டைக் கேட்டார்.',
       'app_name': 'ExampleApp',
@@ -149,10 +149,12 @@ void main() {
     await tester.pump();
     await tester.tap(find.text('End voice'));
     await tester.pump();
-    expect(restarted.sent.single, 'end');
+    expect(restarted.sent, ['greet', 'end']);
     restarted.emit({'type': 'state', 'state': 'listening'});
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.text('Finishing the voice turn…'), findsOneWidget);
+    restarted.emit({'type': 'state', 'state': 'closed_turn'});
+    await tester.pump();
     await native('voicePlayback', false);
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('Start voice'), findsOneWidget);

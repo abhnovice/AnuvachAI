@@ -392,4 +392,61 @@ class AppLocalizationsBn extends AppLocalizations {
 
   @override
   String get apiBuildHint => 'বিল্ড সংস্করণ এবং API তথ্য';
+
+  @override
+  String get voiceWelcome => 'চলুন কথা বলি।';
+
+  @override
+  String get voiceWelcomeHint => 'কী ঘটেছে বলুন। বলতে বা লিখতে পারেন।';
+
+  @override
+  String get voiceAssistant => 'অনুবাচ সহকারী';
+
+  @override
+  String get voiceYou => 'আপনি';
+
+  @override
+  String get voiceReady => 'শুনতে প্রস্তুত';
+
+  @override
+  String get voiceConnecting => 'সংযোগ হচ্ছে…';
+
+  @override
+  String get voiceListening => 'শুনছে';
+
+  @override
+  String get voiceThinking => 'ভাবছে…';
+
+  @override
+  String get voiceSpeaking => 'বলছে';
+
+  @override
+  String get voiceEnding => 'শেষ করছে…';
+
+  @override
+  String get voiceUnavailable => 'ভয়েস উপলব্ধ নয়। আপনি লিখতে পারেন।';
+
+  @override
+  String get voicePartial => 'সরাসরি প্রতিলিপি';
+
+  @override
+  String get voiceCorrect => 'প্রতিলিপি সংশোধন করুন';
+
+  @override
+  String get voiceUse => 'রিপোর্টে যোগ করুন';
+
+  @override
+  String get voiceDraft => 'রিপোর্টের খসড়া দেখুন';
+
+  @override
+  String get voiceStart => 'ভয়েস চালু করুন';
+
+  @override
+  String get voiceEnd => 'ভয়েস বন্ধ করুন';
+
+  @override
+  String get voiceApply => 'সংশোধন প্রয়োগ করুন';
+
+  @override
+  String get voiceType => 'বার্তা লিখুন';
 }

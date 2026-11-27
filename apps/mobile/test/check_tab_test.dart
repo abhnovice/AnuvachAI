@@ -71,7 +71,9 @@ void main() {
       return call.method == 'startVoice' ? true : null;
     });
     addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
-    final api = Api(voiceConnector: (_, _) async => VoiceSocketFixture());
+    final connection = VoiceSocketFixture();
+    final used = <String>[];
+    final api = Api(voiceConnector: (_, _) async => connection);
     await tester.pumpWidget(
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -83,15 +85,47 @@ void main() {
             api: api,
             sessionId: 'c5a6866b-69ed-4d14-baf3-32d43093dfa0',
             reviewVoiceTicket: (_, _) async {},
-            reviewStatement: (_) async {},
+            reviewStatement: (text) async {
+              used.add(text);
+            },
           ),
         ),
       ),
     );
     expect(calls, isEmpty);
-    await tester.tap(find.text('Start voice'));
+    await tester.tap(find.byTooltip('Start voice'));
     await tester.pump();
     expect(calls, contains('startVoice'));
+    connection.emit({
+      'type': 'transcript',
+      'role': 'employee',
+      'text': 'Unfinished speech',
+      'partial': true,
+    });
+    await tester.pumpAndSettle();
+    expect(find.text('Unfinished speech'), findsOneWidget);
+    expect(find.text('Use in report'), findsNothing);
+    connection.emit({
+      'type': 'transcript',
+      'role': 'employee',
+      'text': 'A caller asked for a pin.',
+      'partial': false,
+    });
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Correct transcript'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.byType(TextField),
+      ),
+      'A caller asked for a code.',
+    );
+    await tester.tap(find.text('Apply correction'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Use in report'));
+    await tester.pumpAndSettle();
+    expect(used, ['A caller asked for a code.']);
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(milliseconds: 100));
     expect(calls, containsAllInOrder(['startVoice', 'stopMic', 'clearVoice']));

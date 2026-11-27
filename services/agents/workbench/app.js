@@ -389,6 +389,7 @@ function connectLive() {
   const socket = new WebSocket(`${scheme}//${location.host}/api/live?${query}`);
   const connection = { socket };
   state.live = connection;
+  socket.onopen = () => socket.send(JSON.stringify({ type: "greet" }));
   socket.onmessage = (event) => {
     if (state.live !== connection) return;
     const message = JSON.parse(event.data);
@@ -495,7 +496,7 @@ async function stopMicrophone(finishTurn = false) {
     ? waitForVoiceTurn(socket)
     : null;
   if (!pending) state.live = null;
-  if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "audio_end" }));
+  if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: finishTurn ? "finish" : "audio_end" }));
   processor?.disconnect();
   source?.disconnect();
   stream?.getTracks().forEach((track) => track.stop());
@@ -529,9 +530,13 @@ function waitForVoiceTurn(socket) {
       resolve();
     };
     const onMessage = (event) => {
-      if (JSON.parse(event.data).state === "listening") complete();
+      if (JSON.parse(event.data).state === "closed_turn") {
+        const remaining = Math.max(0, playbackCursor - (audioContext?.currentTime ?? 0));
+        clearTimeout(timeout);
+        timeout = setTimeout(complete, Math.min(4000, remaining * 1000 + 100));
+      }
     };
-    const timeout = setTimeout(complete, 3000);
+    let timeout = setTimeout(complete, 15000);
     socket.addEventListener("message", onMessage);
     socket.addEventListener("close", complete);
   });

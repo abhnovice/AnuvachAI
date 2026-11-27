@@ -837,6 +837,120 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Set API_BASE_URL at build/run time.'**
   String get apiBuildHint;
+
+  /// No description provided for @voiceWelcome.
+  ///
+  /// In en, this message translates to:
+  /// **'Talk it through.'**
+  String get voiceWelcome;
+
+  /// No description provided for @voiceWelcomeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tell me what happened. You can speak or type.'**
+  String get voiceWelcomeHint;
+
+  /// No description provided for @voiceAssistant.
+  ///
+  /// In en, this message translates to:
+  /// **'Anuvach assistant'**
+  String get voiceAssistant;
+
+  /// No description provided for @voiceYou.
+  ///
+  /// In en, this message translates to:
+  /// **'You'**
+  String get voiceYou;
+
+  /// No description provided for @voiceReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready to listen'**
+  String get voiceReady;
+
+  /// No description provided for @voiceConnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting…'**
+  String get voiceConnecting;
+
+  /// No description provided for @voiceListening.
+  ///
+  /// In en, this message translates to:
+  /// **'Listening'**
+  String get voiceListening;
+
+  /// No description provided for @voiceThinking.
+  ///
+  /// In en, this message translates to:
+  /// **'Thinking…'**
+  String get voiceThinking;
+
+  /// No description provided for @voiceSpeaking.
+  ///
+  /// In en, this message translates to:
+  /// **'Speaking'**
+  String get voiceSpeaking;
+
+  /// No description provided for @voiceEnding.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrapping up…'**
+  String get voiceEnding;
+
+  /// No description provided for @voiceUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice unavailable. You can still type.'**
+  String get voiceUnavailable;
+
+  /// No description provided for @voicePartial.
+  ///
+  /// In en, this message translates to:
+  /// **'Live transcript'**
+  String get voicePartial;
+
+  /// No description provided for @voiceCorrect.
+  ///
+  /// In en, this message translates to:
+  /// **'Correct transcript'**
+  String get voiceCorrect;
+
+  /// No description provided for @voiceUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Use in report'**
+  String get voiceUse;
+
+  /// No description provided for @voiceDraft.
+  ///
+  /// In en, this message translates to:
+  /// **'Review ticket draft'**
+  String get voiceDraft;
+
+  /// No description provided for @voiceStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start voice'**
+  String get voiceStart;
+
+  /// No description provided for @voiceEnd.
+  ///
+  /// In en, this message translates to:
+  /// **'End voice'**
+  String get voiceEnd;
+
+  /// No description provided for @voiceApply.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply correction'**
+  String get voiceApply;
+
+  /// No description provided for @voiceType.
+  ///
+  /// In en, this message translates to:
+  /// **'Type a message'**
+  String get voiceType;
 }
 
 class _AppLocalizationsDelegate

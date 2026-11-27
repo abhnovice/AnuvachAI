@@ -402,4 +402,62 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get apiBuildHint => 'Set API_BASE_URL at build/run time.';
+
+  @override
+  String get voiceWelcome => 'Talk it through.';
+
+  @override
+  String get voiceWelcomeHint =>
+      'Tell me what happened. You can speak or type.';
+
+  @override
+  String get voiceAssistant => 'Anuvach assistant';
+
+  @override
+  String get voiceYou => 'You';
+
+  @override
+  String get voiceReady => 'Ready to listen';
+
+  @override
+  String get voiceConnecting => 'Connecting…';
+
+  @override
+  String get voiceListening => 'Listening';
+
+  @override
+  String get voiceThinking => 'Thinking…';
+
+  @override
+  String get voiceSpeaking => 'Speaking';
+
+  @override
+  String get voiceEnding => 'Wrapping up…';
+
+  @override
+  String get voiceUnavailable => 'Voice unavailable. You can still type.';
+
+  @override
+  String get voicePartial => 'Live transcript';
+
+  @override
+  String get voiceCorrect => 'Correct transcript';
+
+  @override
+  String get voiceUse => 'Use in report';
+
+  @override
+  String get voiceDraft => 'Review ticket draft';
+
+  @override
+  String get voiceStart => 'Start voice';
+
+  @override
+  String get voiceEnd => 'End voice';
+
+  @override
+  String get voiceApply => 'Apply correction';
+
+  @override
+  String get voiceType => 'Type a message';
 }

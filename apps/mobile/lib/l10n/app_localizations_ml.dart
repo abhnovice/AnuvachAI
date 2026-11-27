@@ -393,4 +393,62 @@ class AppLocalizationsMl extends AppLocalizations {
 
   @override
   String get apiBuildHint => 'ബിൽഡ് പതിപ്പും API വിവരങ്ങളും';
+
+  @override
+  String get voiceWelcome => 'സംസാരിക്കാം.';
+
+  @override
+  String get voiceWelcomeHint =>
+      'എന്താണ് സംഭവിച്ചതെന്ന് പറയൂ. സംസാരിക്കുകയോ ടൈപ്പ് ചെയ്യുകയോ ചെയ്യാം.';
+
+  @override
+  String get voiceAssistant => 'അനുവാച് സഹായി';
+
+  @override
+  String get voiceYou => 'നിങ്ങൾ';
+
+  @override
+  String get voiceReady => 'കേൾക്കാൻ തയ്യാറാണ്';
+
+  @override
+  String get voiceConnecting => 'ബന്ധിപ്പിക്കുന്നു…';
+
+  @override
+  String get voiceListening => 'കേൾക്കുന്നു';
+
+  @override
+  String get voiceThinking => 'ആലോചിക്കുന്നു…';
+
+  @override
+  String get voiceSpeaking => 'സംസാരിക്കുന്നു';
+
+  @override
+  String get voiceEnding => 'അവസാനിപ്പിക്കുന്നു…';
+
+  @override
+  String get voiceUnavailable => 'ശബ്ദസേവനം ലഭ്യമല്ല. ടൈപ്പ് ചെയ്യാം.';
+
+  @override
+  String get voicePartial => 'തത്സമയ പകർപ്പ്';
+
+  @override
+  String get voiceCorrect => 'പകർപ്പ് തിരുത്തുക';
+
+  @override
+  String get voiceUse => 'റിപ്പോർട്ടിൽ ചേർക്കുക';
+
+  @override
+  String get voiceDraft => 'റിപ്പോർട്ട് കരട് കാണുക';
+
+  @override
+  String get voiceStart => 'ശബ്ദം ആരംഭിക്കുക';
+
+  @override
+  String get voiceEnd => 'ശബ്ദം നിർത്തുക';
+
+  @override
+  String get voiceApply => 'തിരുത്തൽ ഉപയോഗിക്കുക';
+
+  @override
+  String get voiceType => 'സന്ദേശം ടൈപ്പ് ചെയ്യുക';
 }

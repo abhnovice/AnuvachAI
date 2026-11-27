@@ -392,4 +392,62 @@ class AppLocalizationsUr extends AppLocalizations {
 
   @override
   String get apiBuildHint => 'بلڈ ورژن اور API معلومات';
+
+  @override
+  String get voiceWelcome => 'آئیے بات کریں۔';
+
+  @override
+  String get voiceWelcomeHint =>
+      'بتائیں کیا ہوا۔ آپ بول سکتے ہیں یا لکھ سکتے ہیں۔';
+
+  @override
+  String get voiceAssistant => 'انوواچ معاون';
+
+  @override
+  String get voiceYou => 'آپ';
+
+  @override
+  String get voiceReady => 'سننے کے لیے تیار';
+
+  @override
+  String get voiceConnecting => 'رابطہ ہو رہا ہے…';
+
+  @override
+  String get voiceListening => 'سن رہا ہے';
+
+  @override
+  String get voiceThinking => 'سوچ رہا ہے…';
+
+  @override
+  String get voiceSpeaking => 'بول رہا ہے';
+
+  @override
+  String get voiceEnding => 'گفتگو سمیٹ رہا ہے…';
+
+  @override
+  String get voiceUnavailable => 'آواز دستیاب نہیں۔ آپ لکھ سکتے ہیں۔';
+
+  @override
+  String get voicePartial => 'براہ راست نقل';
+
+  @override
+  String get voiceCorrect => 'نقل درست کریں';
+
+  @override
+  String get voiceUse => 'رپورٹ میں شامل کریں';
+
+  @override
+  String get voiceDraft => 'رپورٹ کا مسودہ دیکھیں';
+
+  @override
+  String get voiceStart => 'آواز شروع کریں';
+
+  @override
+  String get voiceEnd => 'آواز بند کریں';
+
+  @override
+  String get voiceApply => 'درستی لاگو کریں';
+
+  @override
+  String get voiceType => 'پیغام لکھیں';
 }

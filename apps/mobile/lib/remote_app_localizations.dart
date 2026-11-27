@@ -261,19 +261,24 @@ class RemoteAppLocalizations extends AppLocalizations {
   @override
   String get stepSubmit => values['stepSubmit'] ?? base.stepSubmit;
   @override
-  String get submittedStatements => values['submittedStatements'] ?? base.submittedStatements;
+  String get submittedStatements =>
+      values['submittedStatements'] ?? base.submittedStatements;
   @override
-  String get employeeReported => values['employeeReported'] ?? base.employeeReported;
+  String get employeeReported =>
+      values['employeeReported'] ?? base.employeeReported;
   @override
-  String get descriptionLabel => values['descriptionLabel'] ?? base.descriptionLabel;
+  String get descriptionLabel =>
+      values['descriptionLabel'] ?? base.descriptionLabel;
   @override
   String get appNameLabel => values['appNameLabel'] ?? base.appNameLabel;
   @override
-  String get evidenceNotesLabel => values['evidenceNotesLabel'] ?? base.evidenceNotesLabel;
+  String get evidenceNotesLabel =>
+      values['evidenceNotesLabel'] ?? base.evidenceNotesLabel;
   @override
   String get notSupplied => values['notSupplied'] ?? base.notSupplied;
   @override
-  String get demoEmployeeIdentity => values['demoEmployeeIdentity'] ?? base.demoEmployeeIdentity;
+  String get demoEmployeeIdentity =>
+      values['demoEmployeeIdentity'] ?? base.demoEmployeeIdentity;
   @override
   String get optionalChecks => values['optionalChecks'] ?? base.optionalChecks;
   @override
@@ -281,17 +286,20 @@ class RemoteAppLocalizations extends AppLocalizations {
   @override
   String get noDeviceFacts => values['noDeviceFacts'] ?? base.noDeviceFacts;
   @override
-  String get secureScreenLock => values['secureScreenLock'] ?? base.secureScreenLock;
+  String get secureScreenLock =>
+      values['secureScreenLock'] ?? base.secureScreenLock;
   @override
   String get configured => values['configured'] ?? base.configured;
   @override
   String get notConfigured => values['notConfigured'] ?? base.notConfigured;
   @override
-  String get publicApiClientReported => values['publicApiClientReported'] ?? base.publicApiClientReported;
+  String get publicApiClientReported =>
+      values['publicApiClientReported'] ?? base.publicApiClientReported;
   @override
   String get checkedAt => values['checkedAt'] ?? base.checkedAt;
   @override
-  String get observationDisclaimer => values['observationDisclaimer'] ?? base.observationDisclaimer;
+  String get observationDisclaimer =>
+      values['observationDisclaimer'] ?? base.observationDisclaimer;
   @override
   String get helpStorage => values['helpStorage'] ?? base.helpStorage;
   @override
@@ -299,9 +307,11 @@ class RemoteAppLocalizations extends AppLocalizations {
   @override
   String get helpRoles => values['helpRoles'] ?? base.helpRoles;
   @override
-  String get settingsOpenError => values['settingsOpenError'] ?? base.settingsOpenError;
+  String get settingsOpenError =>
+      values['settingsOpenError'] ?? base.settingsOpenError;
   @override
-  String get apiAddressLabel => values['apiAddressLabel'] ?? base.apiAddressLabel;
+  String get apiAddressLabel =>
+      values['apiAddressLabel'] ?? base.apiAddressLabel;
   @override
   String get apiBuildHint => values['apiBuildHint'] ?? base.apiBuildHint;
   @override
@@ -325,6 +335,48 @@ class RemoteAppLocalizations extends AppLocalizations {
       return base.reportCount(count);
     }
   }
+
+  @override
+  String get voiceWelcome => values['voiceWelcome'] ?? base.voiceWelcome;
+  @override
+  String get voiceWelcomeHint =>
+      values['voiceWelcomeHint'] ?? base.voiceWelcomeHint;
+  @override
+  String get voiceAssistant => values['voiceAssistant'] ?? base.voiceAssistant;
+  @override
+  String get voiceYou => values['voiceYou'] ?? base.voiceYou;
+  @override
+  String get voiceReady => values['voiceReady'] ?? base.voiceReady;
+  @override
+  String get voiceConnecting =>
+      values['voiceConnecting'] ?? base.voiceConnecting;
+  @override
+  String get voiceListening => values['voiceListening'] ?? base.voiceListening;
+  @override
+  String get voiceThinking => values['voiceThinking'] ?? base.voiceThinking;
+  @override
+  String get voiceSpeaking => values['voiceSpeaking'] ?? base.voiceSpeaking;
+  @override
+  String get voiceEnding => values['voiceEnding'] ?? base.voiceEnding;
+  @override
+  String get voiceUnavailable =>
+      values['voiceUnavailable'] ?? base.voiceUnavailable;
+  @override
+  String get voicePartial => values['voicePartial'] ?? base.voicePartial;
+  @override
+  String get voiceCorrect => values['voiceCorrect'] ?? base.voiceCorrect;
+  @override
+  String get voiceUse => values['voiceUse'] ?? base.voiceUse;
+  @override
+  String get voiceDraft => values['voiceDraft'] ?? base.voiceDraft;
+  @override
+  String get voiceStart => values['voiceStart'] ?? base.voiceStart;
+  @override
+  String get voiceEnd => values['voiceEnd'] ?? base.voiceEnd;
+  @override
+  String get voiceApply => values['voiceApply'] ?? base.voiceApply;
+  @override
+  String get voiceType => values['voiceType'] ?? base.voiceType;
 }
 
 // Supports ICU cardinal plural messages with the count argument, including

@@ -393,4 +393,62 @@ class AppLocalizationsKn extends AppLocalizations {
 
   @override
   String get apiBuildHint => 'ನಿರ್ಮಾಣ ಆವೃತ್ತಿ ಮತ್ತು API ಮಾಹಿತಿ';
+
+  @override
+  String get voiceWelcome => 'ಮಾತನಾಡೋಣ.';
+
+  @override
+  String get voiceWelcomeHint =>
+      'ಏನಾಯಿತು ಎಂದು ಹೇಳಿ. ಮಾತನಾಡಬಹುದು ಅಥವಾ ಟೈಪ್ ಮಾಡಬಹುದು.';
+
+  @override
+  String get voiceAssistant => 'ಅನುವಾಚ್ ಸಹಾಯಕ';
+
+  @override
+  String get voiceYou => 'ನೀವು';
+
+  @override
+  String get voiceReady => 'ಕೇಳಲು ಸಿದ್ಧ';
+
+  @override
+  String get voiceConnecting => 'ಸಂಪರ್ಕಿಸುತ್ತಿದೆ…';
+
+  @override
+  String get voiceListening => 'ಕೇಳುತ್ತಿದೆ';
+
+  @override
+  String get voiceThinking => 'ಯೋಚಿಸುತ್ತಿದೆ…';
+
+  @override
+  String get voiceSpeaking => 'ಮಾತನಾಡುತ್ತಿದೆ';
+
+  @override
+  String get voiceEnding => 'ಮುಗಿಸುತ್ತಿದೆ…';
+
+  @override
+  String get voiceUnavailable => 'ಧ್ವನಿ ಸೌಲಭ್ಯ ಲಭ್ಯವಿಲ್ಲ. ಟೈಪ್ ಮಾಡಬಹುದು.';
+
+  @override
+  String get voicePartial => 'ನೇರ ಪ್ರತಿಲಿಪಿ';
+
+  @override
+  String get voiceCorrect => 'ಪ್ರತಿಲಿಪಿ ತಿದ್ದಿ';
+
+  @override
+  String get voiceUse => 'ವರದಿಗೆ ಸೇರಿಸಿ';
+
+  @override
+  String get voiceDraft => 'ವರದಿಯ ಕರಡು ನೋಡಿ';
+
+  @override
+  String get voiceStart => 'ಧ್ವನಿ ಪ್ರಾರಂಭಿಸಿ';
+
+  @override
+  String get voiceEnd => 'ಧ್ವನಿ ನಿಲ್ಲಿಸಿ';
+
+  @override
+  String get voiceApply => 'ತಿದ್ದುಪಡಿ ಅನ್ವಯಿಸಿ';
+
+  @override
+  String get voiceType => 'ಸಂದೇಶ ಟೈಪ್ ಮಾಡಿ';
 }

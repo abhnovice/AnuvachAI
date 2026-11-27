@@ -7,7 +7,28 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'local_features.dart';
+import 'l10n/app_localizations.dart';
 import 'reporting.dart';
+
+enum VoicePhase {
+  idle,
+  connecting,
+  listening,
+  thinking,
+  speaking,
+  ending,
+  error,
+}
+
+typedef VoiceView = ({
+  VoicePhase phase,
+  bool active,
+  VoidCallback? microphone,
+  String employeePreview,
+  String assistantPreview,
+  VoidCallback? reviewDraft,
+  bool hasDraft,
+});
 
 class ReportVoice extends StatefulWidget {
   const ReportVoice({
@@ -16,11 +37,15 @@ class ReportVoice extends StatefulWidget {
     required this.language,
     required this.enabled,
     required this.reviewTicket,
+    this.conversation,
+    this.onTurn,
   });
   final Api api;
   final String language;
   final bool enabled;
   final Future<void> Function(Json, String) reviewTicket;
+  final Widget Function(VoiceView voice)? conversation;
+  final void Function(String role, String text)? onTurn;
 
   @override
   State<ReportVoice> createState() => _ReportVoiceState();
@@ -60,6 +85,8 @@ class _ReportVoiceState extends State<ReportVoice>
   String output = '';
   String partial = '';
   String agentPartial = '';
+  bool thinking = false;
+  bool voiceError = false;
 
   @override
   void initState() {
@@ -90,6 +117,7 @@ class _ReportVoiceState extends State<ReportVoice>
       suppressReplyAudio = false;
       serverTurnComplete = true;
       status = 'Connecting to voice…';
+      thinking = voiceError = false;
     });
     deadline = Timer(const Duration(seconds: 12), () {
       unawaited(stop('Voice connection timed out. Continue with text.'));
@@ -151,6 +179,7 @@ class _ReportVoiceState extends State<ReportVoice>
         final active = call.arguments == true;
         setState(() {
           playing = active;
+          if (active) thinking = false;
           if (!finishing) status = active ? 'Speaking' : 'Listening';
         });
         if (!active && finishAfterDrain) scheduleFinish();
@@ -175,6 +204,7 @@ class _ReportVoiceState extends State<ReportVoice>
       }
       if (ready != true) throw StateError('Microphone unavailable');
       startedMic = true;
+      socket?.add('greet');
       setState(() {
         starting = false;
         status = 'Listening';
@@ -217,13 +247,16 @@ class _ReportVoiceState extends State<ReportVoice>
             setState(() {
               output = agentPartial = '';
               playing = false;
+              thinking = false;
               if (!finishing) status = 'Listening';
             });
           case 'listening':
+          case 'closed_turn':
             suppressReplyAudio = false;
             serverTurnComplete = true;
             lastAudioMs = null;
-            if (finishing) {
+            setState(() => thinking = false);
+            if (finishing && event['state'] == 'closed_turn') {
               finishAfterDrain = true;
               if (!playing) scheduleFinish();
             }
@@ -235,6 +268,10 @@ class _ReportVoiceState extends State<ReportVoice>
         });
       case 'transcript':
         final text = event['text'] as String;
+        final role = event['role'] as String;
+        if (event['partial'] != true && text.trim().isNotEmpty) {
+          widget.onTurn?.call(role, text.trim());
+        }
         setState(() {
           if (event['role'] == 'agent') {
             if (event['partial'] == true) {
@@ -248,6 +285,7 @@ class _ReportVoiceState extends State<ReportVoice>
             partial += text;
           } else {
             partial = '';
+            thinking = text.trim().isNotEmpty;
           }
         });
       case 'audio':
@@ -289,6 +327,7 @@ class _ReportVoiceState extends State<ReportVoice>
     suppressReplyAudio = !serverTurnComplete;
     setState(() {
       playing = false;
+      voiceError = true;
       if (!finishing) status = 'Reply audio stopped. Still listening…';
     });
     if (finishAfterDrain) scheduleFinish();
@@ -302,8 +341,9 @@ class _ReportVoiceState extends State<ReportVoice>
     try {
       await stop('Voice stopped. Review your ticket draft.');
       await widget.reviewTicket(proposal, language);
-      if (mounted && ticketDraft == proposal)
+      if (mounted && ticketDraft == proposal) {
         setState(() => ticketDraft = null);
+      }
     } catch (error) {
       if (mounted) setState(() => status = error.toString());
     } finally {
@@ -359,6 +399,12 @@ class _ReportVoiceState extends State<ReportVoice>
         starting = finishing = startedMic = finishAfterDrain = playing = false;
         partial = agentPartial = '';
         status = message;
+        voiceError =
+            message.contains('unavailable') ||
+            message.contains('disconnected') ||
+            message.contains('timed out') ||
+            message.contains('failed');
+        thinking = false;
       });
     }
     try {
@@ -399,23 +445,58 @@ class _ReportVoiceState extends State<ReportVoice>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final canRecord =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+    final VoidCallback? microphone =
+        !canRecord ||
+            !widget.enabled ||
+            starting ||
+            finishing ||
+            stopping ||
+            preparingMic
+        ? null
+        : attempt == null
+        ? start
+        : finish;
+    final phase = finishing
+        ? VoicePhase.ending
+        : starting || preparingMic
+        ? VoicePhase.connecting
+        : playing
+        ? VoicePhase.speaking
+        : thinking
+        ? VoicePhase.thinking
+        : voiceError || !canRecord
+        ? VoicePhase.error
+        : attempt != null
+        ? VoicePhase.listening
+        : VoicePhase.idle;
+    if (widget.conversation case final conversation?) {
+      return conversation((
+        phase: phase,
+        active: attempt != null,
+        microphone: microphone,
+        employeePreview: partial,
+        assistantPreview: agentPartial,
+        reviewDraft: ticketDraft != null && widget.enabled && !openingDraft
+            ? openDraft
+            : null,
+        hasDraft: ticketDraft != null,
+      ));
+    }
+    final strings = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android)
+        if (canRecord)
           FilledButton.icon(
-            onPressed:
-                !widget.enabled ||
-                    starting ||
-                    finishing ||
-                    stopping ||
-                    preparingMic
-                ? null
-                : attempt == null
-                ? start
-                : finish,
+            onPressed: microphone,
             icon: Icon(attempt == null ? Icons.mic : Icons.call_end),
-            label: Text(attempt == null ? 'Start voice' : 'End voice'),
+            label: Text(
+              attempt == null
+                  ? strings?.voiceStart ?? 'Start voice'
+                  : strings?.voiceEnd ?? 'End voice',
+            ),
           ),
         if (status.isNotEmpty)
           Semantics(
@@ -427,7 +508,7 @@ class _ReportVoiceState extends State<ReportVoice>
         if (ticketDraft != null)
           OutlinedButton(
             onPressed: widget.enabled && !openingDraft ? openDraft : null,
-            child: const Text('Review ticket draft'),
+            child: Text(strings?.voiceDraft ?? 'Review ticket draft'),
           ),
       ],
     );

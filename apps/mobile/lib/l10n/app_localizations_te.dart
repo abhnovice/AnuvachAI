@@ -402,4 +402,62 @@ class AppLocalizationsTe extends AppLocalizations {
   @override
   String get apiBuildHint =>
       'బిల్డ్ లేదా రన్ చేస్తున్నప్పుడు API_BASE_URL ని సెట్ చేయండి.';
+
+  @override
+  String get voiceWelcome => 'మాట్లాడుకుందాం.';
+
+  @override
+  String get voiceWelcomeHint =>
+      'ఏం జరిగిందో చెప్పండి. మాట్లాడవచ్చు లేదా టైప్ చేయవచ్చు.';
+
+  @override
+  String get voiceAssistant => 'అనువాచ్ సహాయకుడు';
+
+  @override
+  String get voiceYou => 'మీరు';
+
+  @override
+  String get voiceReady => 'వినడానికి సిద్ధం';
+
+  @override
+  String get voiceConnecting => 'కనెక్ట్ అవుతోంది…';
+
+  @override
+  String get voiceListening => 'వింటోంది';
+
+  @override
+  String get voiceThinking => 'ఆలోచిస్తోంది…';
+
+  @override
+  String get voiceSpeaking => 'మాట్లాడుతోంది';
+
+  @override
+  String get voiceEnding => 'ముగిస్తోంది…';
+
+  @override
+  String get voiceUnavailable => 'వాయిస్ అందుబాటులో లేదు. మీరు టైప్ చేయవచ్చు.';
+
+  @override
+  String get voicePartial => 'ప్రత్యక్ష లిప్యంతరీకరణ';
+
+  @override
+  String get voiceCorrect => 'లిప్యంతరీకరణను సరిచేయండి';
+
+  @override
+  String get voiceUse => 'నివేదికలో చేర్చండి';
+
+  @override
+  String get voiceDraft => 'నివేదిక ముసాయిదాను చూడండి';
+
+  @override
+  String get voiceStart => 'వాయిస్ ప్రారంభించండి';
+
+  @override
+  String get voiceEnd => 'వాయిస్ ఆపండి';
+
+  @override
+  String get voiceApply => 'సవరణను వర్తింపజేయండి';
+
+  @override
+  String get voiceType => 'సందేశాన్ని టైప్ చేయండి';
 }

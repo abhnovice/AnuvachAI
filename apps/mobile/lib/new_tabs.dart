@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'report_voice.dart';
+import 'design.dart';
 import 'reporting.dart';
 import 'language.dart';
 import 'local_features.dart';
@@ -36,6 +38,8 @@ class _CheckTabState extends State<CheckTab> {
   bool busy = false;
   bool reviewing = false;
   String? error;
+  bool revealed = false;
+  String lastPreview = '';
 
   @override
   void dispose() {
@@ -84,10 +88,7 @@ class _CheckTabState extends State<CheckTab> {
       }
     } catch (_) {
       if (mounted) {
-        setState(
-          () => error =
-              'Reporting assistant unavailable. You can still use your statement in a report.',
-        );
+        setState(() => error = AppLocalizations.of(context)!.voiceUnavailable);
       }
     } finally {
       if (mounted) setState(() => busy = false);
@@ -106,90 +107,467 @@ class _CheckTabState extends State<CheckTab> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+  void addVoiceTurn(String role, String text) {
+    if (role != 'employee' && role != 'agent') return;
+    setState(
+      () => widget.messages.add({
+        'speaker': role,
+        'text': text,
+        'captured': role == 'employee',
+      }),
+    );
+    scrollToLatest();
+  }
+
+  Future<void> correct(Json turn) async {
     final strings = AppLocalizations.of(context)!;
-    return Column(
-      children: [
-        Expanded(
-          child: ListView(
-            controller: scroll,
-            padding: const EdgeInsets.all(20),
-            children: [
-              const Text('Reporting assistant'),
-              ReportVoice(
-                api: widget.api,
-                language: widget.language,
-                enabled: !reviewing,
-                reviewTicket: widget.reviewVoiceTicket,
+    var text = turn['text'] as String;
+    final revised = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        scrollable: true,
+        title: Text(strings.voiceCorrect),
+        content: TextFormField(
+          initialValue: text,
+          autofocus: true,
+          minLines: 3,
+          maxLines: 6,
+          maxLength: 5000,
+          onChanged: (value) => text = value,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(strings.cancelAction),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, text.trim()),
+            child: Text(strings.voiceApply),
+          ),
+        ],
+      ),
+    );
+    if (mounted && revised != null && revised.isNotEmpty) {
+      setState(() => turn['text'] = revised);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => ReportVoice(
+    api: widget.api,
+    language: widget.language,
+    enabled: !reviewing,
+    reviewTicket: widget.reviewVoiceTicket,
+    onTurn: addVoiceTurn,
+    conversation: buildConversation,
+  );
+
+  Widget buildConversation(VoiceView voice) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final strings = AppLocalizations.of(context)!;
+    final preview = voice.employeePreview + voice.assistantPreview;
+    if (preview != lastPreview) {
+      lastPreview = preview;
+      if (preview.isNotEmpty &&
+          (!scroll.hasClients || scroll.position.extentAfter < 120)) {
+        scrollToLatest();
+      }
+    }
+    final empty = widget.messages.isEmpty && preview.isEmpty && !voice.hasDraft;
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    final motion = reduceMotion
+        ? Duration.zero
+        : const Duration(milliseconds: 220);
+    final phase = busy && !voice.active ? VoicePhase.thinking : voice.phase;
+    final stateLabel = switch (phase) {
+      VoicePhase.idle => strings.voiceReady,
+      VoicePhase.connecting => strings.voiceConnecting,
+      VoicePhase.listening => strings.voiceListening,
+      VoicePhase.thinking => strings.voiceThinking,
+      VoicePhase.speaking => strings.voiceSpeaking,
+      VoicePhase.ending => strings.voiceEnding,
+      VoicePhase.error => strings.voiceUnavailable,
+    };
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 680),
+        child: Column(
+          children: [
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, viewport) => ListView(
+                  controller: scroll,
+                  padding: const EdgeInsetsDirectional.fromSTEB(20, 12, 20, 12),
+                  children: [
+                    if (empty)
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: math.max(0, viewport.maxHeight - 24),
+                        ),
+                        child: Center(
+                          child: welcome(strings, theme, reduceMotion),
+                        ),
+                      ),
+                    for (final turn in widget.messages)
+                      _ConversationReveal(
+                        key: ObjectKey(turn),
+                        duration: motion,
+                        child: _ConversationBubble(
+                          speaker: turn['speaker'] == 'agent'
+                              ? strings.voiceAssistant
+                              : strings.voiceYou,
+                          text: turn['text'] as String,
+                          employee: turn['speaker'] == 'employee',
+                          actions: turn['speaker'] == 'employee'
+                              ? [
+                                  if (turn['captured'] == true)
+                                    TextButton(
+                                      onPressed: reviewing
+                                          ? null
+                                          : () => correct(turn),
+                                      child: Text(strings.voiceCorrect),
+                                    ),
+                                  TextButton(
+                                    onPressed: reviewing
+                                        ? null
+                                        : () => review(turn['text'] as String),
+                                    child: Text(strings.voiceUse),
+                                  ),
+                                ]
+                              : const [],
+                        ),
+                      ),
+                    if (voice.employeePreview.isNotEmpty)
+                      _ConversationBubble(
+                        speaker: strings.voicePartial,
+                        text: voice.employeePreview,
+                        employee: true,
+                      ),
+                    if (voice.assistantPreview.isNotEmpty &&
+                        voice.assistantPreview !=
+                            widget.messages.lastOrNull?['text'])
+                      _ConversationBubble(
+                        speaker: strings.voiceAssistant,
+                        text: voice.assistantPreview,
+                        employee: false,
+                      ),
+                    if (voice.hasDraft)
+                      Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: OutlinedButton.icon(
+                          onPressed: voice.reviewDraft,
+                          icon: const Icon(Icons.edit_note_rounded),
+                          label: Text(strings.voiceDraft),
+                        ),
+                      ),
+                    if (error != null)
+                      Text(error!, style: TextStyle(color: colors.error)),
+                  ],
+                ),
               ),
-              for (final message in widget.messages)
-                Align(
-                  alignment: message['speaker'] == 'agent'
-                      ? AlignmentDirectional.centerStart
-                      : AlignmentDirectional.centerEnd,
-                  child: Card(
-                    color: message['speaker'] == 'agent'
-                        ? scheme.surfaceContainer
-                        : scheme.primaryContainer,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (message['speaker'] == 'agent')
-                            const Text('Reporting assistant'),
-                          Text(message['text'] as String),
-                          if (message['speaker'] == 'employee')
-                            TextButton(
-                              onPressed: reviewing
-                                  ? null
-                                  : () => review(message['text'] as String),
-                              child: const Text('Use in report'),
-                            ),
-                        ],
+            ),
+            Material(
+              color: colors.surface,
+              shape: RoundedRectangleBorder(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(30),
+                ),
+                side: BorderSide(color: colors.outlineVariant),
+              ),
+              child: Padding(
+                padding: const EdgeInsetsDirectional.fromSTEB(18, 10, 18, 10),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Semantics(
+                      liveRegion: true,
+                      child: AnimatedSwitcher(
+                        duration: motion,
+                        child: Text(
+                          stateLabel,
+                          key: ValueKey(stateLabel),
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: phase == VoicePhase.error
+                                ? colors.error
+                                : colors.primary,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      child: _VoiceControl(
+                        phase: phase,
+                        diameter: MediaQuery.viewInsetsOf(context).bottom > 0
+                            ? 48
+                            : empty
+                            ? 76
+                            : 60,
+                        duration: motion,
+                        label: voice.active
+                            ? strings.voiceEnd
+                            : strings.voiceStart,
+                        onPressed: voice.microphone,
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: controller,
+                            maxLength: 5000,
+                            minLines: 1,
+                            maxLines: 3,
+                            textInputAction: TextInputAction.send,
+                            decoration: InputDecoration(
+                              hintText: strings.voiceType,
+                              counterText: '',
+                              isDense: true,
+                              contentPadding:
+                                  const EdgeInsetsDirectional.fromSTEB(
+                                    16,
+                                    13,
+                                    16,
+                                    13,
+                                  ),
+                            ),
+                            onSubmitted: send,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton.filled(
+                          onPressed: busy ? null : () => send(controller.text),
+                          tooltip: strings.send,
+                          icon: const Icon(Icons.arrow_upward_rounded),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              if (busy) const LinearProgressIndicator(),
-              if (error != null)
-                Text(error!, style: TextStyle(color: scheme.error)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget welcome(AppLocalizations strings, ThemeData theme, bool reduceMotion) {
+    final animate = !revealed && !reduceMotion;
+    revealed = true;
+    return _ConversationReveal(
+      duration: animate ? const Duration(milliseconds: 540) : Duration.zero,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const BrandMark(size: 84),
+          const SizedBox(height: 22),
+          Text(
+            strings.voiceWelcome,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.headlineMedium?.copyWith(
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            strings.voiceWelcomeHint,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ConversationReveal extends StatelessWidget {
+  const _ConversationReveal({
+    super.key,
+    required this.duration,
+    required this.child,
+  });
+
+  final Duration duration;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (duration == Duration.zero) return child;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: duration,
+      curve: Curves.easeOutCubic,
+      builder: (context, progress, child) => Opacity(
+        opacity: progress,
+        child: Transform.translate(
+          offset: Offset(0, (1 - progress) * 8),
+          child: child,
+        ),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _ConversationBubble extends StatelessWidget {
+  const _ConversationBubble({
+    required this.speaker,
+    required this.text,
+    required this.employee,
+    this.actions = const [],
+  });
+
+  final String speaker;
+  final String text;
+  final bool employee;
+  final List<Widget> actions;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    return Align(
+      alignment: employee
+          ? AlignmentDirectional.centerEnd
+          : AlignmentDirectional.centerStart,
+      child: FractionallySizedBox(
+        widthFactor: .91,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsetsDirectional.fromSTEB(16, 12, 16, 12),
+          decoration: BoxDecoration(
+            color: employee
+                ? colors.primaryContainer
+                : colors.surfaceContainerLow,
+            borderRadius: BorderRadiusDirectional.only(
+              topStart: const Radius.circular(23),
+              topEnd: const Radius.circular(23),
+              bottomStart: Radius.circular(employee ? 23 : 7),
+              bottomEnd: Radius.circular(employee ? 7 : 23),
+            ),
+            border: Border.all(color: colors.outlineVariant),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                speaker,
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: employee ? colors.onPrimaryContainer : colors.primary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              SelectableText(
+                text,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: employee
+                      ? colors.onPrimaryContainer
+                      : colors.onSurface,
+                ),
+              ),
+              if (actions.isNotEmpty) Wrap(children: actions),
             ],
           ),
         ),
-        SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: controller,
-                    maxLength: 5000,
-                    decoration: InputDecoration(
-                      labelText: strings.message,
-                      counterText: '',
-                    ),
-                    onSubmitted: send,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton.filled(
-                  onPressed: busy ? null : () => send(controller.text),
-                  tooltip: strings.send,
-                  icon: const Icon(Icons.arrow_upward),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
+}
+
+class _VoiceControl extends StatelessWidget {
+  const _VoiceControl({
+    required this.phase,
+    required this.diameter,
+    required this.duration,
+    required this.label,
+    this.onPressed,
+  });
+
+  final VoicePhase phase;
+  final double diameter;
+  final Duration duration;
+  final String label;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final tint = phase == VoicePhase.error ? colors.error : colors.primary;
+    final icon = switch (phase) {
+      VoicePhase.idle => Icons.mic_rounded,
+      VoicePhase.connecting => Icons.link_rounded,
+      VoicePhase.listening => Icons.stop_rounded,
+      VoicePhase.thinking => Icons.more_horiz_rounded,
+      VoicePhase.speaking => Icons.graphic_eq_rounded,
+      VoicePhase.ending => Icons.call_end_rounded,
+      VoicePhase.error => Icons.refresh_rounded,
+    };
+    return CustomPaint(
+      painter: _VoiceDial(tint),
+      child: AnimatedContainer(
+        duration: duration,
+        curve: Curves.easeOutCubic,
+        width: diameter + 20,
+        height: diameter + 20,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: tint.withValues(alpha: .08),
+          border: Border.all(color: tint.withValues(alpha: .24)),
+        ),
+        padding: const EdgeInsets.all(9),
+        child: IconButton.filled(
+          onPressed: onPressed,
+          tooltip: label,
+          style: IconButton.styleFrom(
+            backgroundColor: tint,
+            foregroundColor: phase == VoicePhase.error
+                ? colors.onError
+                : colors.onPrimary,
+          ),
+          icon: AnimatedSwitcher(
+            duration: duration,
+            child: Icon(icon, key: ValueKey(icon), size: 30),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _VoiceDial extends CustomPainter {
+  const _VoiceDial(this.tint);
+
+  final Color tint;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    final radius = size.shortestSide / 2;
+    final brush = Paint()
+      ..strokeWidth = 1.4
+      ..strokeCap = StrokeCap.round;
+    for (var index = 0; index < 32; index++) {
+      final angle = math.pi * index / 16;
+      final direction = Offset(math.cos(angle), math.sin(angle));
+      final major = index % 4 == 0;
+      brush.color = tint.withValues(alpha: major ? .5 : .22);
+      canvas.drawLine(
+        center + direction * (radius - (major ? 7 : 4)),
+        center + direction * (radius - 1),
+        brush,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_VoiceDial oldDelegate) => oldDelegate.tint != tint;
 }
 
 class AccessTab extends StatefulWidget {

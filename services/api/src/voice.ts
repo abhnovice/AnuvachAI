@@ -87,9 +87,11 @@ export function registerVoice(app: FastifyInstance, agentBase?: string) {
           agent.send(
             JSON.stringify({ type: "audio", data: data.toString("base64") }),
           );
+        } else if (!binary && data.toString() === "greet") {
+          agent.send(JSON.stringify({ type: "greet" }));
         } else if (!binary && data.toString() === "end") {
           ended = true;
-          agent.send(JSON.stringify({ type: "audio_end" }));
+          agent.send(JSON.stringify({ type: "finish" }));
         } else {
           return close(1003);
         }

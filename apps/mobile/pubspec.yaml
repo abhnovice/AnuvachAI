@@ -31,3 +31,4 @@ flutter:
         - asset: assets/fonts/NotoSans.ttf
   assets:
     - assets/fonts/OFL.txt
+    - assets/branding/anuvach-logo.png

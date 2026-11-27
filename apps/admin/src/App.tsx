@@ -340,9 +340,13 @@ export function App({ onSignOut }: { onSignOut?: () => void } = {}) {
           href="#reports"
           aria-label="Anuvach.AI incident desk"
         >
-          <span className="logo">
-            <Icon name="message" size={24} />
-          </span>
+          <img
+            className="logo"
+            src={"/anuvach-logo.png"}
+            alt=""
+            width={46}
+            height={46}
+          />
           <span>
             Anuvach<span className="brand-dot">.AI</span>
             <small>SOCIAL ENGINEERING</small>

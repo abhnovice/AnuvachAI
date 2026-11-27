@@ -29,7 +29,11 @@ test(
       assert.equal(query.preview, "1");
       languages.push(query.language);
       socket.send(
-        JSON.stringify({ type: "state", state: "Microphone stream open" }),
+        JSON.stringify({
+          type: "state",
+          state: "Microphone stream open",
+          voice_cues: true,
+        }),
       );
       socket.on("message", (data) => {
         const message = JSON.parse(data.toString());
@@ -81,6 +85,7 @@ test(
         assert.deepEqual(JSON.parse(ready.toString()), {
           type: "state",
           state: "ready",
+          voice_cues: true,
         });
         socket.send("greet");
         const interrupted = once(socket, "message");

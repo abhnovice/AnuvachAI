@@ -28,6 +28,7 @@ typedef VoiceView = ({
   String assistantPreview,
   VoidCallback? reviewDraft,
   bool hasDraft,
+  bool permissionDenied,
 });
 
 class ReportVoice extends StatefulWidget {
@@ -87,6 +88,8 @@ class _ReportVoiceState extends State<ReportVoice>
   String agentPartial = '';
   bool thinking = false;
   bool voiceError = false;
+  bool supportsVoiceCues = false;
+  bool permissionDenied = false;
 
   @override
   void initState() {
@@ -96,7 +99,7 @@ class _ReportVoiceState extends State<ReportVoice>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused && attempt != null) {
+    if (state == AppLifecycleState.paused && attempt != null && !preparingMic) {
       unawaited(stop('Voice paused. Start again or continue with text.'));
     }
   }
@@ -117,7 +120,8 @@ class _ReportVoiceState extends State<ReportVoice>
       suppressReplyAudio = false;
       serverTurnComplete = true;
       status = 'Connecting to voice…';
-      thinking = voiceError = false;
+      thinking = voiceError = permissionDenied = false;
+      supportsVoiceCues = false;
     });
     deadline = Timer(const Duration(seconds: 12), () {
       unawaited(stop('Voice connection timed out. Continue with text.'));
@@ -202,9 +206,13 @@ class _ReportVoiceState extends State<ReportVoice>
         if (ready == true) await channel.invokeMethod<void>('stopMic');
         return;
       }
-      if (ready != true) throw StateError('Microphone unavailable');
+      if (ready != true) {
+        permissionDenied = true;
+        await stop('Microphone unavailable. Continue with text.');
+        return;
+      }
       startedMic = true;
-      socket?.add('greet');
+      if (supportsVoiceCues) socket?.add('greet');
       setState(() {
         starting = false;
         status = 'Listening';
@@ -236,7 +244,10 @@ class _ReportVoiceState extends State<ReportVoice>
       case 'state':
         switch (event['state']) {
           case 'ready':
-            if (!preparingMic && !startedMic) unawaited(startMic(current));
+            if (!preparingMic && !startedMic) {
+              supportsVoiceCues = event['voice_cues'] == true;
+              unawaited(startMic(current));
+            }
           case 'interrupted':
             suppressReplyAudio = false;
             serverTurnComplete = true;
@@ -256,7 +267,8 @@ class _ReportVoiceState extends State<ReportVoice>
             serverTurnComplete = true;
             lastAudioMs = null;
             setState(() => thinking = false);
-            if (finishing && event['state'] == 'closed_turn') {
+            if (finishing &&
+                (!supportsVoiceCues || event['state'] == 'closed_turn')) {
               finishAfterDrain = true;
               if (!playing) scheduleFinish();
             }
@@ -482,6 +494,7 @@ class _ReportVoiceState extends State<ReportVoice>
             ? openDraft
             : null,
         hasDraft: ticketDraft != null,
+        permissionDenied: permissionDenied,
       ));
     }
     final strings = AppLocalizations.of(context);

@@ -77,9 +77,21 @@ export function AuthGate({
       void auth().then(signOut);
     });
   return (
-    <main style={{ maxWidth: "26rem", margin: "4rem auto", padding: "1rem" }}>
-      <h1>Admin sign-in</h1>
-      <form onSubmit={submit} style={{ display: "grid", gap: "1rem" }}>
+    <main className="admin-auth">
+      <header className="admin-auth-header">
+        <img
+          className="logo"
+          src="/anuvach-logo.png"
+          width={46}
+          height={46}
+          alt=""
+        />
+        <div>
+          <p className="admin-auth-brand">Anuvach.AI</p>
+          <h1>Admin sign-in</h1>
+        </div>
+      </header>
+      <form onSubmit={submit}>
         <label>
           Email{" "}
           <input required name="email" type="email" autoComplete="username" />

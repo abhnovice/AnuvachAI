@@ -932,7 +932,7 @@ def create_app(
                     closing_requested.set()
 
         await websocket.send_json({
-            "type": "state", "state": "Microphone stream open", "session_id": session_id,
+            "type": "state", "state": "Microphone stream open", "voice_cues": True, "session_id": session_id,
             "report_id": report_id,
         })
         tasks = [asyncio.create_task(send_events()), asyncio.create_task(receive_events())]

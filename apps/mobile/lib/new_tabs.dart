@@ -187,7 +187,8 @@ class _CheckTabState extends State<CheckTab> {
       VoicePhase.thinking => strings.voiceThinking,
       VoicePhase.speaking => strings.voiceSpeaking,
       VoicePhase.ending => strings.voiceEnding,
-      VoicePhase.error => strings.voiceUnavailable,
+      VoicePhase.error =>
+        voice.permissionDenied ? strings.micDenied : strings.voiceUnavailable,
     };
 
     return Center(

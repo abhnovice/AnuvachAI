@@ -161,4 +161,49 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(milliseconds: 100));
   });
+
+  testWidgets('older Cloud Run accepts voice without newer session cues', (
+    tester,
+  ) async {
+    final socket = VoiceSocketFixture(voiceCues: false);
+    final microphone = <String>[];
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(LocalFeatures.channel, (call) async {
+      microphone.add(call.method);
+      return call.method == 'startVoice' ? true : null;
+    });
+    addTearDown(
+      () => messenger.setMockMethodCallHandler(LocalFeatures.channel, null),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ReportVoice(
+            api: Api(voiceConnector: (_, _) async => socket),
+            language: 'en',
+            enabled: true,
+            reviewTicket: (_, _) async {},
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Start voice'));
+    await tester.pump();
+    expect(microphone, contains('startVoice'));
+    expect(find.text('Listening'), findsOneWidget);
+    expect(
+      socket.sent,
+      isEmpty,
+      reason: 'legacy Cloud Run would close on greet',
+    );
+    await tester.tap(find.text('End voice'));
+    await tester.pump();
+    expect(socket.sent, ['end']);
+    socket.emit({'type': 'state', 'state': 'listening'});
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Start voice'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 }

@@ -5,10 +5,14 @@ import 'dart:io';
 class VoiceSocketFixture extends StreamView<dynamic> implements WebSocket {
   VoiceSocketFixture._(this.events) : super(events.stream);
 
-  factory VoiceSocketFixture() {
+  factory VoiceSocketFixture({bool voiceCues = true}) {
     final events = StreamController<dynamic>();
     final socket = VoiceSocketFixture._(events);
-    socket.emit({'type': 'state', 'state': 'ready'});
+    socket.emit({
+      'type': 'state',
+      'state': 'ready',
+      if (voiceCues) 'voice_cues': true,
+    });
     return socket;
   }
 

@@ -116,11 +116,18 @@ export function registerVoice(app: FastifyInstance, agentBase?: string) {
             data: audio,
             message,
             input_to_audio_ms,
+            voice_cues,
             draft,
           } = JSON.parse(data);
           if (type === "state" && state === "Microphone stream open") {
             ready = true;
-            client.send(JSON.stringify({ type: "state", state: "ready" }));
+            client.send(
+              JSON.stringify({
+                type: "state",
+                state: "ready",
+                ...(voice_cues === true ? { voice_cues: true } : {}),
+              }),
+            );
           } else if (type === "ticket_draft") {
             const parsed = voiceDraft.safeParse(draft);
             if (ticketDraft === "1" && parsed.success) {

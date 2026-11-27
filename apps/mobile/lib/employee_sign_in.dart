@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import 'design.dart';
+
 class EmployeeSignIn extends StatefulWidget {
   const EmployeeSignIn({super.key, required this.auth});
 
@@ -49,6 +51,12 @@ class _EmployeeSignInState extends State<EmployeeSignIn> {
     body: ListView(
       padding: const EdgeInsets.all(24),
       children: [
+        const Center(child: BrandMark(size: 72)),
+        const SizedBox(height: 12),
+        Center(
+          child: Text('Anuvach.AI', style: Theme.of(context).textTheme.titleLarge),
+        ),
+        const SizedBox(height: 24),
         AutofillGroup(
           child: Column(
             children: [

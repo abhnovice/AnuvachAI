@@ -99,9 +99,12 @@ svg {
 .logo {
   display: block;
   flex: 0 0 auto;
-  border-radius: 14px;
+  filter: brightness(0.49);
   width: 46px;
   height: 46px;
+}
+[data-theme="dark"] .logo {
+  filter: none;
 }
 .admin-auth {
   max-width: 26rem;

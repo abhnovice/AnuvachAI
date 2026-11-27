@@ -64,6 +64,7 @@ html {
 [data-theme="dark"]
   :is(
     .sidebar,
+    .admin-auth,
     .panel,
     .chart-card,
     .metric-card,
@@ -125,7 +126,7 @@ html {
   border-color: var(--line);
 }
 [data-theme="dark"]
-  :is(.nav-item.active, .metric-card.mint, .logo, .journey-node, .badge) {
+  :is(.nav-item.active, .metric-card.mint, .journey-node, .badge) {
   background: #285448;
   color: #b7f1df;
 }

@@ -208,15 +208,14 @@ class BrandMark extends StatelessWidget {
   Widget build(BuildContext context) => Semantics(
     label: 'Anuvach.AI',
     image: true,
-    child: ClipRRect(
-      borderRadius: BorderRadius.circular(size * .30),
-      child: Image.asset(
-        'assets/branding/anuvach-logo.png',
-        width: size,
-        height: size,
-        fit: BoxFit.cover,
-        excludeFromSemantics: true,
-      ),
+    child: Image.asset(
+      'assets/branding/anuvach-logo.png',
+      width: size,
+      height: size,
+      fit: BoxFit.contain,
+      color: Theme.of(context).brightness == Brightness.light ? brandTeal : null,
+      colorBlendMode: BlendMode.srcIn,
+      excludeFromSemantics: true,
     ),
   );
 }

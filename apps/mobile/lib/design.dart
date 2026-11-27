@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart' show Bidi;
 import 'reporting.dart';
 import 'l10n/app_localizations.dart';
 
@@ -465,12 +466,21 @@ Widget facts(Json data, {bool submitted = true}) => Builder(
                       ),
                     ),
                     const SizedBox(height: 5),
-                    SelectableText(
-                      data[key] == ''
-                          ? AppLocalizations.of(context)!.notSupplied
-                          : '${data[key]}',
-                      style: Theme.of(context).textTheme.bodyLarge,
-                    ),
+                    if (data[key] == '')
+                      Text(AppLocalizations.of(context)!.notSupplied)
+                    else
+                      SelectableText(
+                        '${data[key]}',
+                        textDirection:
+                            Bidi.detectRtlDirectionality('${data[key]}')
+                            ? TextDirection.rtl
+                            : TextDirection.ltr,
+                        textAlign:
+                            Directionality.of(context) == TextDirection.rtl
+                            ? TextAlign.right
+                            : TextAlign.left,
+                        style: Theme.of(context).textTheme.bodyLarge,
+                      ),
                   ],
                 ),
               ),

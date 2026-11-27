@@ -297,4 +297,27 @@ void main() {
       expect(prefs.getString('draft'), isNull);
     },
   );
+  testWidgets(
+    'Urdu review preserves the direction of each employee statement',
+    (tester) async {
+      const description = 'A synthetic caller asked for a code.';
+      const evidence = 'کال کا ریکارڈ موجود ہے۔';
+      final draft = Draft(await SharedPreferences.getInstance(), Api())
+        ..update('description', description)
+        ..update('evidenceNotes', evidence)
+        ..review();
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('ur'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Review(draft: draft),
+        ),
+      );
+      SelectableText value(String text) =>
+          tester.widget(find.widgetWithText(SelectableText, text));
+      expect(value(description).textDirection, TextDirection.ltr);
+      expect(value(evidence).textDirection, TextDirection.rtl);
+    },
+  );
 }

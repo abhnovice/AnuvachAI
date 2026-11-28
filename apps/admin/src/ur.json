@@ -118,5 +118,17 @@
   "noChecks": "کوئی خودکار جانچ فراہم نہیں کی گئی۔",
   "cancel": "منسوخ کریں",
   "confirmDecision": "فیصلے کی تصدیق کریں",
-  "confirmEscalation": "اعلیٰ جائزے کے فیصلے کی تصدیق کریں"
+  "confirmEscalation": "اعلیٰ جائزے کے فیصلے کی تصدیق کریں",
+  "severityUnassessed": "جائزہ باقی",
+  "severityLow": "کم",
+  "severityModerate": "درمیانی",
+  "severityHigh": "زیادہ",
+  "severityCritical": "انتہائی",
+  "severitySuggested": "تجویز کردہ",
+  "severityReviewed": "جائزہ شدہ",
+  "vishingGroup": "صوتی فشنگ / کالیں",
+  "phishingGroup": "فشنگ / پیغامات",
+  "deepfakeGroup": "ڈیپ فیک",
+  "paymentGroup": "ادائیگی میں دھوکا دہی",
+  "accountAccessGroup": "اکاؤنٹ یا ڈیوائس تک رسائی"
 }

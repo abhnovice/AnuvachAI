@@ -118,5 +118,17 @@
   "noChecks": "ಯಾವುದೇ ಸ್ವಯಂಚಾಲಿತ ತಪಾಸಣೆಗಳನ್ನು ಒದಗಿಸಲಾಗಿಲ್ಲ.",
   "cancel": "ರದ್ದುಮಾಡಿ",
   "confirmDecision": "ನಿರ್ಧಾರವನ್ನು ದೃಢೀಕರಿಸಿ",
-  "confirmEscalation": "ಉನ್ನತ ಪರಿಶೀಲನೆ ನಿರ್ಧಾರವನ್ನು ದೃಢೀಕರಿಸಿ"
+  "confirmEscalation": "ಉನ್ನತ ಪರಿಶೀಲನೆ ನಿರ್ಧಾರವನ್ನು ದೃಢೀಕರಿಸಿ",
+  "severityUnassessed": "ಮೌಲ್ಯಮಾಪನವಾಗಿಲ್ಲ",
+  "severityLow": "ಕಡಿಮೆ",
+  "severityModerate": "ಮಧ್ಯಮ",
+  "severityHigh": "ಹೆಚ್ಚು",
+  "severityCritical": "ಗಂಭೀರ",
+  "severitySuggested": "ಸೂಚಿಸಲಾಗಿದೆ",
+  "severityReviewed": "ಪರಿಶೀಲಿಸಲಾಗಿದೆ",
+  "vishingGroup": "ಧ್ವನಿ ಫಿಶಿಂಗ್ / ಕರೆಗಳು",
+  "phishingGroup": "ಫಿಶಿಂಗ್ / ಸಂದೇಶಗಳು",
+  "deepfakeGroup": "ಡೀಪ್‌ಫೇಕ್",
+  "paymentGroup": "ಪಾವತಿ ವಂಚನೆ",
+  "accountAccessGroup": "ಖಾತೆ ಅಥವಾ ಸಾಧನ ಪ್ರವೇಶ"
 }

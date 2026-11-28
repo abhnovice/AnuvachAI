@@ -1,12 +1,16 @@
 @font-face {
-  font-family: "Noto Sans";
+  font-family: "Noto Sans Local";
   src: url("/fonts/NotoSans.woff2") format("woff2");
   font-style: normal;
   font-weight: 100 900;
   font-display: swap;
 }
 :root {
-  font-family: "Noto Sans", system-ui, sans-serif;
+  font-family:
+    "Noto Sans", "Noto Sans Gurmukhi", "Noto Sans Devanagari",
+    "Noto Sans Arabic", "Noto Sans Bengali", "Noto Sans Kannada",
+    "Noto Sans Malayalam", "Noto Sans Tamil", "Noto Sans Telugu",
+    "Noto Sans Local", system-ui, sans-serif;
   color: #14211d;
   background: #f4f9f7;
   font-synthesis: none;

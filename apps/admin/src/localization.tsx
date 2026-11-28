@@ -1,3 +1,4 @@
+import { Icon } from "./Icon";
 import { firebaseClient } from "./firebaseClient";
 import {
   createContext,
@@ -31,6 +32,25 @@ export const languages = {
 export type Language = keyof typeof languages;
 
 const en = {
+  turnaroundUnderHours: "Under 8 hours",
+  turnaroundHours: "8–24 hours",
+  turnaroundDays: "1–3 days",
+  turnaroundOverDays: "3+ days",
+  workspaceTitle: "Social engineering incidents",
+  signOut: "Sign out",
+  translateDescription: "Translate description",
+  translationUnavailable: "Translation unavailable.",
+  categoryLabel: "Category",
+  shareLabel: "Share",
+  monthLabel: "Month",
+  receivedLabel: "Received",
+  closedTransitions: "Closed transitions",
+  durationLabel: "Duration",
+  firstAdminAction: "Mean first admin action",
+  oldestOpen: "Oldest open report",
+  recordedClosures: "Recorded closures",
+  reportLabel: "Reports",
+  closeReport: "Close report",
   issueDescription: "Issue description",
   queueSeverity: "Severity",
   severitySuggested: "Suggested",
@@ -201,6 +221,18 @@ const dictionaries: Record<
   en,
   hi,
   ta: {
+    vishingGroup: "குரல் ஃபிஷிங் / அழைப்புகள்",
+    phishingGroup: "ஃபிஷிங் / செய்திகள்",
+    deepfakeGroup: "டீப்ஃபேக்",
+    paymentGroup: "பணப் பரிவர்த்தனை மோசடி",
+    accountAccessGroup: "கணக்கு அல்லது சாதன அணுகல்",
+    severityUnassessed: "மதிப்பிடப்படவில்லை",
+    severityLow: "குறைவு",
+    severityModerate: "மிதமானது",
+    severityHigh: "அதிகம்",
+    severityCritical: "மிகக் கடுமையானது",
+    severitySuggested: "பரிந்துரைக்கப்பட்டது",
+    severityReviewed: "மதிப்பாய்வு செய்யப்பட்டது",
     syntheticData: "செயற்கை விளக்கத் தரவு",
     localApiHistory: "உள்ளூர் API-இன் அறிக்கைகள் மற்றும் தணிக்கை வரலாறு",
     dashboardIncidentType: "முகப்புப் பலகை சம்பவ வகை",
@@ -482,6 +514,7 @@ const enumKeys: Record<string, TranslationKey> = {
   email_phishing: "email_phishing",
   messaging_phishing: "messaging_phishing",
   voice_phishing: "voice_phishing",
+  open: "stillOpen",
   deepfake_impersonation: "deepfake_impersonation",
   qr_phishing: "qr_phishing",
   payment_fraud: "payment_fraud",
@@ -511,7 +544,7 @@ export function LanguagePicker() {
   const { locale, setLocale, t } = useLocalization();
   return (
     <label className="theme-picker language-picker">
-      {t("language")}
+      <Icon name="translate" size={20} />
       <select
         aria-label={t("language")}
         value={locale}

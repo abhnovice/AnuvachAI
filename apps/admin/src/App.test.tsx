@@ -88,6 +88,9 @@ it("loads a ticket, persists a status change and confirms escalation separately"
   );
   await user.click(screen.getByRole("button", { name: "Confirm decision" }));
   await waitFor(() => expect(changes.length).toBe(2));
+  await user.click(await screen.findByRole("button", { name: "Close report" }));
+  await waitFor(() => expect(report.status).toBe("closed"));
+  expect(changes.at(-1)).toBe("/api/v1/reports/ANV-demo/status");
 });
 
 it("groups dashboard categories, opens notices in All Reports and chats about a selected ticket", async () => {
@@ -124,14 +127,19 @@ it("groups dashboard categories, opens notices in All Reports and chats about a 
           { reply: "Open All reports to review the caller’s statement." })
         : path.includes("/dashboard")
           ? buildDashboard([report], [], new Date())
-          : path.includes("?view=admin")
-            ? report
-            : [
-                {
-                  ...report,
-                  queueSeverity: { severity: "moderate", source: "suggested" },
-                },
-              ];
+          : path.includes("&translate=")
+            ? { translation: "A caller requested an access code." }
+            : path.includes("?view=admin")
+              ? report
+              : [
+                  {
+                    ...report,
+                    queueSeverity: {
+                      severity: "moderate",
+                      source: "suggested",
+                    },
+                  },
+                ];
     return { ok: true, json: async () => json };
   });
   vi.stubGlobal("fetch", fetch);
@@ -165,6 +173,12 @@ it("groups dashboard categories, opens notices in All Reports and chats about a 
   );
   expect(screen.getByRole("columnheader", { name: "Severity" })).toBeTruthy();
   expect(screen.getByText("Moderate")).toBeTruthy();
+  expect(
+    await within(detail).findByText("A caller requested an access code."),
+  ).toBeTruthy();
+  expect(
+    screen.queryByRole("button", { name: "Translate description" }),
+  ).toBeNull();
   expect(
     screen.queryByRole("region", { name: "Website assistant" }),
   ).toBeNull();

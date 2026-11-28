@@ -118,5 +118,17 @@
   "noChecks": "কোনো স্বয়ংক্রিয় পরীক্ষা প্রদান করা হয়নি।",
   "cancel": "বাতিল করুন",
   "confirmDecision": "সিদ্ধান্ত নিশ্চিত করুন",
-  "confirmEscalation": "উচ্চতর পর্যালোচনার সিদ্ধান্ত নিশ্চিত করুন"
+  "confirmEscalation": "উচ্চতর পর্যালোচনার সিদ্ধান্ত নিশ্চিত করুন",
+  "severityUnassessed": "মূল্যায়ন হয়নি",
+  "severityLow": "কম",
+  "severityModerate": "মাঝারি",
+  "severityHigh": "উচ্চ",
+  "severityCritical": "সংকটজনক",
+  "severitySuggested": "প্রস্তাবিত",
+  "severityReviewed": "পর্যালোচিত",
+  "vishingGroup": "ভয়েস ফিশিং / কল",
+  "phishingGroup": "ফিশিং / বার্তা",
+  "deepfakeGroup": "ডিপফেক",
+  "paymentGroup": "পেমেন্ট জালিয়াতি",
+  "accountAccessGroup": "অ্যাকাউন্ট বা ডিভাইস অ্যাক্সেস"
 }

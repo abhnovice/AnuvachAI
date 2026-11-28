@@ -233,6 +233,38 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed && consent) load();
   }
 
+  String get noticeKey => 'report_updates:${widget.account}';
+  late final seenReports = widget.prefs.getStringList(noticeKey)?.toSet() ?? <String>{};
+  String noticeId(Json report) => '${report['id']}:${report['updatedAt']}';
+  List<Json> get unreadReports => reports.where((report) =>
+      report['status'] != 'submitted' && !seenReports.contains(noticeId(report))).toList();
+
+  Future<void> showReportUpdates() async {
+    final unread = unreadReports;
+    await showModalBottomSheet<void>(
+      context: context,
+      builder: (sheet) => SafeArea(child: ListView(
+        shrinkWrap: true,
+        children: [
+          for (final report in unread)
+            ListTile(
+              title: Text(report['id'] as String),
+              subtitle: statusPill(report['status'] as String),
+              onTap: () async {
+                Navigator.pop(sheet);
+                setState(() => seenReports.add(noticeId(report)));
+                await widget.prefs.setStringList(noticeKey, seenReports.toList());
+                if (!mounted) return;
+                await Navigator.push(context, MaterialPageRoute<void>(
+                  builder: (_) => ReportDetail(api: widget.api, id: report['id'] as String),
+                ));
+              },
+            ),
+        ],
+      )),
+    );
+  }
+
   Future<void> load() async {
     setState(() {
       loading = true;
@@ -418,25 +450,19 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
       key: scaffold,
       drawer: tab == 0 ? chatDrawer(strings) : null,
       appBar: AppBar(
-        title: Row(
-          children: [
-            const ExcludeSemantics(child: BrandMark(size: 36)),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(switch (tab) {
-                1 => strings.reports,
-                2 => strings.apps,
-                _ => 'Anuvach.AI',
-              }),
-            ),
-          ],
-        ),
+        title: const BrandMark(size: 36),
         actions: [
           if (tab == 1)
             IconButton(
               tooltip: strings.refreshReports,
               onPressed: loading ? null : load,
               icon: const Icon(Icons.refresh_rounded),
+            ),
+          if (unreadReports.isNotEmpty)
+            IconButton(
+              tooltip: 'Report updates',
+              icon: Badge(label: Text('${unreadReports.length}'), child: const Icon(Icons.notifications_outlined)),
+              onPressed: showReportUpdates,
             ),
           IconButton(
             tooltip: strings.theme,
@@ -493,7 +519,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                   widget.autoStartVoice && activeChat.id == startupChat,
             ),
             reportHistory(strings),
-            AccessTab(language: widget.language),
+            AccessTab(language: widget.language, api: widget.api),
           ],
         ),
       ),

@@ -183,11 +183,30 @@ export async function buildApp(
   function queueSeverity(report: Report) {
     const reviewed = report.triage?.review?.severity;
     const proposed = report.triage?.result?.proposal.proposed_severity;
-    return reviewed
+    const description = report.facts.description;
+    const exposure =
+      /(?:stole|stolen|ਚੋਰੀ|चोरी).{0,35}(?:password|laptop|device|ਪਾਸਵਰਡ|ਲੈਪਟਾਪ)|(?:password|laptop|device|ਪਾਸਵਰਡ|ਲੈਪਟਾਪ).{0,35}(?:stole|stolen|ਚੋਰੀ|चोरी)/iu.test(
+        description,
+      );
+    const request = /\b(?:otp|password|pin|remote access|phishing)\b/iu.test(
+      description,
+    );
+    const category = ticketIncidentType(report);
+    const fallback =
+      exposure ||
+      request ||
+      !["other", "support_call", "mistaken_report"].includes(category)
+        ? ("moderate" as const)
+        : ["support_call", "mistaken_report"].includes(category)
+          ? ("low" as const)
+          : null;
+    return reviewed && reviewed !== "unassessed"
       ? { severity: reviewed, source: "reviewed" as const }
       : proposed && proposed !== "unassessed"
         ? { severity: proposed, source: "suggested" as const }
-        : { severity: "unassessed" as const, source: null };
+        : fallback
+          ? { severity: fallback, source: "suggested" as const }
+          : { severity: "unassessed" as const, source: null };
   }
 
   function reportSummary(report: Report) {

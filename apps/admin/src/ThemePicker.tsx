@@ -1,3 +1,4 @@
+import { Icon } from "./Icon";
 import { useEffect, useState } from "react";
 import { useLocalization } from "./localization";
 type Theme = "light" | "dark" | "system";
@@ -11,11 +12,19 @@ export function ThemePicker() {
       return "system";
     }
   });
+  const [isDark, setIsDark] = useState(
+    () =>
+      theme === "dark" ||
+      (theme === "system" &&
+        window.matchMedia?.("(prefers-color-scheme: dark)").matches === true),
+  );
   useEffect(() => {
     const media = window.matchMedia?.("(prefers-color-scheme: dark)");
     const apply = () => {
-      document.documentElement.dataset.theme =
-        theme === "system" ? (media?.matches ? "dark" : "light") : theme;
+      const dark =
+        theme === "dark" || (theme === "system" && media?.matches === true);
+      document.documentElement.dataset.theme = dark ? "dark" : "light";
+      setIsDark(dark);
     };
     apply();
     media?.addEventListener("change", apply);
@@ -27,17 +36,18 @@ export function ThemePicker() {
     return () => media?.removeEventListener("change", apply);
   }, [theme]);
   return (
-    <label className="theme-picker">
-      {t("appearance")}
-      <select
-        aria-label={t("appearance")}
-        value={theme}
-        onChange={(e) => setTheme(e.target.value as Theme)}
-      >
-        <option value="light">{t("light")}</option>
-        <option value="dark">{t("dark")}</option>
-        <option value="system">{t("system")}</option>
-      </select>
-    </label>
+    <button
+      type="button"
+      className="sidebar-preference-button"
+      aria-label={isDark ? t("light") : t("dark")}
+      title={t("appearance")}
+      onClick={() =>
+        setTheme(
+          document.documentElement.dataset.theme === "dark" ? "light" : "dark",
+        )
+      }
+    >
+      <Icon name={isDark ? "sun" : "moon"} size={20} />
+    </button>
   );
 }

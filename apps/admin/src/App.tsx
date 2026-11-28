@@ -219,6 +219,57 @@ export function App({ onSignOut }: { onSignOut?: () => void } = {}) {
     effectivePage * pageSize,
     (effectivePage + 1) * pageSize,
   );
+  const translationCache = useRef(new Map<string, Promise<string>>());
+  const [translations, setTranslations] = useState<Record<string, string>>({});
+  const translationIds =
+    page === "reports"
+      ? [
+          ...new Set([
+            ...(detail ? [detail.id] : []),
+            ...visibleReports.map((report) => report.id),
+          ]),
+        ].join(",")
+      : "";
+  useEffect(() => {
+    if (!translationIds) return;
+    let active = true;
+    const ids = translationIds.split(",");
+    const query = new URLSearchParams({ view: "admin", translate: locale });
+    async function translate() {
+      while (active && ids.length) {
+        const id = ids.shift()!;
+        const key = `${locale}:${id}`;
+        const cache = translationCache.current;
+        let pending = cache.get(key);
+        if (!pending) {
+          pending = request<{ translation: string }>(
+            `/reports/${encodeURIComponent(id)}?${query}`,
+          ).then(({ translation }) =>
+            typeof translation === "string" ? translation.trim() : "",
+          );
+          cache.set(key, pending);
+        }
+        try {
+          const text = await pending;
+          if (text && active)
+            setTranslations((current) =>
+              current[key] === text ? current : { ...current, [key]: text },
+            );
+        } catch {
+          if (cache.get(key) === pending) cache.delete(key);
+        }
+      }
+    }
+    const concurrency = Math.min(3, ids.length);
+    for (let worker = 0; worker < concurrency; worker++) {
+      void translate();
+    }
+    return () => {
+      active = false;
+    };
+  }, [locale, translationIds]);
+  const description = (report: Report) =>
+    translations[`${locale}:${report.id}`] || report.facts.description;
   async function load() {
     const generation = ++requestGeneration.current;
     setLoading(true);
@@ -351,15 +402,6 @@ export function App({ onSignOut }: { onSignOut?: () => void } = {}) {
         className={"sidebar" + (collapsed ? " collapsed" : "")}
         aria-label="Workspace navigation"
       >
-        <button
-          className="nav-toggle"
-          aria-expanded={!collapsed}
-          aria-controls="workspace-navigation"
-          onClick={() => setCollapsed(!collapsed)}
-          aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
-        >
-          {collapsed ? "☰" : "←"}
-        </button>
         <a
           className="brand"
           href="#reports"
@@ -377,6 +419,15 @@ export function App({ onSignOut }: { onSignOut?: () => void } = {}) {
             <small>SOCIAL ENGINEERING</small>
           </span>
         </a>
+        <button
+          className="nav-toggle"
+          aria-expanded={!collapsed}
+          aria-controls="workspace-navigation"
+          onClick={() => setCollapsed(!collapsed)}
+          aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
+        >
+          {collapsed ? "☰" : "←"}
+        </button>
         <p className="nav-label">WORKSPACE</p>
         <nav id="workspace-navigation" aria-label="Report views">
           <button
@@ -485,9 +536,15 @@ export function App({ onSignOut }: { onSignOut?: () => void } = {}) {
             </button>
           </div>
         </nav>
-        <LanguagePicker />
-        <ThemePicker />
-        {onSignOut && <button onClick={onSignOut}>Sign out</button>}
+        <div className="sidebar-preferences">
+          <LanguagePicker />
+          <ThemePicker />
+          {onSignOut && (
+            <button className="sidebar-sign-out" onClick={onSignOut}>
+              {t("signOut")}
+            </button>
+          )}
+        </div>
       </aside>
 
       <main
@@ -497,7 +554,7 @@ export function App({ onSignOut }: { onSignOut?: () => void } = {}) {
       >
         <div className="intro">
           <div>
-            <h1 className="page-heading">Social engineering incidents</h1>
+            <h1 className="page-heading">{t("workspaceTitle")}</h1>
           </div>
           <div className="workspace-actions">
             <IncidentNotifications
@@ -510,6 +567,17 @@ export function App({ onSignOut }: { onSignOut?: () => void } = {}) {
                 void navigate("reports");
               }}
             />
+            {page === "dashboard" && (
+              <button
+                className="dashboard-reports-link"
+                onClick={() => {
+                  setStatus("");
+                  navigate("reports");
+                }}
+              >
+                {t("viewReports")} <Icon name="arrow" size={16} />
+              </button>
+            )}
             <button
               className="refresh-button"
               onClick={() => void load()}
@@ -526,15 +594,6 @@ export function App({ onSignOut }: { onSignOut?: () => void } = {}) {
           hidden={page !== "dashboard"}
           inert={page !== "dashboard"}
         >
-          <button
-            className="dashboard-reports-link"
-            onClick={() => {
-              setStatus("");
-              navigate("reports");
-            }}
-          >
-            {t("viewReports")} <Icon name="arrow" size={16} />
-          </button>
           <AnalyticsOverview
             data={overview}
             loading={overviewLoading}
@@ -661,7 +720,7 @@ export function App({ onSignOut }: { onSignOut?: () => void } = {}) {
                           }
                         >
                           <td className="queue-description">
-                            <span dir="auto">{r.facts.description}</span>
+                            <span dir="auto">{description(r)}</span>
                           </td>
                           <td>
                             <button
@@ -695,23 +754,14 @@ export function App({ onSignOut }: { onSignOut?: () => void } = {}) {
                             >
                               {t(severityLabels[value] ?? "severityUnassessed")}
                             </span>
-                            {severity?.source && (
-                              <small>
-                                {t(
-                                  severity.source === "reviewed"
-                                    ? "severityReviewed"
-                                    : "severitySuggested",
-                                )}
-                              </small>
-                            )}
                           </td>
                           <td>
                             {r.assignment?.team
                               ? enumLabel(r.assignment.team)
                               : t("unassigned")}
-                            <small>
-                              {r.assignment?.reviewer || t("noReviewer")}
-                            </small>
+                            {r.assignment?.reviewer && (
+                              <small>{r.assignment.reviewer}</small>
+                            )}
                           </td>
                           <td>
                             <span title="Time since receipt, including time after closure">
@@ -780,7 +830,9 @@ export function App({ onSignOut }: { onSignOut?: () => void } = {}) {
                     <Icon name="message" size={18} />
                     {t("employeeStatements")}
                   </h3>
-                  <p className="statement">{detail.facts.description}</p>
+                  <p className="statement" dir="auto">
+                    {description(detail)}
+                  </p>
                   <dl>
                     <dt>{t("reportLanguage")}</dt>
                     <dd>{detail.facts.language}</dd>
@@ -865,6 +917,19 @@ export function App({ onSignOut }: { onSignOut?: () => void } = {}) {
                         </select>
                       </label>
                       <button>{t("saveStatus")}</button>
+                      {["in_review", "awaiting_employee", "escalated"].includes(
+                        detail.status,
+                      ) && (
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() =>
+                            void mutate("status", { status: "closed" })
+                          }
+                        >
+                          {t("closeReport")}
+                        </button>
+                      )}
                     </form>
                     <form
                       onSubmit={(e) => {

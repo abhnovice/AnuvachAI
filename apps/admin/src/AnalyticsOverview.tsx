@@ -32,8 +32,8 @@ const states = [
 ] as const;
 const fmtHours = (n: number | null) =>
   n === null ? "—" : n < 24 ? n.toFixed(1) + "h" : (n / 24).toFixed(1) + "d";
-const fmtDate = (s: string) =>
-  new Date(s).toLocaleDateString("en-GB", {
+const fmtDate = (s: string, locale: string) =>
+  new Date(s).toLocaleDateString(locale, {
     day: "numeric",
     month: "short",
     timeZone: "UTC",
@@ -444,7 +444,7 @@ export function AnalyticsOverview({
   onType: (value: string) => void;
   onStatus: (status: string, type?: string) => void;
 }) {
-  const { t, enumLabel } = useLocalization();
+  const { t, enumLabel, locale } = useLocalization();
   const names = new Proxy({} as Record<string, string>, {
     get: (_target, key) =>
       typeof key === "string" ? enumLabel(key) : undefined,
@@ -455,6 +455,21 @@ export function AnalyticsOverview({
     setBrush(null);
     setCategory(null);
   }, [days, type]);
+  const turnaroundLabels = [
+    t("turnaroundUnderHours"),
+    t("turnaroundHours"),
+    t("turnaroundDays"),
+    t("turnaroundOverDays"),
+  ];
+  const monthly =
+    data?.monthly.map((row) => ({
+      ...row,
+      label: new Intl.DateTimeFormat(locale, {
+        month: "short",
+        year: "2-digit",
+        timeZone: "UTC",
+      }).format(new Date(row.month + "-01T00:00:00Z")),
+    })) ?? [];
   const m = data?.metrics,
     total = m?.received ?? 0;
   const effectiveBrush =
@@ -495,9 +510,9 @@ export function AnalyticsOverview({
         <div>
           <p>
             {data
-              ? fmtDate(data.scope.start) +
+              ? fmtDate(data.scope.start, locale) +
                 " – " +
-                fmtDate(data.scope.end) +
+                fmtDate(data.scope.end, locale) +
                 " " +
                 new Date(data.scope.end).getUTCFullYear() +
                 " · UTC"
@@ -575,7 +590,7 @@ export function AnalyticsOverview({
               >
                 {data.weekly.map((w, i) => (
                   <option key={w.date} value={i}>
-                    {fmtDate(w.date)}
+                    {fmtDate(w.date, locale)}
                   </option>
                 ))}
               </select>
@@ -597,7 +612,7 @@ export function AnalyticsOverview({
               >
                 {data.weekly.map((w, i) => (
                   <option key={w.date} value={i}>
-                    {fmtDate(w.endDate)}
+                    {fmtDate(w.endDate, locale)}
                   </option>
                 ))}
               </select>
@@ -681,8 +696,8 @@ export function AnalyticsOverview({
               <strong>{fmtHours(m!.meanCloseHours)}</strong>
               <div className="metric-context">
                 <small>
-                  {m!.closeSampleSize} currently closed reports · median{" "}
-                  {fmtHours(m!.medianCloseHours)}
+                  {m!.closeSampleSize} {t("currentlyClosed")} ·{" "}
+                  {t("medianTurnaround")} {fmtHours(m!.medianCloseHours)}
                 </small>
               </div>
             </button>
@@ -690,16 +705,17 @@ export function AnalyticsOverview({
           <div className="operational-strip">
             <span>
               <i />
-              Unassigned <strong>{m!.unassigned}</strong>
+              {t("unassigned")} <strong>{m!.unassigned}</strong>
             </span>
             <span>
-              Mean first admin action{" "}
+              {t("firstAdminAction")}{" "}
               <strong>{fmtHours(m!.meanFirstActionHours)}</strong>
-              <small>({m!.firstActionSampleSize} reports)</small>
+              <small>
+                ({m!.firstActionSampleSize} {t("reportLabel")})
+              </small>
             </span>
             <span>
-              Oldest open report in this cohort{" "}
-              <strong>{fmtHours(m!.oldestOpenHours)}</strong>
+              {t("oldestOpen")} <strong>{fmtHours(m!.oldestOpenHours)}</strong>
             </span>
           </div>
           {!total && (
@@ -719,15 +735,19 @@ export function AnalyticsOverview({
               title={t("incomingReports")}
               subtitle={t("chartSubtitle1")}
               definition={t("chartDefinition1")}
-              headers={["From (UTC)", "Through (UTC)", "Received"]}
+              headers={[
+                `${t("from")} (UTC)`,
+                `${t("through")} (UTC)`,
+                t("receivedLabel"),
+              ]}
               rows={data.weekly.map((r) => [r.date, r.endDate, r.received])}
             >
               <Trend
                 rows={data.weekly.map((r) => ({
-                  label: r.label,
+                  label: fmtDate(r.date, locale),
                   values: [r.received],
                 }))}
-                series={[{ name: "Received", color: "#006b60" }]}
+                series={[{ name: t("receivedLabel"), color: "#006b60" }]}
                 brush={effectiveBrush}
                 onBrush={setBrush}
                 label="Weekly incoming report counts"
@@ -738,7 +758,7 @@ export function AnalyticsOverview({
               className="grouped-chart"
               subtitle={t("chartSubtitle2")}
               definition={t("chartDefinition2")}
-              headers={["Category", "Reports", "Share"]}
+              headers={[t("categoryLabel"), t("reportLabel"), t("shareLabel")]}
               rows={mix.map((r) => [
                 names[r.type],
                 r.count,
@@ -810,7 +830,7 @@ export function AnalyticsOverview({
                     textAnchor="middle"
                     className="donut-caption"
                   >
-                    reports
+                    {t("reportLabel")}
                   </text>
                 </svg>
                 <div className="mix-legend">
@@ -849,11 +869,15 @@ export function AnalyticsOverview({
               title={t("receivedClosed")}
               subtitle={t("chartSubtitle3")}
               definition={t("chartDefinition3")}
-              headers={["Month", "Received", "Closed transitions"]}
-              rows={data.monthly.map((r) => [r.label, r.received, r.closed])}
+              headers={[
+                t("monthLabel"),
+                t("receivedLabel"),
+                t("closedTransitions"),
+              ]}
+              rows={monthly.map((r) => [r.label, r.received, r.closed])}
             >
               <MonthlyBars
-                data={data.monthly}
+                data={monthly}
                 start={
                   effectiveBrush
                     ? data.weekly[effectiveBrush[0]].date
@@ -868,11 +892,11 @@ export function AnalyticsOverview({
               <div className="chart-legend">
                 <span>
                   <i style={{ background: "#006b60" }} />
-                  Received
+                  {t("receivedLabel")}
                 </span>
                 <span>
                   <i style={{ background: "#8ccbbb" }} />
-                  Closed transitions
+                  {t("closedTransitions")}
                 </span>
               </div>
             </ChartCard>
@@ -880,8 +904,11 @@ export function AnalyticsOverview({
               title={t("closureTurnaround")}
               subtitle={t("chartSubtitle4")}
               definition={t("chartDefinition4")}
-              headers={["Duration", "Closed reports"]}
-              rows={data.turnaround.map((r) => [r.label, r.count])}
+              headers={[t("durationLabel"), t("closed")]}
+              rows={data.turnaround.map((r, i) => [
+                turnaroundLabels[i],
+                r.count,
+              ])}
             >
               <div className="closure-visual">
                 <svg
@@ -924,19 +951,21 @@ export function AnalyticsOverview({
                       : m!.closedSharePercent.toFixed(0) + "%"}
                   </text>
                   <text x="90" y="101" textAnchor="middle">
-                    currently closed
+                    {t("currentlyClosed")}
                   </text>
                 </svg>
                 <div>
                   <span>{t("medianTurnaround")}</span>
                   <strong>{fmtHours(m!.medianCloseHours)}</strong>
-                  <small>{m!.closeSampleSize} recorded closures</small>
+                  <small>
+                    {m!.closeSampleSize} {t("recordedClosures")}
+                  </small>
                 </div>
               </div>
               <div className="turnaround-bars">
-                {data.turnaround.map((r) => (
+                {data.turnaround.map((r, i) => (
                   <div key={r.label}>
-                    <span>{r.label}</span>
+                    <span>{turnaroundLabels[i]}</span>
                     <i>
                       <b
                         style={{
@@ -963,7 +992,7 @@ export function AnalyticsOverview({
               className="grouped-chart"
               subtitle={t("chartSubtitle5")}
               definition={t("chartDefinition5")}
-              headers={["Type", ...states.map((s) => names[s])]}
+              headers={[t("type"), ...states.map((s) => names[s])]}
               rows={matrix.map((r) => [
                 names[r.type],
                 ...states.map((s) => r.counts[s]),
@@ -973,14 +1002,12 @@ export function AnalyticsOverview({
                 <table className="status-heatmap">
                   <thead>
                     <tr>
-                      <th>Type</th>
-                      {["New", "Review", "Waiting", "Escal.", "Closed"].map(
-                        (s, i) => (
-                          <th key={s} title={names[states[i]]}>
-                            {s}
-                          </th>
-                        ),
-                      )}
+                      <th>{t("type")}</th>
+                      {states.map((s, i) => (
+                        <th key={s} title={names[states[i]]}>
+                          {names[s]}
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
@@ -1048,17 +1075,17 @@ export function AnalyticsOverview({
               title={t("openClosedWorkload")}
               subtitle={t("chartSubtitle6")}
               definition={t("chartDefinition6")}
-              headers={["Snapshot (UTC)", "Open", "Closed"]}
+              headers={[`${t("through")} (UTC)`, t("stillOpen"), t("closed")]}
               rows={data.weekly.map((r) => [r.endDate, r.open, r.closed])}
             >
               <Trend
                 rows={data.weekly.map((r) => ({
-                  label: fmtDate(r.endDate),
+                  label: fmtDate(r.endDate, locale),
                   values: [r.open, r.closed],
                 }))}
                 series={[
-                  { name: "Open", color: "#006b60" },
-                  { name: "Closed", color: "#8a9e56" },
+                  { name: t("stillOpen"), color: "#006b60" },
+                  { name: t("closed"), color: "#8a9e56" },
                 ]}
                 brush={effectiveBrush}
                 onBrush={setBrush}

@@ -300,6 +300,17 @@ class _CheckTabState extends State<CheckTab>
                         text: voice.assistantPreview,
                         employee: false,
                       ),
+                    if (widget.messages.any((turn) => turn['speaker'] == 'employee' && turn['captured'] != true))
+                      Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: OutlinedButton.icon(
+                          onPressed: reviewing ? null : () => review(widget.messages
+                            .where((turn) => turn['speaker'] == 'employee' && turn['captured'] != true)
+                            .map((turn) => turn['text'] as String).toSet().join('\n')),
+                          icon: const Icon(Icons.edit_note_rounded),
+                          label: Text(strings.voiceDraft),
+                        ),
+                      ),
                     if (voice.hasDraft)
                       Align(
                         alignment: AlignmentDirectional.centerStart,
@@ -740,7 +751,8 @@ class _VoiceControl extends StatelessWidget {
 }
 
 class AccessTab extends StatefulWidget {
-  const AccessTab({super.key, required this.language});
+  const AccessTab({super.key, required this.language, required this.api});
+  final Api api;
   final String language;
   @override
   State<AccessTab> createState() => _AccessTabState();
@@ -751,7 +763,42 @@ class _AccessTabState extends State<AccessTab>
   @override
   bool get wantKeepAlive => true;
 
-  bool showSettings = true;
+  String? permissionFilter;
+  String? briefing;
+  bool briefingBusy = false;
+
+  static const sensitive = {
+    'CAMERA': ('Camera', Icons.camera_alt_outlined),
+    'RECORD_AUDIO': ('Microphone', Icons.mic_none_rounded),
+    'ACCESS_FINE_LOCATION': ('Location', Icons.location_on_outlined),
+    'READ_CONTACTS': ('Contacts', Icons.contacts_outlined),
+    'READ_SMS': ('Messages', Icons.message_outlined),
+  };
+
+  bool granted(Json app, String permission) =>
+      (app['permissions'] as List).any((entry) =>
+        entry['name'] == 'android.permission.$permission' && entry['granted'] == true);
+
+  Future<void> loadBriefing() async {
+    final inventory = apps;
+    if (inventory == null || briefingBusy) return;
+    setState(() => briefingBusy = true);
+    try {
+      final result = await widget.api.call('/reporting/access-briefing', body: {
+        'language': widget.language,
+        'visibleApps': inventory.length,
+        'grants': {
+          for (final permission in sensitive.keys)
+            permission: inventory.where((app) => granted(app, permission)).length,
+        },
+      }) as Json;
+      if (mounted && identical(apps, inventory)) setState(() => briefing = result['reply'] as String);
+    } catch (_) {
+      if (mounted) setState(() => briefing = AppLocalizations.of(context)!.accessBriefingUnavailable);
+    } finally {
+      if (mounted) setState(() => briefingBusy = false);
+    }
+  }
   bool showLauncherApps = true;
   bool showNonLauncherApps = false;
   final features = LocalFeatures();
@@ -766,7 +813,7 @@ class _AccessTabState extends State<AccessTab>
     });
     try {
       final data = await features.apps();
-      if (mounted) setState(() => apps = data);
+      if (mounted) setState(() { apps = data; briefing = null; });
     } catch (e) {
       if (mounted) {
         setState(() => error = AppLocalizations.of(context)!.accessUnavailable);
@@ -822,6 +869,7 @@ class _AccessTabState extends State<AccessTab>
       );
     }
     final results = (apps ?? [])
+        .where((app) => permissionFilter == null || granted(app, permissionFilter!))
         .where(
           (a) => ('${a['name']} ${a['package']}').toLowerCase().contains(
             search.toLowerCase(),
@@ -858,41 +906,38 @@ class _AccessTabState extends State<AccessTab>
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    strings.accessBriefingUnavailable,
+                    briefing ?? "Explain the permission counts Gemini will receive.",
                     style: TextStyle(color: scheme.onPrimaryContainer),
+                  ),
+                  TextButton(
+                    onPressed: briefingBusy || apps == null || loading ? null : loadBriefing,
+                    child: Text(briefingBusy ? strings.checking : 'Get briefing'),
                   ),
                 ],
               ),
             ),
           ),
           const SizedBox(height: 14),
-          Card(
-            child: SwitchListTile(
-              title: Text(strings.settings),
-              secondary: const Icon(Icons.settings_outlined),
-              value: showSettings,
-              onChanged: (value) => setState(() => showSettings = value),
-            ),
-          ),
-          if (showSettings)
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: TextButton.icon(
-                onPressed: () async {
-                  try {
-                    await features.openAccessibility();
-                  } catch (_) {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(strings.settingsUnavailable)),
-                      );
-                    }
-                  }
-                },
-                icon: const Icon(Icons.open_in_new_rounded),
-                label: Text(strings.openAccessibilitySettings),
+          SurfaceCard(child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              heading('Sensitive permissions'),
+              Wrap(
+                spacing: 8,
+                children: [
+                  for (final entry in sensitive.entries)
+                    FilterChip(
+                      avatar: Icon(entry.value.$2, size: 18),
+                      label: Text('${entry.value.$1} · ${apps == null ? "—" : apps!.where((app) => granted(app, entry.key)).length}'),
+                      selected: permissionFilter == entry.key,
+                      onSelected: apps == null ? null : (selected) => setState(() {
+                        permissionFilter = selected ? entry.key : null;
+                      }),
+                    ),
+                ],
               ),
-            ),
+            ],
+          )),
           const SizedBox(height: 14),
           Card(
             child: Column(
@@ -976,7 +1021,11 @@ class _AccessTabState extends State<AccessTab>
               child: ExpansionTile(
                 key: PageStorageKey((title, category)),
                 title: Text(category),
-                trailing: Text('${categories[category]!.length}'),
+                subtitle: Wrap(spacing: 5, children: [
+                  for (final app in categories[category]!.take(6))
+                    _AppPreview(key: ValueKey(app['package']), features: features, package: app['package'] as String),
+                ]),
+
                 children: [
                   for (final app in categories[category]!)
                     _InstalledAppTile(
@@ -991,6 +1040,25 @@ class _AccessTabState extends State<AccessTab>
       ),
     );
   }
+}
+
+class _AppPreview extends StatefulWidget {
+  const _AppPreview({super.key, required this.features, required this.package});
+  final LocalFeatures features;
+  final String package;
+  @override
+  State<_AppPreview> createState() => _AppPreviewState();
+}
+
+class _AppPreviewState extends State<_AppPreview> {
+  late final icon = widget.features.appIcon(widget.package);
+  @override
+  Widget build(BuildContext context) => FutureBuilder<Uint8List?>(
+    future: icon,
+    builder: (_, snapshot) => snapshot.data == null
+      ? const Icon(Icons.android_rounded, size: 22)
+      : Image.memory(snapshot.data!, width: 22, height: 22, excludeFromSemantics: true),
+  );
 }
 
 class _InstalledAppTile extends StatefulWidget {

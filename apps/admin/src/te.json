@@ -118,5 +118,17 @@
   "noChecks": "ఆటోమేటిక్ తనిఖీలు ఏవీ అందించబడలేదు.",
   "cancel": "రద్దు చేయి",
   "confirmDecision": "నిర్ణయాన్ని నిర్ధారించండి",
-  "confirmEscalation": "ఉన్నత సమీక్ష నిర్ణయాన్ని నిర్ధారించండి"
+  "confirmEscalation": "ఉన్నత సమీక్ష నిర్ణయాన్ని నిర్ధారించండి",
+  "severityUnassessed": "అంచనా వేయలేదు",
+  "severityLow": "తక్కువ",
+  "severityModerate": "మధ్యస్థం",
+  "severityHigh": "అధికం",
+  "severityCritical": "తీవ్రం",
+  "severitySuggested": "సూచించినది",
+  "severityReviewed": "సమీక్షించినది",
+  "vishingGroup": "వాయిస్ ఫిషింగ్ / కాల్స్",
+  "phishingGroup": "ఫిషింగ్ / సందేశాలు",
+  "deepfakeGroup": "డీప్‌ఫేక్",
+  "paymentGroup": "చెల్లింపు మోసం",
+  "accountAccessGroup": "ఖాతా లేదా పరికర యాక్సెస్"
 }

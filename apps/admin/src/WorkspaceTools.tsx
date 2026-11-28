@@ -247,7 +247,7 @@ export function WebsiteAssistant({
           aria-label={t("websiteAssistant")}
           onClick={() => setOpen(true)}
         >
-          <Icon name="message" size={22} />
+          <Icon name="female" size={22} />
         </button>
       )}
     </div>

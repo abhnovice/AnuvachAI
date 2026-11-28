@@ -118,5 +118,17 @@
   "noChecks": "ഓട്ടോമാറ്റിക് പരിശോധനകൾ നൽകിയിട്ടില്ല.",
   "cancel": "റദ്ദാക്കുക",
   "confirmDecision": "തീരുമാനം സ്ഥിരീകരിക്കുക",
-  "confirmEscalation": "എസ്കലേഷൻ തീരുമാനം സ്ഥിരീകരിക്കുക"
+  "confirmEscalation": "എസ്കലേഷൻ തീരുമാനം സ്ഥിരീകരിക്കുക",
+  "severityUnassessed": "വിലയിരുത്തിയിട്ടില്ല",
+  "severityLow": "കുറഞ്ഞത്",
+  "severityModerate": "ഇടത്തരം",
+  "severityHigh": "ഉയർന്നത്",
+  "severityCritical": "ഗുരുതരം",
+  "severitySuggested": "നിർദേശിച്ചത്",
+  "severityReviewed": "അവലോകനം ചെയ്തത്",
+  "vishingGroup": "വോയ്‌സ് ഫിഷിങ് / കോളുകൾ",
+  "phishingGroup": "ഫിഷിങ് / സന്ദേശങ്ങൾ",
+  "deepfakeGroup": "ഡീപ്ഫേക്ക്",
+  "paymentGroup": "പണമിടപാട് തട്ടിപ്പ്",
+  "accountAccessGroup": "അക്കൗണ്ട് അല്ലെങ്കിൽ ഉപകരണ ആക്‌സസ്"
 }

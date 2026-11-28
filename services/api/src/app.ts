@@ -12,6 +12,7 @@ import {
   teams,
 } from "./agents.js";
 import { buildDashboard, windowStart } from "./analytics.js";
+import { incidentGroup, incidentGroups } from "./incident-groups.js";
 import cors from "@fastify/cors";
 import { createHash } from "node:crypto";
 import { employeeUid, registerAccess, type Access } from "./auth.js";
@@ -179,6 +180,140 @@ export async function buildApp(
     ok: true,
     mode: options.access ? "firebase-authenticated" : "synthetic-demo-no-auth",
   }));
+  function queueSeverity(report: Report) {
+    const reviewed = report.triage?.review?.severity;
+    const proposed = report.triage?.result?.proposal.proposed_severity;
+    return reviewed
+      ? { severity: reviewed, source: "reviewed" as const }
+      : proposed && proposed !== "unassessed"
+        ? { severity: proposed, source: "suggested" as const }
+        : { severity: "unassessed" as const, source: null };
+  }
+
+  function reportSummary(report: Report) {
+    return {
+      id: report.id,
+      createdAt: report.createdAt,
+      status: report.status,
+      category: ticketIncidentType(report),
+      summary: report.facts.description
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 180),
+      ...queueSeverity(report),
+    };
+  }
+
+  app.get("/api/v1/admin/notifications", async () =>
+    (await store.recent(12)).map(({ report }) => reportSummary(report)),
+  );
+
+  app.post("/api/v1/admin/assistant", async (req) => {
+    const body = z
+      .object({
+        message: z.string().trim().min(1).max(800),
+        history: z
+          .array(
+            z
+              .object({
+                role: z.enum(["user", "assistant"]),
+                text: z.string().min(1).max(2000),
+              })
+              .strict(),
+          )
+          .max(6)
+          .default([]),
+        view: z.enum(["dashboard", "reports"]),
+        scope: z
+          .object({
+            days: z.union([z.literal(30), z.literal(90), z.literal(180)]),
+            category: z.enum(incidentTypes).optional(),
+            group: z.enum(incidentGroups).optional(),
+            status: z.enum([...statuses, "open"]).optional(),
+          })
+          .strict()
+          .default({ days: 90 }),
+        ticketId: z
+          .string()
+          .regex(/^ANV-[a-zA-Z0-9-]+$/)
+          .max(64)
+          .optional(),
+        language: agentLanguage.default("en"),
+      })
+      .strict()
+      .parse(req.body);
+    if (!agentBase) fail(503, "Website assistant is unavailable.");
+    try {
+      const ticketId =
+        body.message.match(/\bANV-[a-zA-Z0-9-]{4,60}\b/)?.[0] ?? body.ticketId;
+      const selected = ticketId
+        ? await store
+            .get(ticketId)
+            .then(({ report }) => report)
+            .catch((error) => {
+              if (error?.statusCode === 404) return null;
+              throw error;
+            })
+        : null;
+      const current = now();
+      const end = current.toISOString();
+      const { days, category, group, status } = body.scope;
+      const start = windowStart(days, current).toISOString();
+      const cohort = (await store.list())
+        .map(({ report }) => report)
+        .filter(
+          (report) =>
+            report.createdAt >= start &&
+            report.createdAt <= end &&
+            (!category || ticketIncidentType(report) === category) &&
+            (!group || incidentGroup(ticketIncidentType(report)) === group) &&
+            (!status ||
+              (status === "open"
+                ? report.status !== "closed"
+                : report.status === status)),
+        );
+      const result = await agentPost(
+        agentBase,
+        "/internal/admin/assistant",
+        {
+          ...body,
+          context: {
+            since: start,
+            reportCount: cohort.length,
+            statusCounts: Object.fromEntries(
+              statuses.map((status) => [
+                status,
+                cohort.filter((report) => report.status === status).length,
+              ]),
+            ),
+            groups: Object.fromEntries(
+              incidentGroups.map((group) => [
+                group,
+                cohort.filter(
+                  (report) =>
+                    incidentGroup(ticketIncidentType(report)) === group,
+                ).length,
+              ]),
+            ),
+            recent: (await store.recent(5)).map(({ report }) =>
+              reportSummary(report),
+            ),
+            selected: selected
+              ? {
+                  ...reportSummary(selected),
+                  description: selected.facts.description,
+                }
+              : null,
+          },
+        },
+        20_000,
+      );
+      return z.object({ reply: z.string().min(1).max(2000) }).parse(result);
+    } catch {
+      fail(503, "Website assistant is unavailable. Try again.");
+    }
+  });
+
   app.post("/api/v1/reports", async (req, reply) => {
     const facts = createReport.parse(req.body);
     const key = z
@@ -222,6 +357,7 @@ export async function buildApp(
       .object({
         days: dayRange.default(90),
         incidentType: z.enum(incidentTypes).optional(),
+        incidentGroup: z.enum(incidentGroups).optional(),
       })
       .strict()
       .parse(req.query);
@@ -232,6 +368,7 @@ export async function buildApp(
       now(),
       q.days,
       q.incidentType,
+      q.incidentGroup,
     );
   });
   app.get("/api/v1/reports", async (req) => {
@@ -240,6 +377,7 @@ export async function buildApp(
         employeeId: z.literal("demo-employee").optional(),
         status: z.enum(statuses).optional(),
         incidentType: z.enum(incidentTypes).optional(),
+        incidentGroup: z.enum(incidentGroups).optional(),
         days: dayRange.optional(),
       })
       .strict()
@@ -258,6 +396,10 @@ export async function buildApp(
           (!q.incidentType ||
             (adminQueue ? ticketIncidentType(r) : r.facts.incidentType) ===
               q.incidentType) &&
+          (!q.incidentGroup ||
+            incidentGroup(
+              adminQueue ? ticketIncidentType(r) : r.facts.incidentType,
+            ) === q.incidentGroup) &&
           (since === null ||
             (Date.parse(r.createdAt) >= since &&
               Date.parse(r.createdAt) <= current.getTime())),
@@ -268,6 +410,7 @@ export async function buildApp(
           ? {
               ...employeeView(report),
               incidentCategory: ticketIncidentType(report),
+              queueSeverity: queueSeverity(report),
             }
           : employeeView(report),
       );

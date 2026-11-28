@@ -1,3 +1,4 @@
+import { incidentGroup, type IncidentGroup } from "./incident-groups.js";
 import {
   incidentTypes,
   statuses,
@@ -44,6 +45,7 @@ export function buildDashboard(
   now: Date,
   days = 90,
   incidentType?: string,
+  group?: IncidentGroup,
 ) {
   const end = now.getTime(),
     start = windowStart(days, now).getTime();
@@ -52,6 +54,7 @@ export function buildDashboard(
   const population = reports.filter(
     (r) =>
       (!incidentType || ticketIncidentType(r) === incidentType) &&
+      (!group || incidentGroup(ticketIncidentType(r)) === group) &&
       Date.parse(r.createdAt) <= end,
   );
   const cohort = population.filter((r) => Date.parse(r.createdAt) >= start);

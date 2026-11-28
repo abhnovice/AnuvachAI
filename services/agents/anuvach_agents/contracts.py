@@ -28,6 +28,7 @@ class IncidentType(StrEnum):
     EMAIL_PHISHING = "email_phishing"
     MESSAGING_PHISHING = "messaging_phishing"
     VOICE_PHISHING = "voice_phishing"
+    DEEPFAKE_IMPERSONATION = "deepfake_impersonation"
     QR_PHISHING = "qr_phishing"
     PAYMENT_FRAUD = "payment_fraud"
     MFA_FATIGUE = "mfa_fatigue"

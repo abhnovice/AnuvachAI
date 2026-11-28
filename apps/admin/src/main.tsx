@@ -15,6 +15,7 @@ import "./flow.css";
 import "./chart-polish.css";
 import "./brush.css";
 import "./localization.css";
+import "./workspace-tools.css";
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <LocalizationProvider>

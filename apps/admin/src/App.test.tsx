@@ -1,5 +1,11 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { App } from "./App";
 import { buildDashboard } from "../../../services/api/src/analytics";
@@ -82,4 +88,96 @@ it("loads a ticket, persists a status change and confirms escalation separately"
   );
   await user.click(screen.getByRole("button", { name: "Confirm decision" }));
   await waitFor(() => expect(changes.length).toBe(2));
+});
+
+it("groups dashboard categories, opens notices in All Reports and chats about a selected ticket", async () => {
+  history.replaceState(null, "", "#dashboard");
+  vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+  const createdAt = new Date().toISOString();
+  const notifications = [
+    { id: "ANV-alert", summary: "Caller asked for an access code", createdAt },
+  ];
+  const report: Report = {
+    id: "ANV-alert",
+    status: "submitted",
+    createdAt,
+    updatedAt: createdAt,
+    version: 1,
+    assignment: null,
+    facts: {
+      employeeId: "demo-employee",
+      confirmed: true,
+      description: notifications[0].summary,
+      incidentType: "voice_phishing",
+      language: "english",
+      appName: "",
+      evidenceNotes: "",
+      observations: [],
+    },
+  };
+  const requests: unknown[] = [];
+  const fetch = vi.fn(async (path: string, options: RequestInit) => {
+    const json = path.includes("/notifications")
+      ? notifications
+      : path.includes("/assistant")
+        ? (requests.push(JSON.parse(options.body as string)),
+          { reply: "Open All reports to review the caller’s statement." })
+        : path.includes("/dashboard")
+          ? buildDashboard([report], [], new Date())
+          : path.includes("?view=admin")
+            ? report
+            : [
+                {
+                  ...report,
+                  queueSeverity: { severity: "moderate", source: "suggested" },
+                },
+              ];
+    return { ok: true, json: async () => json };
+  });
+  vi.stubGlobal("fetch", fetch);
+  const user = userEvent.setup();
+  render(<App />);
+  const categories = await screen.findByRole("img", {
+    name: "Incident category distribution across 1 reports",
+  });
+  const mix = categories.closest("section")!;
+  const labels = within(mix).getAllByRole("button");
+  expect(labels.at(-1)?.textContent).toContain("Other");
+  await user.click(within(mix).getByRole("button", { name: /Vishing/ }));
+  await waitFor(() =>
+    expect(
+      fetch.mock.calls.some(([url]) => url.includes("incidentGroup=vishing")),
+    ).toBe(true),
+  );
+
+  await user.click(
+    await screen.findByRole("button", { name: /Incident notifications/ }),
+  );
+  await user.click(
+    screen.getByRole("button", {
+      name: /Caller asked for an access code.*ANV-alert/,
+    }),
+  );
+  const detail = await screen.findByRole("region", { name: "Report detail" });
+  expect(await within(detail).findByText("ANV-alert")).toBeTruthy();
+  expect(screen.getAllByRole("columnheader")[0].textContent).toBe(
+    "Issue description",
+  );
+  expect(screen.getByRole("columnheader", { name: "Severity" })).toBeTruthy();
+  expect(screen.getByText("Moderate")).toBeTruthy();
+  expect(
+    screen.queryByRole("region", { name: "Website assistant" }),
+  ).toBeNull();
+
+  await user.click(screen.getByRole("button", { name: "Website assistant" }));
+  const chat = screen.getByRole("region", { name: "Website assistant" });
+  await user.type(within(chat).getByRole("textbox"), "Summarize this ticket");
+  await user.click(within(chat).getByRole("button", { name: "Send question" }));
+  expect(
+    await within(chat).findByText(
+      "Open All reports to review the caller’s statement.",
+    ),
+  ).toBeTruthy();
+  expect(requests[0]).toMatchObject({ ticketId: "ANV-alert", view: "reports" });
+  history.replaceState(null, "", "#reports");
 });

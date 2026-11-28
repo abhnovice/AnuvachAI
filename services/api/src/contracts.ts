@@ -8,6 +8,7 @@ export const incidentTypes = [
   "email_phishing",
   "messaging_phishing",
   "voice_phishing",
+  "deepfake_impersonation",
   "qr_phishing",
   "payment_fraud",
   "mfa_fatigue",

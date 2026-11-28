@@ -1,0 +1,217 @@
+.workspace-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.incident-notifications {
+  position: relative;
+  z-index: 15;
+}
+.workspace-icon-button {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  min-height: 40px;
+  padding: 0;
+  border: 1px solid var(--line);
+  color: var(--teal);
+  background: var(--workspace-popover, #fff);
+}
+.notification-count {
+  position: absolute;
+  top: -4px;
+  inset-inline-end: -4px;
+  min-width: 18px;
+  padding-inline: 4px;
+  border-radius: 999px;
+  color: white;
+  background: #006b60;
+  font-size: 0.7rem;
+}
+.workspace-popover {
+  background: var(--workspace-popover, #fff);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 12px;
+  box-shadow: 0 12px 35px #101b2030;
+}
+[data-theme="dark"] {
+  --workspace-popover: #171f27;
+  --assistant-user: #23483e;
+}
+.incident-notifications .workspace-popover {
+  position: absolute;
+  inset-inline-end: 0;
+  top: calc(100% + 8px);
+  width: min(320px, calc(100vw - 32px));
+  max-height: min(400px, 65vh);
+  overflow: auto;
+}
+.workspace-popover h2 {
+  font-size: 1rem;
+  margin: 0 0 6px;
+}
+.incident-notice {
+  display: grid;
+  width: 100%;
+  padding: 9px 5px;
+  border-radius: 0;
+  text-align: start;
+  color: inherit;
+  background: transparent;
+  border-bottom: 1px solid var(--line);
+  font-weight: 400;
+}
+.incident-notice:hover,
+.incident-notice:focus-visible {
+  color: var(--teal);
+}
+.incident-excerpt,
+.queue-description > span {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.incident-notice small,
+.incident-notice time {
+  font-size: 0.72rem;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.workspace-assistant {
+  position: fixed;
+  inset-inline-end: 18px;
+  bottom: 18px;
+  z-index: 25;
+}
+.assistant-launcher {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  box-shadow: 0 5px 20px #101b203d;
+}
+.assistant-window {
+  display: grid;
+  gap: 10px;
+  width: min(340px, calc(100vw - 36px));
+}
+.assistant-window header,
+.assistant-window form {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.assistant-shortcuts {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.assistant-shortcuts button {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--teal);
+  min-height: 32px;
+  font-size: 0.76rem;
+  padding: 4px 9px;
+}
+.assistant-transcript {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-height: 90px;
+  max-height: min(280px, 46dvh);
+  overflow: auto;
+}
+.assistant-transcript p {
+  margin: 0;
+  padding: 7px 9px;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.assistant-transcript [data-role="user"] {
+  justify-self: end;
+  max-width: 93%;
+  border-radius: 12px;
+  background: var(--assistant-user, #dff3ec);
+}
+.assistant-window input {
+  flex: 1;
+  width: 0;
+  padding: 7px 10px;
+}
+.assistant-window form button {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  min-height: 38px;
+  padding: 0;
+}
+.queue-description {
+  min-width: 180px;
+  max-width: 280px;
+}
+.isolated-workspace .queue table {
+  min-width: 810px;
+}
+.queue-severity {
+  border: 1px solid var(--line);
+}
+.queue-severity:is(.severity-high, .severity-critical) {
+  color: #a12632;
+  background: #fff1f1;
+}
+[data-theme="dark"] .queue-severity:is(.severity-high, .severity-critical) {
+  color: #ffbfc4;
+  background: #481e26;
+}
+.isolated-workspace .analytics-grid {
+  gap: 14px;
+}
+.isolated-workspace .chart-card {
+  padding: 14px;
+}
+.isolated-workspace .grouped-chart .chart-body {
+  min-height: 150px;
+}
+.grouped-chart .mix-legend button {
+  grid-template-columns: 7px minmax(0, 1fr) auto auto;
+  align-items: center;
+  min-height: 29px;
+  padding-block: 4px;
+  text-align: start;
+}
+.grouped-chart .mix-legend small {
+  grid-column: auto;
+  margin: 0;
+}
+.grouped-chart .mix-legend span {
+  overflow-wrap: anywhere;
+}
+.grouped-chart .mix-visual svg {
+  width: 100px;
+  min-width: 78px;
+}
+.grouped-chart .status-heatmap th {
+  overflow-wrap: anywhere;
+}
+.grouped-chart .status-heatmap .heat-cell {
+  min-height: 25px;
+}
+@media (max-width: 480px) {
+  .workspace-actions .refresh-button {
+    padding-inline: 8px;
+  }
+  .incident-notifications .workspace-popover {
+    inset-inline-end: -44px;
+  }
+}

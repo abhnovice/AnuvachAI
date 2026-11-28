@@ -56,6 +56,7 @@ export function registerAccess(app: FastifyInstance, access?: Access) {
     const viewing = request.method === "GET" || request.method === "HEAD";
     const adminAction =
       route === "/api/v1/dashboard" ||
+      route.startsWith("/api/v1/admin/") ||
       (route === "/api/v1/reports" &&
         viewing &&
         query.employeeId === undefined) ||

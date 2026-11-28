@@ -340,3 +340,33 @@ def test_description_translation_uses_source_text_separately(tmp_path, monkeypat
         )
     assert response.status_code == 200
     assert response.json() == {"translation": "Someone requested a code."}
+
+
+def test_admin_assistant_reuses_triage_model_as_read_only_guide(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    from google import genai
+
+    class Guide:
+        async def __aenter__(self):
+            return SimpleNamespace(models=SimpleNamespace(generate_content=self.answer))
+
+        async def __aexit__(self, *exc):
+            return None
+
+        async def answer(self, *, model, contents, config):
+            assert model == "gemini-3.5-flash-lite"
+            assert "read-only" in config.system_instruction
+            assert '"reportCount":2' in contents
+            return SimpleNamespace(text="Open All Reports to view the two tickets.")
+
+    monkeypatch.setenv("GOOGLE_API_KEY", "fake-test-only")
+    monkeypatch.setenv("TRIAGE_MODEL", "gemini-3.5-flash-lite")
+    monkeypatch.setattr(genai, "Client", lambda: SimpleNamespace(aio=Guide()))
+    with TestClient(create_app(SQLiteFakeAdapters(tmp_path / "guide.sqlite"))) as client:
+        response = client.post("/internal/admin/assistant", json={
+            "message": "Where can I see the tickets?", "history": [],
+            "view": "dashboard", "language": "en", "scope": {"days": 90},
+            "context": {"reportCount": 2},
+        })
+    assert response.status_code == 200
+    assert response.json() == {"reply": "Open All Reports to view the two tickets."}

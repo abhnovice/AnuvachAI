@@ -17,6 +17,7 @@ export function fail(statusCode: number, message: string): never {
 export interface ReportStore {
   get(id: string): Promise<Entry>;
   list(): Promise<Entry[]>;
+  recent(limit: number): Promise<Entry[]>;
   events(id?: string): Promise<Row[]>;
   create(
     entry: Entry,
@@ -68,6 +69,13 @@ export function sqliteStore(filename: string): ReportStore {
         .prepare("SELECT data FROM reports ORDER BY rowid DESC")
         .all()
         .map((r) => ({ report: JSON.parse(r.data as string) })),
+    recent: async (limit) =>
+      db
+        .prepare(
+          "SELECT data FROM reports ORDER BY json_extract(data, '$.createdAt') DESC, id DESC LIMIT ?",
+        )
+        .all(limit)
+        .map((row) => ({ report: JSON.parse(row.data as string) })),
     async events(id) {
       const query = db.prepare(
         `SELECT * FROM audit ${id ? "WHERE report_id=?" : ""} ORDER BY sequence`,
@@ -159,6 +167,11 @@ export function firestoreStore(db: Firestore): ReportStore {
     },
     async list() {
       return (await reports.get()).docs.map((doc) => load(doc.data()));
+    },
+    async recent(limit) {
+      return (
+        await reports.orderBy("report.createdAt", "desc").limit(limit).get()
+      ).docs.map((doc) => load(doc.data()));
     },
     async events(id) {
       const docs = await (

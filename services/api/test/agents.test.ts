@@ -16,6 +16,7 @@ test("existing ticket survives peer outage, restart, and duplicate submission", 
   ];
   const reportingRequests: unknown[] = [];
   const translations: unknown[] = [];
+  const assistantRequests: any[] = [];
   const peer = createServer(async (request, response) => {
     let body = "";
     for await (const chunk of request) body += chunk;
@@ -30,6 +31,15 @@ test("existing ticket survives peer outage, restart, and duplicate submission", 
     if (request.url === "/internal/reporting/translate") {
       translations.push(JSON.parse(body));
       response.end(JSON.stringify({ translation: "किसी ने कोड माँगा।" }));
+      return;
+    }
+    if (request.url === "/internal/admin/assistant") {
+      assistantRequests.push(JSON.parse(body));
+      response.end(
+        JSON.stringify({
+          reply: "Open All Reports to view the selected ticket.",
+        }),
+      );
       return;
     }
     calls++;
@@ -112,6 +122,30 @@ test("existing ticket survives peer outage, restart, and duplicate submission", 
     assert.equal(
       (await app.inject("/api/v1/reports/" + id)).json().facts.description,
       submission.payload.description,
+    );
+    const notices = await app.inject("/api/v1/admin/notifications");
+    assert.equal(notices.statusCode, 200);
+    assert.equal(notices.json()[0].id, id);
+    assert.equal(notices.json()[0].summary, submission.payload.description);
+    const assistant = await app.inject({
+      method: "POST",
+      url: "/api/v1/admin/assistant",
+      payload: {
+        message: "Summarize this report.",
+        view: "reports",
+        ticketId: id,
+        scope: { days: 30, group: "vishing" },
+      },
+    });
+    assert.equal(assistant.statusCode, 200);
+    assert.equal(
+      assistantRequests[0].context.selected.description,
+      submission.payload.description,
+    );
+    assert.equal(assistantRequests[0].context.reportCount, 1);
+    assert.equal(
+      (await app.inject("/api/v1/reports?incidentGroup=vishing")).json()[0].id,
+      id,
     );
     const adminPath = "/api/v1/reports/" + id + "?view=admin";
     const poll = async (predicate: (data: any) => boolean) => {

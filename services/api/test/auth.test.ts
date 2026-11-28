@@ -52,6 +52,8 @@ test("API rejects missing, invalid and unlisted credentials and separates roles"
       ["POST", "/api/v1/reports/example/triage-review", "employee"],
       ["POST", "/api/v1/reports", "admin"],
       ["POST", "/api/v1/reporting/turns", "admin"],
+      ["GET", "/api/v1/admin/notifications", "employee"],
+      ["POST", "/api/v1/admin/assistant", "employee"],
       ["POST", "/api/v1/reporting/voice", "admin"],
     ] as const) {
       assert.equal(

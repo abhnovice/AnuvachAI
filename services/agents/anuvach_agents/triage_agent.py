@@ -64,9 +64,11 @@ type based on what the reported facts support. Treat the employee-selected type
 as context only. If several categories apply, prioritize the reported request
 (payment_fraud for diverted payments or invoices, remote_access_scam for
 deceptive requests to grant access or share control), then the main mechanism
-(mfa_fatigue for repeated unexpected approval prompts, qr_phishing for a
+(deepfake_impersonation for explicitly reported synthetic impersonation,
+mfa_fatigue for repeated unexpected approval prompts, qr_phishing for a
 deceptive QR code), then the initial phishing channel (email_phishing,
 messaging_phishing for text or chat, voice_phishing for calls or voicemail).
+Keep suspected synthetic media qualified; unusual speech alone is insufficient.
 Use support_call for a support-related call without evidence of deception,
 suspicious_message for a suspicious message with unclear channel or intent,
 mistaken_report only when the facts support a benign explanation, and other

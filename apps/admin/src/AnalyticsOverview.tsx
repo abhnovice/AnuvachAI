@@ -1,6 +1,10 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import type { DashboardData } from "../../../services/api/src/analytics";
 import { Icon } from "./Icon";
+import {
+  incidentGroup,
+  incidentGroups,
+} from "../../../services/api/src/incident-groups";
 import { incidentCategories, useLocalization } from "./localization";
 import "./analytics.css";
 import "./queue-layout.css";
@@ -455,6 +459,31 @@ export function AnalyticsOverview({
     total = m?.received ?? 0;
   const effectiveBrush =
     brush && data?.weekly[brush[0]] && data.weekly[brush[1]] ? brush : null;
+  const mix = incidentGroups.map((group) => ({
+    type: `group:${group}`,
+    count:
+      data?.incidentMix.reduce(
+        (sum, row) => sum + (incidentGroup(row.type) === group ? row.count : 0),
+        0,
+      ) ?? 0,
+  }));
+  const matrix = incidentGroups.map((group) => ({
+    type: `group:${group}`,
+    counts: Object.fromEntries(
+      states.map((status) => [
+        status,
+        data?.statusMatrix.reduce(
+          (sum, row) =>
+            sum + (incidentGroup(row.type) === group ? row.counts[status] : 0),
+          0,
+        ) ?? 0,
+      ]),
+    ),
+  }));
+  const maxStatus = Math.max(
+    1,
+    ...matrix.flatMap((row) => Object.values(row.counts)),
+  );
   let offset = 0;
   return (
     <section
@@ -464,10 +493,6 @@ export function AnalyticsOverview({
     >
       <div className="overview-scope">
         <div>
-          <span className="synthetic-label">
-            <span />
-            {t("syntheticData")}
-          </span>
           <p>
             {data
               ? fmtDate(data.scope.start) +
@@ -476,7 +501,7 @@ export function AnalyticsOverview({
                 " " +
                 new Date(data.scope.end).getUTCFullYear() +
                 " · UTC"
-              : t("localApiHistory")}
+              : ""}
           </p>
         </div>
         <div className="overview-controls">
@@ -500,6 +525,11 @@ export function AnalyticsOverview({
               onChange={(e) => onType(e.target.value)}
             >
               <option value="">{t("allIncidentTypes")}</option>
+              {incidentGroups.map((group) => (
+                <option key={group} value={`group:${group}`}>
+                  {names[`group:${group}`]}
+                </option>
+              ))}
               {incidentCategories.map((t) => (
                 <option key={t} value={t}>
                   {names[t]}
@@ -599,9 +629,6 @@ export function AnalyticsOverview({
                   : (m!.receivedChangePercent >= 0 ? "+" : "") +
                     m!.receivedChangePercent.toFixed(0) +
                     "% vs preceding period"}
-                <small>
-                  {m!.previousReceived} in the preceding equal-duration window
-                </small>
               </div>
             </button>
             <button
@@ -616,7 +643,6 @@ export function AnalyticsOverview({
               </div>
               <strong>{m!.open}</strong>
               <div className="metric-context">
-                Received in this window; not closed
                 <small>
                   {m!.awaitingEmployee} awaiting employee · {m!.escalated}{" "}
                   escalated
@@ -641,10 +667,6 @@ export function AnalyticsOverview({
                     : m!.closedSharePercent.toFixed(0) + "%"}
                 </em>
               </strong>
-              <div className="metric-context">
-                Share of reports received in this window
-                <small>Administrative closure, not proof of resolution</small>
-              </div>
             </button>
             <button
               type="button"
@@ -658,7 +680,6 @@ export function AnalyticsOverview({
               </div>
               <strong>{fmtHours(m!.meanCloseHours)}</strong>
               <div className="metric-context">
-                Receipt → latest recorded closure
                 <small>
                   {m!.closeSampleSize} currently closed reports · median{" "}
                   {fmtHours(m!.medianCloseHours)}
@@ -714,10 +735,11 @@ export function AnalyticsOverview({
             </ChartCard>
             <ChartCard
               title={t("incidentMix")}
+              className="grouped-chart"
               subtitle={t("chartSubtitle2")}
               definition={t("chartDefinition2")}
               headers={["Category", "Reports", "Share"]}
-              rows={data.incidentMix.map((r) => [
+              rows={mix.map((r) => [
                 names[r.type],
                 r.count,
                 total ? ((r.count / total) * 100).toFixed(1) + "%" : "—",
@@ -741,7 +763,7 @@ export function AnalyticsOverview({
                     stroke="#edf3ef"
                     strokeWidth="23"
                   />
-                  {data.incidentMix.map((r, i) => {
+                  {mix.map((r, i) => {
                     const length = total ? (r.count / total) * 100 : 0;
                     const current = offset;
                     offset += length;
@@ -792,7 +814,7 @@ export function AnalyticsOverview({
                   </text>
                 </svg>
                 <div className="mix-legend">
-                  {data.incidentMix.map((r, i) => (
+                  {mix.map((r, i) => (
                     <button
                       key={r.type}
                       onPointerEnter={() => setCategory(r.type)}
@@ -938,10 +960,11 @@ export function AnalyticsOverview({
             </ChartCard>
             <ChartCard
               title={t("statusByType")}
+              className="grouped-chart"
               subtitle={t("chartSubtitle5")}
               definition={t("chartDefinition5")}
               headers={["Type", ...states.map((s) => names[s])]}
-              rows={data.statusMatrix.map((r) => [
+              rows={matrix.map((r) => [
                 names[r.type],
                 ...states.map((s) => r.counts[s]),
               ])}
@@ -961,7 +984,7 @@ export function AnalyticsOverview({
                     </tr>
                   </thead>
                   <tbody>
-                    {data.statusMatrix.map((row) => (
+                    {matrix.map((row) => (
                       <tr
                         key={row.type}
                         className={
@@ -979,12 +1002,7 @@ export function AnalyticsOverview({
                         <th>{names[row.type]}</th>
                         {states.map((s) => {
                           const n = row.counts[s],
-                            max = Math.max(
-                              1,
-                              ...data.statusMatrix.flatMap((r) =>
-                                states.map((s) => r.counts[s]),
-                              ),
-                            ),
+                            max = maxStatus,
                             alpha = n ? 0.13 + (n / max) * 0.72 : 0.035;
                           return (
                             <td key={s}>
@@ -1055,7 +1073,6 @@ export function AnalyticsOverview({
                 {names[r.team]} <strong>{r.count}</strong>
               </span>
             ))}
-            <small>{t("assignmentIdentityNote")}</small>
           </div>
         </>
       )}

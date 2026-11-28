@@ -3,6 +3,8 @@ import { flushSync } from "react-dom";
 import { usePageScroll } from "./usePageScroll";
 import { AnalyticsOverview, type DashboardData } from "./AnalyticsOverview";
 import { Icon } from "./Icon";
+import { IncidentNotifications, WebsiteAssistant } from "./WorkspaceTools";
+import { incidentGroups } from "../../../services/api/src/incident-groups";
 import { TriageReview, type LocalTriage } from "./TriageReview";
 import { TicketJourney } from "./TicketJourney";
 import { ThemePicker } from "./ThemePicker";
@@ -21,6 +23,7 @@ export type Report = {
   version: number;
   triage?: LocalTriage;
   incidentCategory?: string;
+  queueSeverity?: { severity: string; source: "reviewed" | "suggested" | null };
   facts: {
     employeeId: string;
     description: string;
@@ -85,8 +88,19 @@ export async function request<T>(
   }
   return response.json();
 }
+const loadNotices = () =>
+  request<{ id: string; summary: string; createdAt: string }[]>(
+    "/admin/notifications",
+  );
+const severityLabels = {
+  low: "severityLow",
+  moderate: "severityModerate",
+  high: "severityHigh",
+  critical: "severityCritical",
+} as const;
+
 export function App({ onSignOut }: { onSignOut?: () => void } = {}) {
-  const { t, enumLabel } = useLocalization();
+  const { t, enumLabel, locale } = useLocalization();
   const statusLabel = (value: string) => {
     switch (value) {
       case "submitted":
@@ -194,6 +208,7 @@ export function App({ onSignOut }: { onSignOut?: () => void } = {}) {
   const [overview, setOverview] = useState<DashboardData | null>(null);
   const [overviewLoading, setOverviewLoading] = useState(true);
   const [queuePage, setQueuePage] = useState(0);
+  const [noticeTicket, setNoticeTicket] = useState<string | null>(null);
   const requestGeneration = useRef(0);
   const pageSize = 10;
   const effectivePage = Math.min(
@@ -213,9 +228,14 @@ export function App({ onSignOut }: { onSignOut?: () => void } = {}) {
     try {
       const q = new URLSearchParams({ days });
       if (status && status !== "open") q.set("status", status);
-      if (type) q.set("incidentType", type);
       const metricsQuery = new URLSearchParams({ days });
-      if (type) metricsQuery.set("incidentType", type);
+      if (type) {
+        const [key, value] = type.startsWith("group:")
+          ? ["incidentGroup", type.slice(6)]
+          : ["incidentType", type];
+        q.set(key, value);
+        metricsQuery.set(key, value);
+      }
       const [rows, metrics] = await Promise.all([
         request<Report[]>("/reports?" + q),
         request<DashboardData>("/dashboard?" + metricsQuery),
@@ -296,6 +316,11 @@ export function App({ onSignOut }: { onSignOut?: () => void } = {}) {
       setLoading(false);
     }
   }
+  useEffect(() => {
+    if (!noticeTicket || page !== "reports" || status || type) return;
+    setNoticeTicket(null);
+    void open(noticeTicket);
+  }, [noticeTicket, page, status, type]);
   async function mutate(kind: string, body: Record<string, unknown>) {
     if (!detail) return;
     setBusy(true);
@@ -460,27 +485,9 @@ export function App({ onSignOut }: { onSignOut?: () => void } = {}) {
             </button>
           </div>
         </nav>
-        <div className="sidebar-note">
-          <span className="note-icon">
-            <Icon name="shield" size={23} />
-          </span>
-          <h3>
-            People first.
-            <br />
-            Facts before conclusions.
-          </h3>
-          <p>
-            Track suspicious calls, impersonation and deceptive requests. Keep
-            reported facts separate from device observations.
-          </p>
-        </div>
         <LanguagePicker />
         <ThemePicker />
         {onSignOut && <button onClick={onSignOut}>Sign out</button>}
-        <div className="sidebar-footer">
-          <span className="demo-dot" />
-          Local demonstration<small>Synthetic data · No authentication</small>
-        </div>
       </aside>
 
       <main
@@ -490,17 +497,28 @@ export function App({ onSignOut }: { onSignOut?: () => void } = {}) {
       >
         <div className="intro">
           <div>
-            <p className="eyebrow">YOUR INCIDENT WORKSPACE</p>
             <h1 className="page-heading">Social engineering incidents</h1>
           </div>
-          <button
-            className="refresh-button"
-            onClick={() => void load()}
-            disabled={loading}
-          >
-            <Icon name="refresh" size={18} />
-            {t("refreshQueue")}
-          </button>
+          <div className="workspace-actions">
+            <IncidentNotifications
+              load={loadNotices}
+              openReport={(id) => {
+                setStatus("");
+                setType("");
+                setNoticeTicket(id);
+                if (!status && !type) void load();
+                void navigate("reports");
+              }}
+            />
+            <button
+              className="refresh-button"
+              onClick={() => void load()}
+              disabled={loading}
+            >
+              <Icon name="refresh" size={18} />
+              {t("refreshQueue")}
+            </button>
+          </div>
         </div>
         <div
           id="dashboard"
@@ -537,9 +555,6 @@ export function App({ onSignOut }: { onSignOut?: () => void } = {}) {
           hidden={page !== "reports"}
           inert={page !== "reports"}
         >
-          <div className="analytics-section-title">
-            <h2>{t("reportsReview")}</h2>
-          </div>
           {error && (
             <div role="alert" className="error">
               {error}{" "}
@@ -561,10 +576,6 @@ export function App({ onSignOut }: { onSignOut?: () => void } = {}) {
                 {t("reportQueue")}{" "}
                 <span className="count">{reports.length}</span>
               </h2>
-              <p className="section-description">
-                Reports received in the selected window. The status filter below
-                applies to this queue only.
-              </p>
               <div className="filters">
                 <label>
                   {t("status")}
@@ -590,6 +601,11 @@ export function App({ onSignOut }: { onSignOut?: () => void } = {}) {
                     onChange={(e) => setType(e.target.value)}
                   >
                     <option value="">{t("allTypes")}</option>
+                    {incidentGroups.map((group) => (
+                      <option key={group} value={`group:${group}`}>
+                        {enumLabel(`group:${group}`)}
+                      </option>
+                    ))}
                     {incidentCategories.map((t) => (
                       <option key={t} value={t}>
                         {enumLabel(t)}
@@ -621,62 +637,90 @@ export function App({ onSignOut }: { onSignOut?: () => void } = {}) {
                 <table>
                   <thead>
                     <tr>
+                      <th>{t("issueDescription")}</th>
                       <th title="Receipt times use your browser’s local time zone">
                         {t("ticketReceived")}
                       </th>
                       <th>{t("type")}</th>
                       <th>{t("status")}</th>
+                      <th>{t("queueSeverity")}</th>
                       <th>{t("assignment")}</th>
                       <th>{t("elapsed")}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {visibleReports.map((r) => (
-                      <tr
-                        key={r.id}
-                        className={detail?.id === r.id ? "selected" : undefined}
-                      >
-                        <td>
-                          <button
-                            className="ticket"
-                            aria-label={r.id}
-                            title={r.id}
-                            onClick={() => void open(r.id)}
-                          >
-                            <span className="ticket-icon">
-                              <Icon name="reports" size={16} />
-                            </span>{" "}
-                            ANV-…{r.id.slice(-8)}
-                          </button>
-                          <small>
-                            {new Date(r.createdAt).toLocaleString()}
-                          </small>
-                        </td>
-                        <td>
-                          {enumLabel(
-                            r.incidentCategory ?? r.facts.incidentType,
-                          )}
-                        </td>
-                        <td>
-                          <span className={"badge status-" + r.status}>
-                            {statusLabel(r.status)}
-                          </span>
-                        </td>
-                        <td>
-                          {r.assignment?.team
-                            ? enumLabel(r.assignment.team)
-                            : t("unassigned")}
-                          <small>
-                            {r.assignment?.reviewer || t("noReviewer")}
-                          </small>
-                        </td>
-                        <td>
-                          <span title="Time since receipt, including time after closure">
-                            {elapsedSince(r.createdAt)}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
+                    {visibleReports.map((r) => {
+                      const severity = r.queueSeverity;
+                      const value =
+                        severity?.severity as keyof typeof severityLabels;
+                      return (
+                        <tr
+                          key={r.id}
+                          className={
+                            detail?.id === r.id ? "selected" : undefined
+                          }
+                        >
+                          <td className="queue-description">
+                            <span dir="auto">{r.facts.description}</span>
+                          </td>
+                          <td>
+                            <button
+                              className="ticket"
+                              aria-label={r.id}
+                              title={r.id}
+                              onClick={() => void open(r.id)}
+                            >
+                              <span className="ticket-icon">
+                                <Icon name="reports" size={16} />
+                              </span>{" "}
+                              ANV-…{r.id.slice(-8)}
+                            </button>
+                            <small>
+                              {new Date(r.createdAt).toLocaleString()}
+                            </small>
+                          </td>
+                          <td>
+                            {enumLabel(
+                              r.incidentCategory ?? r.facts.incidentType,
+                            )}
+                          </td>
+                          <td>
+                            <span className={"badge status-" + r.status}>
+                              {statusLabel(r.status)}
+                            </span>
+                          </td>
+                          <td>
+                            <span
+                              className={`badge queue-severity severity-${severity?.severity ?? "unassessed"}`}
+                            >
+                              {t(severityLabels[value] ?? "severityUnassessed")}
+                            </span>
+                            {severity?.source && (
+                              <small>
+                                {t(
+                                  severity.source === "reviewed"
+                                    ? "severityReviewed"
+                                    : "severitySuggested",
+                                )}
+                              </small>
+                            )}
+                          </td>
+                          <td>
+                            {r.assignment?.team
+                              ? enumLabel(r.assignment.team)
+                              : t("unassigned")}
+                            <small>
+                              {r.assignment?.reviewer || t("noReviewer")}
+                            </small>
+                          </td>
+                          <td>
+                            <span title="Time since receipt, including time after closure">
+                              {elapsedSince(r.createdAt)}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -914,6 +958,38 @@ export function App({ onSignOut }: { onSignOut?: () => void } = {}) {
           does not enforce access controls.
         </footer>
       </main>
+      <WebsiteAssistant
+        navigate={(view) => {
+          if (view === "reports") {
+            setStatus("");
+            setType("");
+          }
+          void navigate(view);
+        }}
+        ask={async (message, history) => {
+          const result = await request<{ reply: string }>(
+            "/admin/assistant",
+            "POST",
+            {
+              message,
+              history,
+              view: page,
+              language: locale,
+              scope: {
+                days: Number(days),
+                ...(type
+                  ? type.startsWith("group:")
+                    ? { group: type.slice(6) }
+                    : { category: type }
+                  : {}),
+                ...(page === "reports" && status ? { status } : {}),
+              },
+              ...(page === "reports" && detail ? { ticketId: detail.id } : {}),
+            },
+          );
+          return result.reply;
+        }}
+      />
       {confirm && detail && (
         <div className="modal-backdrop">
           <section

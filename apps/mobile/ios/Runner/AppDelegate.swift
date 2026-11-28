@@ -16,6 +16,19 @@ import AVFoundation
       let local = FlutterMethodChannel(name: "ai.anuvach/local_features", binaryMessenger: controller.binaryMessenger)
       local.setMethodCallHandler { [weak self] call, result in
         guard let self = self else { return }
+        if call.method == "openLink" {
+          guard let arguments = call.arguments as? [String: Any],
+                let value = arguments["url"] as? String,
+                let url = URL(string: value), url.scheme == "https", url.host != nil else {
+            result(FlutterError(code: "INVALID", message: "Expected an HTTPS link", details: nil))
+            return
+          }
+          UIApplication.shared.open(url, options: [:]) { opened in
+            if opened { result(nil) }
+            else { result(FlutterError(code: "UNAVAILABLE", message: "Could not open the link", details: nil)) }
+          }
+          return
+        }
         if call.method == "stopMic" { self.stopMicrophone(); result(nil); return }
         if call.method == "listApps" || call.method == "openApp" {
           result(FlutterError(code: "UNAVAILABLE", message: "iOS does not expose other apps’ permissions.", details: nil)); return

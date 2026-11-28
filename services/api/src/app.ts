@@ -3,6 +3,7 @@ import Fastify from "fastify";
 import { registerVoice } from "./voice.js";
 import {
   AgentError,
+  agentLanguage,
   agentPost,
   analyze,
   reportingTurn,
@@ -274,12 +275,34 @@ export async function buildApp(
   app.get("/api/v1/reports/:id", async (req) => {
     const { id } = req.params as { id: string };
     const q = z
-      .object({ view: z.enum(["employee", "admin"]).default("employee") })
+      .object({
+        view: z.enum(["employee", "admin"]).default("employee"),
+        translate: agentLanguage.optional(),
+      })
       .strict()
       .parse(req.query);
     const { report, owner } = await store.get(id);
     if (employeeUid(req) && employeeUid(req) !== owner)
       fail(404, "Report not found");
+    if (q.translate) {
+      if (!agentBase) fail(503, "Description translation is unavailable");
+      try {
+        const translated = await agentPost(
+          agentBase,
+          "/internal/reporting/translate",
+          {
+            language: q.translate,
+            text: report.facts.description,
+          },
+          25_000,
+        );
+        return z
+          .object({ translation: z.string().min(1).max(16000) })
+          .parse(translated);
+      } catch {
+        fail(503, "Description translation is unavailable");
+      }
+    }
     return q.view === "admin"
       ? {
           ...report,

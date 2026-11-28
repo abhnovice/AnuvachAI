@@ -489,4 +489,64 @@ class AppLocalizationsBn extends AppLocalizations {
   @override
   String get voiceStartupNotice =>
       'শুধু কৃত্রিম তথ্য ব্যবহার করুন। Android-এ মাইক্রোফোনের অনুমতি আগে থেকে থাকলে অ্যাপ খুললেই ভয়েস চালু হয়। ভয়েস বন্ধ করা বা চেক ছেড়ে যাওয়ার আগ পর্যন্ত মাইক্রোফোনের অডিও রিপোর্টিং সহকারীর কাছে যায়।';
+
+  @override
+  String get chats => 'চ্যাট';
+
+  @override
+  String get newChat => 'নতুন চ্যাট';
+
+  @override
+  String get reportsOverview => 'রিপোর্টের সারাংশ';
+
+  @override
+  String get reportCountsUnavailable => 'রিপোর্টের সংখ্যা পাওয়া যাচ্ছে না।';
+
+  @override
+  String get scamTips => 'প্রতারণা থেকে বাঁচার পরামর্শ';
+
+  @override
+  String get protectCodes =>
+      'OTP ও PIN গোপন রাখুন। কেউ কোড চাইলে কল কেটে প্রতিষ্ঠানের সঙ্গে সরাসরি কথা বলুন।';
+
+  @override
+  String get verifyRequests =>
+      'বার্তায় তাড়াহুড়ো করতে বা লিঙ্ক খুলতে বললে প্রতিষ্ঠানের অফিসিয়াল অ্যাপ বা ওয়েবসাইটে যাচাই করুন।';
+
+  @override
+  String get reportFraudPrompt =>
+      'ভারতে আর্থিক সাইবার প্রতারণা হলে দ্রুত 1930-তে ফোন করুন অথবা সরকারি পোর্টালে রিপোর্ট করুন।';
+
+  @override
+  String get descriptionTranslation => 'বিবরণ অনুবাদ করুন';
+
+  @override
+  String get descriptionTranslationUnavailable =>
+      'অনুবাদ পাওয়া যায়নি। মূল বিবরণ নিচে আছে।';
+
+  @override
+  String get launcherApps => 'দেখা যায় এমন অ্যাপ';
+
+  @override
+  String get nonLauncherApps => 'দেখা যায় না এমন অ্যাপ';
+
+  @override
+  String get appInventoryCoverage =>
+      'Android যে অ্যাপগুলো দেখায় শুধু সেগুলো তালিকায় আছে। আইকন না থাকা বা অনুমতি থাকা অপব্যবহারের প্রমাণ নয়।';
+
+  @override
+  String get openAccessibilitySettings =>
+      'Android অ্যাক্সেসিবিলিটি সেটিংস খুলুন';
+
+  @override
+  String get systemApps => 'সিস্টেম অ্যাপ';
+
+  @override
+  String get uncategorizedApps => 'শ্রেণিবিহীন অ্যাপ';
+
+  @override
+  String get noMatchingApps => 'মিল আছে এমন অ্যাপ নেই।';
+
+  @override
+  String get otherPermissions => 'অন্যান্য অনুমতি';
 }

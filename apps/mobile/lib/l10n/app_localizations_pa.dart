@@ -490,4 +490,64 @@ class AppLocalizationsPa extends AppLocalizations {
   @override
   String get voiceStartupNotice =>
       'ਸਿਰਫ਼ ਕਲਪਿਤ ਵੇਰਵੇ ਵਰਤੋ। Android ’ਤੇ ਮਾਈਕ ਦੀ ਇਜਾਜ਼ਤ ਪਹਿਲਾਂ ਤੋਂ ਹੋਵੇ ਤਾਂ ਐਪ ਖੋਲ੍ਹਣ ਵੇਲੇ ਵੌਇਸ ਸ਼ੁਰੂ ਹੁੰਦੀ ਹੈ। ਵੌਇਸ ਬੰਦ ਕਰਨ ਜਾਂ ਚੈੱਕ ਸਕ੍ਰੀਨ ਛੱਡਣ ਤੱਕ ਮਾਈਕ ਦੀ ਆਡੀਓ ਰਿਪੋਰਟਿੰਗ ਸਹਾਇਕ ਨੂੰ ਜਾਂਦੀ ਹੈ।';
+
+  @override
+  String get chats => 'ਚੈਟਾਂ';
+
+  @override
+  String get newChat => 'ਨਵੀਂ ਚੈਟ';
+
+  @override
+  String get reportsOverview => 'ਰਿਪੋਰਟਾਂ ਦੀ ਝਲਕ';
+
+  @override
+  String get reportCountsUnavailable => 'ਰਿਪੋਰਟਾਂ ਦੀ ਗਿਣਤੀ ਉਪਲਬਧ ਨਹੀਂ।';
+
+  @override
+  String get scamTips => 'ਧੋਖਾਧੜੀ ਤੋਂ ਬਚਣ ਦੇ ਸੁਝਾਅ';
+
+  @override
+  String get protectCodes =>
+      'OTP ਅਤੇ PIN ਗੁਪਤ ਰੱਖੋ। ਕੋਈ ਕੋਡ ਮੰਗੇ ਤਾਂ ਕਾਲ ਬੰਦ ਕਰਕੇ ਸੰਸਥਾ ਨਾਲ ਸਿੱਧਾ ਸੰਪਰਕ ਕਰੋ।';
+
+  @override
+  String get verifyRequests =>
+      'ਜੇ ਸੁਨੇਹਾ ਤੁਰੰਤ ਕਾਰਵਾਈ ਜਾਂ ਲਿੰਕ ਖੋਲ੍ਹਣ ਲਈ ਕਹੇ ਤਾਂ ਸੰਸਥਾ ਦੀ ਅਧਿਕਾਰਤ ਐਪ ਜਾਂ ਵੈੱਬਸਾਈਟ ਤੋਂ ਜਾਂਚ ਕਰੋ।';
+
+  @override
+  String get reportFraudPrompt =>
+      'ਭਾਰਤ ਵਿੱਚ ਵਿੱਤੀ ਸਾਈਬਰ ਧੋਖਾਧੜੀ ਲਈ ਤੁਰੰਤ 1930 ’ਤੇ ਕਾਲ ਕਰੋ ਜਾਂ ਅਧਿਕਾਰਤ ਪੋਰਟਲ ’ਤੇ ਰਿਪੋਰਟ ਕਰੋ।';
+
+  @override
+  String get descriptionTranslation => 'ਵੇਰਵੇ ਦਾ ਅਨੁਵਾਦ ਕਰੋ';
+
+  @override
+  String get descriptionTranslationUnavailable =>
+      'ਅਨੁਵਾਦ ਉਪਲਬਧ ਨਹੀਂ। ਅਸਲ ਵੇਰਵਾ ਹੇਠਾਂ ਹੈ।';
+
+  @override
+  String get launcherApps => 'ਦਿਸਣ ਵਾਲੀਆਂ ਐਪਾਂ';
+
+  @override
+  String get nonLauncherApps => 'ਨਾ ਦਿਸਣ ਵਾਲੀਆਂ ਐਪਾਂ';
+
+  @override
+  String get appInventoryCoverage =>
+      'ਸਿਰਫ਼ Android ਵੱਲੋਂ ਦਿਖਾਈਆਂ ਐਪਾਂ ਸੂਚੀ ਵਿੱਚ ਹਨ। ਆਈਕਨ ਨਾ ਹੋਣਾ ਜਾਂ ਇਜਾਜ਼ਤ ਹੋਣਾ ਗਲਤ ਵਰਤੋਂ ਦਾ ਸਬੂਤ ਨਹੀਂ।';
+
+  @override
+  String get openAccessibilitySettings =>
+      'Android ਦੀਆਂ ਪਹੁੰਚਯੋਗਤਾ ਸੈਟਿੰਗਾਂ ਖੋਲ੍ਹੋ';
+
+  @override
+  String get systemApps => 'ਸਿਸਟਮ ਐਪਾਂ';
+
+  @override
+  String get uncategorizedApps => 'ਬਿਨਾਂ ਸ਼੍ਰੇਣੀ ਵਾਲੀਆਂ ਐਪਾਂ';
+
+  @override
+  String get noMatchingApps => 'ਕੋਈ ਮਿਲਦੀ ਐਪ ਨਹੀਂ।';
+
+  @override
+  String get otherPermissions => 'ਹੋਰ ਇਜਾਜ਼ਤਾਂ';
 }

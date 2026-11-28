@@ -416,6 +416,71 @@ class RemoteAppLocalizations extends AppLocalizations {
   @override
   String get voiceStartupNotice =>
       values['voiceStartupNotice'] ?? base.voiceStartupNotice;
+
+  @override
+  String get chats => values['chats'] ?? base.chats;
+
+  @override
+  String get newChat => values['newChat'] ?? base.newChat;
+
+  @override
+  String get reportsOverview =>
+      values['reportsOverview'] ?? base.reportsOverview;
+
+  @override
+  String get reportCountsUnavailable =>
+      values['reportCountsUnavailable'] ?? base.reportCountsUnavailable;
+
+  @override
+  String get scamTips => values['scamTips'] ?? base.scamTips;
+
+  @override
+  String get protectCodes => values['protectCodes'] ?? base.protectCodes;
+
+  @override
+  String get verifyRequests => values['verifyRequests'] ?? base.verifyRequests;
+
+  @override
+  String get reportFraudPrompt =>
+      values['reportFraudPrompt'] ?? base.reportFraudPrompt;
+
+  @override
+  String get descriptionTranslation =>
+      values['descriptionTranslation'] ?? base.descriptionTranslation;
+
+  @override
+  String get descriptionTranslationUnavailable =>
+      values['descriptionTranslationUnavailable'] ??
+      base.descriptionTranslationUnavailable;
+
+  @override
+  String get launcherApps => values['launcherApps'] ?? base.launcherApps;
+
+  @override
+  String get nonLauncherApps =>
+      values['nonLauncherApps'] ?? base.nonLauncherApps;
+
+  @override
+  String get appInventoryCoverage =>
+      values['appInventoryCoverage'] ?? base.appInventoryCoverage;
+
+  @override
+  String get openAccessibilitySettings =>
+      values['openAccessibilitySettings'] ?? base.openAccessibilitySettings;
+
+  @override
+  String get systemApps => values['systemApps'] ?? base.systemApps;
+
+  @override
+  String get uncategorizedApps =>
+      values['uncategorizedApps'] ?? base.uncategorizedApps;
+
+  @override
+  String get noMatchingApps => values['noMatchingApps'] ?? base.noMatchingApps;
+
+  @override
+  String get otherPermissions =>
+      values['otherPermissions'] ?? base.otherPermissions;
 }
 
 // Supports ICU cardinal plural messages with the count argument, including

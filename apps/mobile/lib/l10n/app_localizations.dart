@@ -1023,6 +1023,114 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Use synthetic details only. On Android, voice starts on opening if microphone access is already granted. Live voice sends microphone audio to the reporting assistant until you stop voice or leave Check.'**
   String get voiceStartupNotice;
+
+  /// No description provided for @chats.
+  ///
+  /// In en, this message translates to:
+  /// **'Chats'**
+  String get chats;
+
+  /// No description provided for @newChat.
+  ///
+  /// In en, this message translates to:
+  /// **'New chat'**
+  String get newChat;
+
+  /// No description provided for @reportsOverview.
+  ///
+  /// In en, this message translates to:
+  /// **'Reports overview'**
+  String get reportsOverview;
+
+  /// No description provided for @reportCountsUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Report counts are unavailable.'**
+  String get reportCountsUnavailable;
+
+  /// No description provided for @scamTips.
+  ///
+  /// In en, this message translates to:
+  /// **'Scam safety tips'**
+  String get scamTips;
+
+  /// No description provided for @protectCodes.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep OTPs and PINs private. If someone calls asking for a code, end the call and contact the organisation directly.'**
+  String get protectCodes;
+
+  /// No description provided for @verifyRequests.
+  ///
+  /// In en, this message translates to:
+  /// **'If a message tells you to act urgently or tap a link, verify it through the organisation’s official app or website first.'**
+  String get verifyRequests;
+
+  /// No description provided for @reportFraudPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'In India, call 1930 promptly for financial cyber fraud, or file a report on the official portal.'**
+  String get reportFraudPrompt;
+
+  /// No description provided for @descriptionTranslation.
+  ///
+  /// In en, this message translates to:
+  /// **'Translate description'**
+  String get descriptionTranslation;
+
+  /// No description provided for @descriptionTranslationUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Translation is unavailable. The original description is below.'**
+  String get descriptionTranslationUnavailable;
+
+  /// No description provided for @launcherApps.
+  ///
+  /// In en, this message translates to:
+  /// **'Apps you see'**
+  String get launcherApps;
+
+  /// No description provided for @nonLauncherApps.
+  ///
+  /// In en, this message translates to:
+  /// **'Apps you don’t see'**
+  String get nonLauncherApps;
+
+  /// No description provided for @appInventoryCoverage.
+  ///
+  /// In en, this message translates to:
+  /// **'Android shows only packages it makes visible to this app. A missing launcher icon or a granted permission alone does not establish misuse.'**
+  String get appInventoryCoverage;
+
+  /// No description provided for @openAccessibilitySettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Android Accessibility settings'**
+  String get openAccessibilitySettings;
+
+  /// No description provided for @systemApps.
+  ///
+  /// In en, this message translates to:
+  /// **'System apps'**
+  String get systemApps;
+
+  /// No description provided for @uncategorizedApps.
+  ///
+  /// In en, this message translates to:
+  /// **'Uncategorized apps'**
+  String get uncategorizedApps;
+
+  /// No description provided for @noMatchingApps.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching apps.'**
+  String get noMatchingApps;
+
+  /// No description provided for @otherPermissions.
+  ///
+  /// In en, this message translates to:
+  /// **'Other permissions'**
+  String get otherPermissions;
 }
 
 class _AppLocalizationsDelegate

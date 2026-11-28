@@ -500,4 +500,64 @@ class AppLocalizationsTe extends AppLocalizations {
   @override
   String get voiceStartupNotice =>
       'కృత్రిమ వివరాలను మాత్రమే ఉపయోగించండి. Android లో మైక్రోఫోన్ అనుమతి ఉంటే యాప్ తెరవగానే వాయిస్ ప్రారంభమవుతుంది. మీరు వాయిస్ ఆపే వరకు లేదా చెక్ నుంచి బయటకు వెళ్లే వరకు మైక్రోఫోన్ ఆడియో రిపోర్టింగ్ సహాయకుడికి వెళ్తుంది.';
+
+  @override
+  String get chats => 'చాట్‌లు';
+
+  @override
+  String get newChat => 'కొత్త చాట్';
+
+  @override
+  String get reportsOverview => 'నివేదికల అవలోకనం';
+
+  @override
+  String get reportCountsUnavailable => 'నివేదికల సంఖ్య అందుబాటులో లేదు.';
+
+  @override
+  String get scamTips => 'మోసాల నివారణ చిట్కాలు';
+
+  @override
+  String get protectCodes =>
+      'OTP, PIN గోప్యంగా ఉంచండి. కోడ్ అడిగితే కాల్ ముగించి సంస్థను నేరుగా సంప్రదించండి.';
+
+  @override
+  String get verifyRequests =>
+      'వెంటనే చర్య తీసుకోమని లేదా లింక్ తెరవమని సందేశం చెబితే సంస్థ అధికారిక యాప్ లేదా వెబ్‌సైట్‌లో ధృవీకరించండి.';
+
+  @override
+  String get reportFraudPrompt =>
+      'భారతదేశంలో ఆర్థిక సైబర్ మోసం జరిగితే వెంటనే 1930కి కాల్ చేయండి లేదా అధికారిక పోర్టల్‌లో నివేదించండి.';
+
+  @override
+  String get descriptionTranslation => 'వివరణను అనువదించండి';
+
+  @override
+  String get descriptionTranslationUnavailable =>
+      'అనువాదం అందుబాటులో లేదు. అసలు వివరణ కింద ఉంది.';
+
+  @override
+  String get launcherApps => 'కనిపించే యాప్‌లు';
+
+  @override
+  String get nonLauncherApps => 'కనిపించని యాప్‌లు';
+
+  @override
+  String get appInventoryCoverage =>
+      'Android చూపించే యాప్‌లు మాత్రమే జాబితాలో ఉంటాయి. ఐకాన్ లేకపోవడం లేదా అనుమతి ఉండటం దుర్వినియోగానికి రుజువు కాదు.';
+
+  @override
+  String get openAccessibilitySettings =>
+      'Android ప్రాప్యత సెట్టింగ్‌లను తెరవండి';
+
+  @override
+  String get systemApps => 'సిస్టమ్ యాప్‌లు';
+
+  @override
+  String get uncategorizedApps => 'వర్గీకరించని యాప్‌లు';
+
+  @override
+  String get noMatchingApps => 'సరిపోలే యాప్‌లు లేవు.';
+
+  @override
+  String get otherPermissions => 'ఇతర అనుమతులు';
 }

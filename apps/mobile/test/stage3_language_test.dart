@@ -89,7 +89,7 @@ void main() {
       await tester.tap(submit);
       await tester.pumpAndSettle();
       expect(saved?['description'], edited);
-      expect(saved?['language'], item.key);
+      expect(saved?['language'], 'english');
       expect(saved?['confirmed'], true);
       expect(find.textContaining(ticketId), findsWidgets);
     });

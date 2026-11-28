@@ -41,9 +41,11 @@ class ReportVoice extends StatefulWidget {
     this.conversation,
     this.onTurn,
     this.autoStart = false,
+    this.contextForVoice,
   });
   final Api api;
   final bool autoStart;
+  final List<Json> Function()? contextForVoice;
   final String language;
   final bool enabled;
   final Future<void> Function(Json, String) reviewTicket;
@@ -91,6 +93,7 @@ class _ReportVoiceState extends State<ReportVoice>
   bool thinking = false;
   bool voiceError = false;
   bool supportsVoiceCues = false;
+  bool supportsVoiceContext = false;
   bool permissionDenied = false;
 
   @override
@@ -242,7 +245,14 @@ class _ReportVoiceState extends State<ReportVoice>
         return;
       }
       startedMic = true;
-      if (supportsVoiceCues) socket?.add('greet');
+      final history = supportsVoiceContext
+          ? widget.contextForVoice?.call()
+          : null;
+      if (history != null && history.isNotEmpty) {
+        socket?.add(jsonEncode({'context': history}));
+      } else if (supportsVoiceCues) {
+        socket?.add('greet');
+      }
       setState(() {
         starting = false;
         status = 'Listening';
@@ -276,6 +286,7 @@ class _ReportVoiceState extends State<ReportVoice>
           case 'ready':
             if (!preparingMic && !startedMic) {
               supportsVoiceCues = event['voice_cues'] == true;
+              supportsVoiceContext = event['voice_context'] == true;
               unawaited(startMic(current));
             }
           case 'interrupted':

@@ -13,6 +13,12 @@ class LocalFeatures {
     return list.map((item) => Map<String, dynamic>.from(item as Map)).toList();
   }
 
+  Future<Uint8List?> appIcon(String package) =>
+      channel.invokeMethod<Uint8List>('appIcon', {'package': package});
+  Future<void> openAccessibility() =>
+      channel.invokeMethod<void>('openAccessibility');
+  Future<void> openLink(Uri uri) =>
+      channel.invokeMethod<void>('openLink', {'url': uri.toString()});
   Future<void> openApp(String package) =>
       channel.invokeMethod<void>('openApp', {'package': package});
 }

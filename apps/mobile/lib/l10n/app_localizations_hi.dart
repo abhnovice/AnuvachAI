@@ -502,4 +502,63 @@ class AppLocalizationsHi extends AppLocalizations {
   @override
   String get voiceStartupNotice =>
       'केवल कृत्रिम विवरण इस्तेमाल करें। Android पर, माइक्रोफ़ोन की अनुमति होने पर ऐप खुलते ही आवाज़ शुरू होती है। लाइव आवाज़ का ऑडियो रिपोर्टिंग सहायक को तब तक भेजा जाता है, जब तक आप उसे बंद नहीं करते या जाँच स्क्रीन से बाहर नहीं जाते।';
+
+  @override
+  String get chats => 'चैट';
+
+  @override
+  String get newChat => 'नई चैट';
+
+  @override
+  String get reportsOverview => 'रिपोर्ट का अवलोकन';
+
+  @override
+  String get reportCountsUnavailable => 'रिपोर्ट की संख्या उपलब्ध नहीं है।';
+
+  @override
+  String get scamTips => 'धोखाधड़ी से बचने के सुझाव';
+
+  @override
+  String get protectCodes =>
+      'OTP और PIN निजी रखें। किसी के कोड माँगने पर फ़ोन काटें और संस्था से सीधे संपर्क करें।';
+
+  @override
+  String get verifyRequests =>
+      'किसी संदेश में तुरंत कार्रवाई या लिंक खोलने को कहा जाए तो पहले संस्था के आधिकारिक ऐप या वेबसाइट से पुष्टि करें।';
+
+  @override
+  String get reportFraudPrompt =>
+      'भारत में वित्तीय साइबर धोखाधड़ी के लिए तुरंत 1930 पर कॉल करें या आधिकारिक पोर्टल पर रिपोर्ट करें।';
+
+  @override
+  String get descriptionTranslation => 'विवरण का अनुवाद करें';
+
+  @override
+  String get descriptionTranslationUnavailable =>
+      'अनुवाद उपलब्ध नहीं है। मूल विवरण नीचे है।';
+
+  @override
+  String get launcherApps => 'दिखने वाले ऐप';
+
+  @override
+  String get nonLauncherApps => 'न दिखने वाले ऐप';
+
+  @override
+  String get appInventoryCoverage =>
+      'केवल Android द्वारा दिखाए गए ऐप सूची में हैं। आइकन का न होना या अनुमति मिलना दुरुपयोग का प्रमाण नहीं है।';
+
+  @override
+  String get openAccessibilitySettings => 'Android की सुलभता सेटिंग खोलें';
+
+  @override
+  String get systemApps => 'सिस्टम ऐप';
+
+  @override
+  String get uncategorizedApps => 'बिना श्रेणी के ऐप';
+
+  @override
+  String get noMatchingApps => 'कोई मिलता-जुलता ऐप नहीं है।';
+
+  @override
+  String get otherPermissions => 'अन्य अनुमतियाँ';
 }

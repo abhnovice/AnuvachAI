@@ -3,6 +3,9 @@ package ai.anuvach.anuvach_mobile
 import android.Manifest
 import android.app.AlertDialog
 import android.content.Intent
+import android.content.pm.ApplicationInfo
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.content.pm.PackageManager
 import android.content.pm.PackageInfo
 import android.media.AudioAttributes
@@ -21,6 +24,7 @@ import android.net.Uri
 import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.plugin.common.MethodChannel
+import java.io.ByteArrayOutputStream
 import java.util.concurrent.Executors
 import java.util.Locale
 import android.content.res.Configuration
@@ -78,29 +82,35 @@ class LocalFeatures(private val activity: FlutterActivity, private val channel: 
                 "stopMic" -> { stopMic(); result.success(null) }
                 "listApps" -> executor.execute {
                     try {
-                        val pm = activity.packageManager
-                        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-                        @Suppress("DEPRECATION")
-                        val apps = pm.queryIntentActivities(intent, 0).mapNotNull { resolved ->
-                            try {
-                                @Suppress("DEPRECATION")
-                                val info = pm.getPackageInfo(resolved.activityInfo.packageName, PackageManager.GET_PERMISSIONS)
-                                val requests = info.requestedPermissions ?: emptyArray()
-                                val flags = info.requestedPermissionsFlags
-                                mapOf(
-                                    "name" to info.applicationInfo?.loadLabel(pm).toString(),
-                                    "package" to info.packageName,
-                                    "version" to (info.versionName ?: ""),
-                                    "permissions" to requests.mapIndexed { i, permission ->
-                                        mapOf("name" to permission, "granted" to
-                                            (if (flags != null && i < flags.size) flags[i] and PackageInfo.REQUESTED_PERMISSION_GRANTED != 0 else null))
-                                    }
-                                )
-                            } catch (_: PackageManager.NameNotFoundException) { null }
-                        }.distinctBy { it["package"] }.sortedBy { (it["name"] as String).lowercase() }
+                        val apps = listApps()
                         activity.runOnUiThread { result.success(apps) }
-                    } catch (error: Exception) {
-                        activity.runOnUiThread { result.error("INVENTORY_FAILED", error.message, null) }
+                    } catch (_: Exception) {
+                        activity.runOnUiThread { result.error("INVENTORY_FAILED", "App inventory unavailable", null) }
+                    }
+                }
+                "appIcon" -> executor.execute {
+                    val icon = appIcon(call.argument<String>("package"))
+                    activity.runOnUiThread { result.success(icon) }
+                }
+                "openAccessibility" -> {
+                    try {
+                        activity.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                        result.success(null)
+                    } catch (_: Exception) {
+                        result.error("UNAVAILABLE", "Accessibility settings unavailable", null)
+                    }
+                }
+                "openLink" -> {
+                    val uri = call.argument<String>("url")?.let(Uri::parse)
+                    if (uri?.scheme != "https" || uri.host.isNullOrBlank()) {
+                        result.error("INVALID", "Expected an HTTPS link", null)
+                    } else {
+                        try {
+                            activity.startActivity(Intent(Intent.ACTION_VIEW, uri))
+                            result.success(null)
+                        } catch (_: Exception) {
+                            result.error("UNAVAILABLE", "Could not open the link", null)
+                        }
                     }
                 }
                 "openApp" -> {
@@ -114,6 +124,66 @@ class LocalFeatures(private val activity: FlutterActivity, private val channel: 
                 else -> result.notImplemented()
             }
         }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun listApps(): List<Map<String, Any?>> {
+        val pm = activity.packageManager
+        val launcherIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+        val launchers = pm.queryIntentActivities(launcherIntent, 0)
+            .mapNotNull { it.activityInfo?.packageName }.toSet()
+        return pm.getInstalledApplications(0).mapNotNull { app ->
+            try {
+                val info = pm.getPackageInfo(app.packageName, PackageManager.GET_PERMISSIONS)
+                val category = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    ApplicationInfo.getCategoryTitle(activity, app.category)?.toString()
+                } else null
+                val groups = mutableMapOf<String, String?>()
+                mapOf(
+                    "name" to app.loadLabel(pm).toString(),
+                    "package" to app.packageName,
+                    "version" to (info.versionName ?: ""),
+                    "launcherVisible" to (app.packageName in launchers),
+                    "category" to category,
+                    "systemApp" to (app.flags and (ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0),
+                    "permissions" to info.requestedPermissions.orEmpty().mapIndexed { index, permission ->
+                        val flags = info.requestedPermissionsFlags?.getOrNull(index)
+                        val group = try {
+                            val name = pm.getPermissionInfo(permission, 0).group
+                            if (name != null && !groups.containsKey(name)) {
+                                groups[name] = try {
+                                    pm.getPermissionGroupInfo(name, 0).loadLabel(pm).toString()
+                                } catch (_: PackageManager.NameNotFoundException) { null }
+                            }
+                            groups[name]
+                        } catch (_: PackageManager.NameNotFoundException) { null }
+                        mapOf(
+                            "name" to permission,
+                            "group" to group,
+                            "granted" to flags?.let { it and PackageInfo.REQUESTED_PERMISSION_GRANTED != 0 }
+                        )
+                    }
+                )
+            } catch (_: PackageManager.NameNotFoundException) {
+                null
+            } catch (_: SecurityException) {
+                null
+            }
+        }.sortedBy { (it["name"] as String).lowercase(Locale.ROOT) }
+    }
+
+    private fun appIcon(packageName: String?): ByteArray? {
+        if (packageName == null) return null
+        return try {
+            val drawable = activity.packageManager.getApplicationIcon(packageName)
+            val bitmap = Bitmap.createBitmap(64, 64, Bitmap.Config.ARGB_8888)
+            drawable.setBounds(0, 0, bitmap.width, bitmap.height)
+            drawable.draw(Canvas(bitmap))
+            ByteArrayOutputStream().use { output ->
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)
+                output.toByteArray()
+            }
+        } catch (_: Exception) { null }
     }
 
     private fun startMic(result: MethodChannel.Result, language: String, stream: Boolean) {

@@ -11,14 +11,25 @@ import { buildApp } from "../src/app.js";
 test("existing ticket survives peer outage, restart, and duplicate submission", async () => {
   let available = false;
   let calls = 0;
+  const context = [
+    { speaker: "employee", text: "A caller claimed to be from IT." },
+  ];
+  const reportingRequests: unknown[] = [];
+  const translations: unknown[] = [];
   const peer = createServer(async (request, response) => {
     let body = "";
     for await (const chunk of request) body += chunk;
     response.setHeader("Content-Type", "application/json");
     if (request.url === "/internal/reporting/turn") {
+      reportingRequests.push(JSON.parse(body).context);
       response.end(
         JSON.stringify({ reply: "When did it happen?", unknowns: ["Time"] }),
       );
+      return;
+    }
+    if (request.url === "/internal/reporting/translate") {
+      translations.push(JSON.parse(body));
+      response.end(JSON.stringify({ translation: "किसी ने कोड माँगा।" }));
       return;
     }
     calls++;
@@ -69,9 +80,11 @@ test("existing ticket survives peer outage, restart, and duplicate submission", 
         sessionId: "c5a6866b-69ed-4d14-baf3-32d43093dfa0",
         language: "en",
         text: "A caller asked for a code.",
+        context,
       },
     });
     assert.equal(draft.statusCode, 200);
+    assert.deepEqual(reportingRequests, [context]);
     assert.equal((await app.inject("/api/v1/reports")).json().length, 0);
     const submission = {
       method: "POST" as const,
@@ -88,6 +101,18 @@ test("existing ticket survives peer outage, restart, and duplicate submission", 
     const created = await app.inject(submission);
     assert.equal(created.statusCode, 201);
     const { id } = created.json();
+    const translated = await app.inject(
+      "/api/v1/reports/" + id + "?translate=hi",
+    );
+    assert.equal(translated.statusCode, 200);
+    assert.deepEqual(translated.json(), { translation: "किसी ने कोड माँगा।" });
+    assert.deepEqual(translations, [
+      { language: "hi", text: submission.payload.description },
+    ]);
+    assert.equal(
+      (await app.inject("/api/v1/reports/" + id)).json().facts.description,
+      submission.payload.description,
+    );
     const adminPath = "/api/v1/reports/" + id + "?view=admin";
     const poll = async (predicate: (data: any) => boolean) => {
       for (let i = 0; i < 100; i++) {

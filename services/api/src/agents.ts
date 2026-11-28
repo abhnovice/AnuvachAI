@@ -48,11 +48,23 @@ const result = z.object({
   model: z.string().optional(),
 });
 
+export const reportingContext = z
+  .array(
+    z
+      .object({
+        speaker: z.enum(["employee", "agent"]),
+        text: z.string().min(1).max(1600),
+      })
+      .strict(),
+  )
+  .max(12);
+
 export const reportingTurn = z
   .object({
     sessionId: z.uuid(),
     language: agentLanguage,
     text: z.string().trim().min(1).max(5000),
+    context: reportingContext.optional(),
   })
   .strict();
 export const reportingResult = z.object({

@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
-import { agentLanguage } from "./agents.js";
+import { agentLanguage, reportingContext } from "./agents.js";
 
 const voiceDraft = z.object({
   description: z.string().trim().min(10).max(5000),
@@ -52,6 +52,8 @@ export function registerVoice(app: FastifyInstance, agentBase?: string) {
       let firstUpload: number | undefined;
       let sawAudio = false;
       let ready = false;
+      let restoreAvailable = false;
+      let restored = false;
       let ended = false;
       let closed = false;
       let idle: NodeJS.Timeout | undefined;
@@ -89,6 +91,23 @@ export function registerVoice(app: FastifyInstance, agentBase?: string) {
           );
         } else if (!binary && data.toString() === "greet") {
           agent.send(JSON.stringify({ type: "greet" }));
+        } else if (
+          !binary &&
+          restoreAvailable &&
+          !restored &&
+          data.length < 64_000 &&
+          data.toString().startsWith("{")
+        ) {
+          try {
+            const { context } = z
+              .object({ context: reportingContext })
+              .strict()
+              .parse(JSON.parse(data.toString()));
+            restored = true;
+            agent.send(JSON.stringify({ type: "restore", context }));
+          } catch {
+            return close(1003);
+          }
         } else if (!binary && data.toString() === "end") {
           ended = true;
           agent.send(JSON.stringify({ type: "finish" }));
@@ -117,15 +136,18 @@ export function registerVoice(app: FastifyInstance, agentBase?: string) {
             message,
             input_to_audio_ms,
             voice_cues,
+            voice_context,
             draft,
           } = JSON.parse(data);
           if (type === "state" && state === "Microphone stream open") {
             ready = true;
+            restoreAvailable = voice_context === true;
             client.send(
               JSON.stringify({
                 type: "state",
                 state: "ready",
                 ...(voice_cues === true ? { voice_cues: true } : {}),
+                ...(restoreAvailable ? { voice_context: true } : {}),
               }),
             );
           } else if (type === "ticket_draft") {

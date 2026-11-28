@@ -491,4 +491,64 @@ class AppLocalizationsMl extends AppLocalizations {
   @override
   String get voiceStartupNotice =>
       'കൃത്രിമ വിവരങ്ങൾ മാത്രം ഉപയോഗിക്കുക. Android-ൽ മൈക്രോഫോൺ അനുമതി നേരത്തേ നൽകിയിട്ടുണ്ടെങ്കിൽ ആപ്പ് തുറക്കുമ്പോൾ ശബ്ദം തുടങ്ങും. ശബ്ദം നിർത്തുകയോ ചെക്ക് സ്ക്രീൻ വിടുകയോ ചെയ്യുന്നതുവരെ മൈക്രോഫോൺ ഓഡിയോ റിപ്പോർട്ടിങ് സഹായിയിലേക്ക് അയയ്ക്കും.';
+
+  @override
+  String get chats => 'ചാറ്റുകൾ';
+
+  @override
+  String get newChat => 'പുതിയ ചാറ്റ്';
+
+  @override
+  String get reportsOverview => 'റിപ്പോർട്ടുകളുടെ അവലോകനം';
+
+  @override
+  String get reportCountsUnavailable => 'റിപ്പോർട്ടുകളുടെ എണ്ണം ലഭ്യമല്ല.';
+
+  @override
+  String get scamTips => 'തട്ടിപ്പ് തടയാനുള്ള നിർദേശങ്ങൾ';
+
+  @override
+  String get protectCodes =>
+      'OTP, PIN എന്നിവ രഹസ്യമായി സൂക്ഷിക്കുക. കോഡ് ചോദിച്ചാൽ കോൾ അവസാനിപ്പിച്ച് സ്ഥാപനവുമായി നേരിട്ട് ബന്ധപ്പെടുക.';
+
+  @override
+  String get verifyRequests =>
+      'ഉടൻ നടപടി എടുക്കാനോ ലിങ്ക് തുറക്കാനോ ആവശ്യപ്പെട്ടാൽ സ്ഥാപനത്തിന്റെ ഔദ്യോഗിക ആപ്പിലോ വെബ്‌സൈറ്റിലോ സ്ഥിരീകരിക്കുക.';
+
+  @override
+  String get reportFraudPrompt =>
+      'ഇന്ത്യയിൽ സാമ്പത്തിക സൈബർ തട്ടിപ്പ് ഉണ്ടായാൽ ഉടൻ 1930-ൽ വിളിക്കുകയോ ഔദ്യോഗിക പോർട്ടലിൽ റിപ്പോർട്ട് ചെയ്യുകയോ ചെയ്യുക.';
+
+  @override
+  String get descriptionTranslation => 'വിവരണം വിവർത്തനം ചെയ്യുക';
+
+  @override
+  String get descriptionTranslationUnavailable =>
+      'വിവർത്തനം ലഭ്യമല്ല. യഥാർഥ വിവരണം താഴെയുണ്ട്.';
+
+  @override
+  String get launcherApps => 'കാണുന്ന ആപ്പുകൾ';
+
+  @override
+  String get nonLauncherApps => 'കാണാത്ത ആപ്പുകൾ';
+
+  @override
+  String get appInventoryCoverage =>
+      'Android കാണിക്കുന്ന ആപ്പുകൾ മാത്രമാണ് പട്ടികയിൽ. ഐക്കൺ ഇല്ലായ്മയോ അനുമതിയോ ദുരുപയോഗത്തിന്റെ തെളിവല്ല.';
+
+  @override
+  String get openAccessibilitySettings =>
+      'Android ആക്‌സസിബിലിറ്റി ക്രമീകരണങ്ങൾ തുറക്കുക';
+
+  @override
+  String get systemApps => 'സിസ്റ്റം ആപ്പുകൾ';
+
+  @override
+  String get uncategorizedApps => 'വർഗീകരിക്കാത്ത ആപ്പുകൾ';
+
+  @override
+  String get noMatchingApps => 'പൊരുത്തപ്പെടുന്ന ആപ്പുകളില്ല.';
+
+  @override
+  String get otherPermissions => 'മറ്റ് അനുമതികൾ';
 }

@@ -490,4 +490,64 @@ class AppLocalizationsKn extends AppLocalizations {
   @override
   String get voiceStartupNotice =>
       'ಕೃತಕ ವಿವರಗಳನ್ನು ಮಾತ್ರ ಬಳಸಿ. Android ನಲ್ಲಿ ಮೈಕ್ರೊಫೋನ್ ಅನುಮತಿ ಇದ್ದರೆ ಆ್ಯಪ್ ತೆರೆದಾಗ ಧ್ವನಿ ಪ್ರಾರಂಭವಾಗುತ್ತದೆ. ಧ್ವನಿಯನ್ನು ನಿಲ್ಲಿಸುವವರೆಗೆ ಅಥವಾ ಪರಿಶೀಲನೆ ಪರದೆಯಿಂದ ಹೊರಡುವವರೆಗೆ ಮೈಕ್ರೊಫೋನ್ ಆಡಿಯೊ ವರದಿ ಸಹಾಯಕನಿಗೆ ಕಳುಹಿಸಲಾಗುತ್ತದೆ.';
+
+  @override
+  String get chats => 'ಚಾಟ್‌ಗಳು';
+
+  @override
+  String get newChat => 'ಹೊಸ ಚಾಟ್';
+
+  @override
+  String get reportsOverview => 'ವರದಿಗಳ ಅವಲೋಕನ';
+
+  @override
+  String get reportCountsUnavailable => 'ವರದಿಗಳ ಸಂಖ್ಯೆ ಲಭ್ಯವಿಲ್ಲ.';
+
+  @override
+  String get scamTips => 'ವಂಚನೆ ತಡೆಯುವ ಸಲಹೆಗಳು';
+
+  @override
+  String get protectCodes =>
+      'OTP ಮತ್ತು PIN ಅನ್ನು ಖಾಸಗಿಯಾಗಿ ಇಡಿ. ಯಾರಾದರೂ ಕೋಡ್ ಕೇಳಿದರೆ ಕರೆ ಮುಗಿಸಿ ಸಂಸ್ಥೆಯನ್ನು ನೇರವಾಗಿ ಸಂಪರ್ಕಿಸಿ.';
+
+  @override
+  String get verifyRequests =>
+      'ತಕ್ಷಣ ಕ್ರಮ ಕೈಗೊಳ್ಳಲು ಅಥವಾ ಲಿಂಕ್ ತೆರೆಯಲು ಸಂದೇಶ ಹೇಳಿದರೆ ಸಂಸ್ಥೆಯ ಅಧಿಕೃತ ಆ್ಯಪ್ ಅಥವಾ ವೆಬ್‌ಸೈಟ್‌ನಲ್ಲಿ ಪರಿಶೀಲಿಸಿ.';
+
+  @override
+  String get reportFraudPrompt =>
+      'ಭಾರತದಲ್ಲಿ ಆರ್ಥಿಕ ಸೈಬರ್ ವಂಚನೆಗೆ ತಕ್ಷಣ 1930ಕ್ಕೆ ಕರೆ ಮಾಡಿ ಅಥವಾ ಅಧಿಕೃತ ಪೋರ್ಟಲ್‌ನಲ್ಲಿ ವರದಿ ಮಾಡಿ.';
+
+  @override
+  String get descriptionTranslation => 'ವಿವರಣೆಯನ್ನು ಅನುವಾದಿಸಿ';
+
+  @override
+  String get descriptionTranslationUnavailable =>
+      'ಅನುವಾದ ಲಭ್ಯವಿಲ್ಲ. ಮೂಲ ವಿವರಣೆ ಕೆಳಗಿದೆ.';
+
+  @override
+  String get launcherApps => 'ಕಾಣಿಸುವ ಆ್ಯಪ್‌ಗಳು';
+
+  @override
+  String get nonLauncherApps => 'ಕಾಣಿಸದ ಆ್ಯಪ್‌ಗಳು';
+
+  @override
+  String get appInventoryCoverage =>
+      'Android ತೋರಿಸುವ ಆ್ಯಪ್‌ಗಳು ಮಾತ್ರ ಪಟ್ಟಿಯಲ್ಲಿವೆ. ಐಕಾನ್ ಇಲ್ಲದಿರುವುದು ಅಥವಾ ಅನುಮತಿ ಇರುವುದು ದುರ್ಬಳಕೆಯ ಪುರಾವೆಯಲ್ಲ.';
+
+  @override
+  String get openAccessibilitySettings =>
+      'Android ಪ್ರವೇಶಿಸುವಿಕೆ ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ತೆರೆಯಿರಿ';
+
+  @override
+  String get systemApps => 'ಸಿಸ್ಟಮ್ ಆ್ಯಪ್‌ಗಳು';
+
+  @override
+  String get uncategorizedApps => 'ವರ್ಗೀಕರಿಸದ ಆ್ಯಪ್‌ಗಳು';
+
+  @override
+  String get noMatchingApps => 'ಹೊಂದುವ ಆ್ಯಪ್‌ಗಳಿಲ್ಲ.';
+
+  @override
+  String get otherPermissions => 'ಇತರ ಅನುಮತಿಗಳು';
 }

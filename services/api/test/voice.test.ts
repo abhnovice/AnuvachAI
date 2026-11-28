@@ -13,6 +13,9 @@ test(
     await peer.register(websocket);
     const languages: string[] = [];
     const input: unknown[] = [];
+    const context = [
+      { speaker: "employee", text: "A caller requested a code." },
+    ];
     const draft = {
       description: "Someone asked for my ExampleApp pairing code.",
       app_name: "ExampleApp",
@@ -33,12 +36,13 @@ test(
           type: "state",
           state: "Microphone stream open",
           voice_cues: true,
+          voice_context: query.ticket_draft === "1",
         }),
       );
       socket.on("message", (data) => {
         const message = JSON.parse(data.toString());
         input.push(message);
-        if (message.type === "greet") return;
+        if (message.type === "greet" || message.type === "restore") return;
         if (message.type === "finish" && query.ticket_draft === "1") {
           socket.send(
             JSON.stringify({
@@ -86,8 +90,9 @@ test(
           type: "state",
           state: "ready",
           voice_cues: true,
+          ...(i === 1 ? { voice_context: true } : {}),
         });
-        socket.send("greet");
+        socket.send(i === 1 ? JSON.stringify({ context }) : "greet");
         const interrupted = once(socket, "message");
         socket.send(Buffer.from([1, 0, 255, 255]));
         const [event] = await interrupted;
@@ -113,7 +118,7 @@ test(
         { type: "greet" },
         { type: "audio", data: "AQD//w==" },
         { type: "finish" },
-        { type: "greet" },
+        { type: "restore", context },
         { type: "audio", data: "AQD//w==" },
         { type: "finish" },
       ]);

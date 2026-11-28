@@ -13,6 +13,64 @@ import 'package:anuvach_mobile/l10n/app_localizations.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() => SharedPreferences.setMockInitialValues({}));
+  test(
+    'older API rejects only the context field and receives a safe retry',
+    () async {
+      final requests = <Json>[];
+      final api = Api(
+        client: MockClient((request) async {
+          final sent = jsonDecode(request.body) as Json;
+          requests.add(sent);
+          if (sent.containsKey('context')) {
+            return http.Response(
+              jsonEncode({
+                'error': 'Invalid input',
+                'details': [
+                  {
+                    'code': 'unrecognized_keys',
+                    'keys': ['context'],
+                  },
+                ],
+              }),
+              400,
+            );
+          }
+          return http.Response('{"reply":"When did it happen?"}', 200);
+        }),
+      );
+      final body = {
+        'sessionId': 'session',
+        'text': 'A caller asked for a code.',
+        'context': [],
+      };
+      expect((await api.reportingTurn(body))['reply'], 'When did it happen?');
+      await api.reportingTurn(body);
+      expect(requests.map((request) => request.containsKey('context')), [
+        true,
+        false,
+        false,
+      ]);
+    },
+  );
+
+  test('reporting does not retry an uncertain model error', () async {
+    var calls = 0;
+    final api = Api(
+      client: MockClient((_) async {
+        calls++;
+        return http.Response(
+          '{"error":"Reporting assistant is unavailable"}',
+          503,
+        );
+      }),
+    );
+    await expectLater(
+      api.reportingTurn({'context': []}),
+      throwsA(isA<ApiRequestException>()),
+    );
+    expect(calls, 1);
+  });
+
   test('voice fills an editable draft without submitting a ticket', () async {
     var calls = 0;
     final draft = Draft(
@@ -32,7 +90,8 @@ void main() {
       'unknowns': ['Sender identity'],
     }, 'ta');
     expect(draft.fields['incidentType'], 'suspicious_message');
-    expect(draft.fields['language'], 'ta');
+    expect(draft.fields['language'], 'english');
+    expect((draft.fields['reporting'] as Json)['language'], 'ta');
     expect(draft.fields['appName'], 'ExampleApp');
     expect(draft.fields['evidenceNotes'], 'The employee has a screenshot.');
     expect((draft.fields['reporting'] as Json)['unknowns'], [
@@ -199,13 +258,14 @@ void main() {
       await tester.drag(pager, const Offset(-650, 0));
       await tester.pumpAndSettle();
       expect(tester.widget<NavigationBar>(navigation).selectedIndex, 1);
-      expect(find.text('No reports yet'), findsOneWidget);
-      await tester.tap(find.text('Show reports'));
-      await tester.pumpAndSettle();
+      expect(find.text('Reports overview'), findsOneWidget);
       expect(find.text('No reports yet'), findsNothing);
       await tester.tap(find.text('Show reports'));
       await tester.pumpAndSettle();
       expect(find.text('No reports yet'), findsOneWidget);
+      await tester.tap(find.text('Show reports'));
+      await tester.pumpAndSettle();
+      expect(find.text('Reports overview'), findsOneWidget);
       await tester.drag(pager, const Offset(-650, 0));
       await tester.pumpAndSettle();
       expect(tester.widget<NavigationBar>(navigation).selectedIndex, 2);
@@ -333,4 +393,135 @@ void main() {
       expect(value(evidence).textDirection, TextDirection.rtl);
     },
   );
+  testWidgets(
+    'Restores active chat, starts an isolated chat and resumes with context',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({'consent': true});
+      final prefs = await SharedPreferences.getInstance();
+      final requests = <Json>[];
+      final api = Api(
+        client: MockClient((request) async {
+          if (request.method == 'GET') return http.Response('[]', 200);
+          requests.add(jsonDecode(request.body) as Json);
+          return http.Response('{"reply":"Where did it happen?"}', 200);
+        }),
+      );
+      Widget home() => MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Home(
+          prefs: prefs,
+          api: api,
+          language: 'en',
+          mode: ThemeMode.light,
+          onLanguage: (_) {},
+          onTheme: (_) {},
+        ),
+      );
+      Future<void> send(String text) async {
+        await tester.enterText(find.byType(TextField), text);
+        await tester.pump();
+        await tester.tap(find.byTooltip('Send'));
+        await tester.pumpAndSettle();
+      }
+
+      Future<void> openChats() async {
+        await tester.tap(find.byTooltip('Open navigation menu'));
+        await tester.pumpAndSettle();
+      }
+
+      await tester.pumpWidget(home());
+      await tester.pumpAndSettle();
+      const first = 'A caller requested my code.';
+      await send(first);
+      await openChats();
+      expect(
+        find.descendant(of: find.byType(Drawer), matching: find.text(first)),
+        findsOneWidget,
+      );
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+      await tester.pumpWidget(home());
+      await tester.pumpAndSettle();
+      expect(find.text(first), findsOneWidget);
+
+      await openChats();
+      await tester.tap(find.text('New chat'));
+      await tester.pumpAndSettle();
+      expect(find.text(first), findsNothing);
+      await send('A separate synthetic case.');
+      expect(requests[1]['context'], isEmpty);
+      expect(requests[1]['sessionId'], isNot(requests[0]['sessionId']));
+
+      await openChats();
+      await tester.tap(
+        find.descendant(of: find.byType(Drawer), matching: find.text(first)),
+      );
+      await tester.pumpAndSettle();
+      await send('It happened this morning.');
+      expect(requests[2]['sessionId'], requests[0]['sessionId']);
+      expect(requests[2]['context'], [
+        {'speaker': 'employee', 'text': first},
+        {'speaker': 'agent', 'text': 'Where did it happen?'},
+      ]);
+    },
+  );
+
+  testWidgets('Ticket translation leaves the original description available', (
+    tester,
+  ) async {
+    const original = 'किसी ने फ़ोन पर कोड माँगा।';
+    const translated = 'Someone asked me for a code over the phone.';
+    final api = Api(
+      client: MockClient((request) async {
+        if (request.url.queryParameters['translate'] == 'en') {
+          return http.Response(jsonEncode({'translation': translated}), 200);
+        }
+        return http.Response(
+          jsonEncode({
+            'id': 'ANV-LANGUAGE',
+            'status': 'submitted',
+            'createdAt': '2026-11-27T10:00:00Z',
+            'updatedAt': '2026-11-27T10:00:00Z',
+            'facts': {
+              'description': original,
+              'language': 'english',
+              'incidentType': 'support_call',
+              'appName': '',
+              'evidenceNotes': '',
+              'observations': [],
+            },
+          }),
+          200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+      }),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: ReportDetail(api: api, id: 'ANV-LANGUAGE'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final translate = find.widgetWithText(
+      OutlinedButton,
+      'Translate description',
+    );
+    await tester.scrollUntilVisible(
+      translate,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(translate);
+    await tester.pumpAndSettle();
+    expect(find.text(translated), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text(original),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text(original), findsOneWidget);
+  });
 }

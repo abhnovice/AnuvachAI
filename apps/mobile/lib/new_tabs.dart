@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'report_voice.dart';
 import 'design.dart';
@@ -21,6 +22,8 @@ class CheckTab extends StatefulWidget {
     required this.reviewVoiceTicket,
     this.active = true,
     this.autoStartVoice = false,
+    this.onMessagesChanged,
+    this.restoreContext = false,
   });
 
   final String language;
@@ -28,6 +31,8 @@ class CheckTab extends StatefulWidget {
   final Api api;
   final bool active;
   final bool autoStartVoice;
+  final bool restoreContext;
+  final Future<void> Function()? onMessagesChanged;
   final String sessionId;
   final Future<void> Function(String) reviewStatement;
   final Future<void> Function(Json, String) reviewVoiceTicket;
@@ -50,6 +55,12 @@ class _CheckTabState extends State<CheckTab>
   String lastPreview = '';
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.messages.isNotEmpty) scrollToLatest();
+  }
+
+  @override
   void dispose() {
     composerFocus.dispose();
     controller.dispose();
@@ -68,39 +79,50 @@ class _CheckTabState extends State<CheckTab>
   Future<void> send(String value) async {
     final text = value.trim();
     if (text.isEmpty || busy) return;
+    final messages = widget.messages;
+    final onChanged = widget.onMessagesChanged;
+    final history = reportingContext(messages);
+    final api = widget.api;
+    final body = {
+      'sessionId': widget.sessionId,
+      'language': widget.language,
+      'text': text,
+      if (widget.restoreContext) 'context': history,
+    };
     setState(() {
-      widget.messages.add({'speaker': 'employee', 'text': text});
+      messages.add({'speaker': 'employee', 'text': text});
       busy = true;
       error = null;
       controller.clear();
     });
     scrollToLatest();
     try {
-      final response =
-          await widget.api.call(
-                '/reporting/turns',
-                body: {
-                  'sessionId': widget.sessionId,
-                  'language': widget.language,
-                  'text': text,
-                },
-              )
-              as Json;
+      await persist(onChanged);
+      final response = await api.reportingTurn(body);
+      messages.add({'speaker': 'agent', 'text': response['reply']});
+      await persist(onChanged);
       if (mounted) {
-        setState(
-          () => widget.messages.add({
-            'speaker': 'agent',
-            'text': response['reply'],
-          }),
-        );
+        setState(() {});
         scrollToLatest();
       }
-    } catch (_) {
+    } catch (failure) {
       if (mounted) {
-        setState(() => error = AppLocalizations.of(context)!.voiceUnavailable);
+        setState(
+          () => error = failure is ApiRequestException
+              ? failure.message
+              : failure.toString(),
+        );
       }
     } finally {
       if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> persist(Future<void> Function()? changed) async {
+    try {
+      await changed?.call();
+    } catch (failure) {
+      if (mounted) setState(() => error = failure.toString());
     }
   }
 
@@ -125,6 +147,7 @@ class _CheckTabState extends State<CheckTab>
         'captured': role == 'employee',
       }),
     );
+    unawaited(persist(widget.onMessagesChanged));
     scrollToLatest();
   }
 
@@ -158,6 +181,7 @@ class _CheckTabState extends State<CheckTab>
     );
     if (mounted && revised != null && revised.isNotEmpty) {
       setState(() => turn['text'] = revised);
+      await persist(widget.onMessagesChanged);
     }
   }
 
@@ -169,6 +193,9 @@ class _CheckTabState extends State<CheckTab>
       language: widget.language,
       enabled: widget.active && !reviewing,
       autoStart: widget.autoStartVoice,
+      contextForVoice: widget.restoreContext
+          ? () => reportingContext(widget.messages)
+          : null,
       reviewTicket: widget.reviewVoiceTicket,
       onTurn: addVoiceTurn,
       conversation: buildConversation,
@@ -725,7 +752,8 @@ class _AccessTabState extends State<AccessTab>
   bool get wantKeepAlive => true;
 
   bool showSettings = true;
-  bool showApps = true;
+  bool showLauncherApps = true;
+  bool showNonLauncherApps = false;
   final features = LocalFeatures();
   List<Map<String, dynamic>>? apps;
   String search = '';
@@ -800,6 +828,7 @@ class _AccessTabState extends State<AccessTab>
           ),
         )
         .toList();
+    final showApps = showLauncherApps || showNonLauncherApps;
     return RefreshIndicator(
       onRefresh: scan,
       child: ListView(
@@ -807,7 +836,7 @@ class _AccessTabState extends State<AccessTab>
         children: [
           heading(strings.accessOverview),
           const SizedBox(height: 4),
-          Text(strings.visibilityNote, style: theme.textTheme.bodyMedium),
+          Text(strings.appInventoryCoverage, style: theme.textTheme.bodyMedium),
           const SizedBox(height: 16),
           Card(
             color: scheme.primaryContainer,
@@ -851,7 +880,7 @@ class _AccessTabState extends State<AccessTab>
               child: TextButton.icon(
                 onPressed: () async {
                   try {
-                    await PlatformDeviceReview().openSettings();
+                    await features.openAccessibility();
                   } catch (_) {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -861,16 +890,28 @@ class _AccessTabState extends State<AccessTab>
                   }
                 },
                 icon: const Icon(Icons.open_in_new_rounded),
-                label: Text(strings.openAppSettings),
+                label: Text(strings.openAccessibilitySettings),
               ),
             ),
           const SizedBox(height: 14),
           Card(
-            child: SwitchListTile(
-              title: Text(strings.apps),
-              secondary: const Icon(Icons.apps_outlined),
-              value: showApps,
-              onChanged: (value) => setState(() => showApps = value),
+            child: Column(
+              children: [
+                SwitchListTile(
+                  title: Text(strings.launcherApps),
+                  secondary: const Icon(Icons.apps_outlined),
+                  value: showLauncherApps,
+                  onChanged: (value) =>
+                      setState(() => showLauncherApps = value),
+                ),
+                SwitchListTile(
+                  title: Text(strings.nonLauncherApps),
+                  secondary: const Icon(Icons.layers_outlined),
+                  value: showNonLauncherApps,
+                  onChanged: (value) =>
+                      setState(() => showNonLauncherApps = value),
+                ),
+              ],
             ),
           ),
           if (showApps) ...[
@@ -893,61 +934,138 @@ class _AccessTabState extends State<AccessTab>
                 onChanged: (value) => setState(() => search = value),
               ),
               const SizedBox(height: 12),
-              for (final app in results)
-                Card(
-                  child: ExpansionTile(
-                    title: Text('${app['name']}'),
-                    subtitle: Text('${app['package']} · ${app['version']}'),
-                    children: [
-                      for (final raw in app['permissions'] as List)
-                        Builder(
-                          builder: (context) {
-                            final permission = Map<String, dynamic>.from(
-                              raw as Map,
-                            );
-                            return ListTile(
-                              title: Text(
-                                '${permission['name']}',
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                              trailing: Text(
-                                permission['granted'] == null
-                                    ? AppLocalizations.of(context)!.unknown
-                                    : permission['granted'] == true
-                                    ? AppLocalizations.of(context)!.granted
-                                    : AppLocalizations.of(context)!.notGranted,
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                            );
-                          },
-                        ),
-                      TextButton(
-                        onPressed: () async {
-                          try {
-                            await features.openApp(app['package'] as String);
-                          } catch (e) {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    AppLocalizations.of(
-                                      context,
-                                    )!.settingsUnavailable,
-                                  ),
-                                ),
-                              );
-                            }
-                          }
-                        },
-                        child: Text(AppLocalizations.of(context)!.openSettings),
-                      ),
-                    ],
-                  ),
+              if (showLauncherApps)
+                appGroup(
+                  strings.launcherApps,
+                  results.where((app) => app['launcherVisible'] == true),
+                  strings,
+                ),
+              if (showNonLauncherApps)
+                appGroup(
+                  strings.nonLauncherApps,
+                  results.where((app) => app['launcherVisible'] == false),
+                  strings,
                 ),
             ],
           ],
         ],
       ),
+    );
+  }
+
+  Widget appGroup(String title, Iterable<Json> apps, AppLocalizations strings) {
+    final categories = <String, List<Json>>{};
+    for (final app in apps) {
+      final category =
+          app['category'] as String? ??
+          (app['systemApp'] == true
+              ? strings.systemApps
+              : strings.uncategorizedApps);
+      categories.putIfAbsent(category, () => []).add(app);
+    }
+    final ordered = categories.keys.toList()..sort();
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          heading(title),
+          if (categories.isEmpty) Text(strings.noMatchingApps),
+          for (final category in ordered)
+            Card(
+              child: ExpansionTile(
+                key: PageStorageKey((title, category)),
+                title: Text(category),
+                trailing: Text('${categories[category]!.length}'),
+                children: [
+                  for (final app in categories[category]!)
+                    _InstalledAppTile(
+                      key: ValueKey(app['package']),
+                      app: app,
+                      features: features,
+                    ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InstalledAppTile extends StatefulWidget {
+  const _InstalledAppTile({
+    super.key,
+    required this.app,
+    required this.features,
+  });
+  final Json app;
+  final LocalFeatures features;
+
+  @override
+  State<_InstalledAppTile> createState() => _InstalledAppTileState();
+}
+
+class _InstalledAppTileState extends State<_InstalledAppTile> {
+  late final icon = widget.features.appIcon(widget.app['package'] as String);
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppLocalizations.of(context)!;
+    final groups = <String, List<Json>>{};
+    for (final raw in widget.app['permissions'] as List) {
+      final permission = Map<String, dynamic>.from(raw as Map);
+      final group = permission['group'] as String? ?? strings.otherPermissions;
+      groups.putIfAbsent(group, () => []).add(permission);
+    }
+    return ExpansionTile(
+      leading: FutureBuilder<Uint8List?>(
+        future: icon,
+        builder: (context, snapshot) => snapshot.data == null
+            ? const Icon(Icons.android_rounded)
+            : Image.memory(
+                snapshot.data!,
+                height: 34,
+                width: 34,
+                excludeFromSemantics: true,
+              ),
+      ),
+      title: Text('${widget.app['name']}'),
+      subtitle: Text('${widget.app['package']} · ${widget.app['version']}'),
+      children: [
+        for (final group in groups.entries)
+          ExpansionTile(
+            title: Text(group.key),
+            children: [
+              for (final permission in group.value)
+                ListTile(
+                  title: Text(
+                    '${permission['name']}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  subtitle: Text(switch (permission['granted']) {
+                    true => strings.granted,
+                    false => strings.notGranted,
+                    _ => strings.unknown,
+                  }),
+                ),
+            ],
+          ),
+        TextButton(
+          onPressed: () async {
+            try {
+              await widget.features.openApp(widget.app['package'] as String);
+            } catch (_) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(strings.settingsUnavailable)),
+                );
+              }
+            }
+          },
+          child: Text(strings.openAppSettings),
+        ),
+      ],
     );
   }
 }
@@ -956,15 +1074,11 @@ class PreferencesSheet extends StatefulWidget {
   const PreferencesSheet({
     super.key,
     required this.language,
-    required this.theme,
     required this.onLanguage,
-    required this.onTheme,
     this.onRefresh,
   });
   final String language;
-  final ThemeMode theme;
   final ValueChanged<String> onLanguage;
-  final ValueChanged<ThemeMode> onTheme;
   final Future<bool> Function()? onRefresh;
   @override
   State<PreferencesSheet> createState() => _PreferencesSheetState();
@@ -972,7 +1086,6 @@ class PreferencesSheet extends StatefulWidget {
 
 class _PreferencesSheetState extends State<PreferencesSheet> {
   late String language = widget.language;
-  bool? darkOverride;
   @override
   Widget build(BuildContext context) => SafeArea(
     child: SingleChildScrollView(
@@ -1001,20 +1114,6 @@ class _PreferencesSheetState extends State<PreferencesSheet> {
                 setState(() => language = v);
                 widget.onLanguage(v);
               }
-            },
-          ),
-          const SizedBox(height: 16),
-          SwitchListTile(
-            title: Text(AppLocalizations.of(context)!.theme),
-            secondary: const Icon(Icons.light_mode_outlined),
-            value:
-                darkOverride ??
-                (widget.theme == ThemeMode.dark ||
-                    (widget.theme != ThemeMode.light &&
-                        Theme.of(context).brightness == Brightness.dark)),
-            onChanged: (dark) {
-              setState(() => darkOverride = dark);
-              widget.onTheme(dark ? ThemeMode.dark : ThemeMode.light);
             },
           ),
           if (widget.onRefresh case final refresh?)

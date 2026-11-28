@@ -499,4 +499,63 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get voiceStartupNotice =>
       'Use synthetic details only. On Android, voice starts on opening if microphone access is already granted. Live voice sends microphone audio to the reporting assistant until you stop voice or leave Check.';
+
+  @override
+  String get chats => 'Chats';
+
+  @override
+  String get newChat => 'New chat';
+
+  @override
+  String get reportsOverview => 'Reports overview';
+
+  @override
+  String get reportCountsUnavailable => 'Report counts are unavailable.';
+
+  @override
+  String get scamTips => 'Scam safety tips';
+
+  @override
+  String get protectCodes =>
+      'Keep OTPs and PINs private. If someone calls asking for a code, end the call and contact the organisation directly.';
+
+  @override
+  String get verifyRequests =>
+      'If a message tells you to act urgently or tap a link, verify it through the organisation’s official app or website first.';
+
+  @override
+  String get reportFraudPrompt =>
+      'In India, call 1930 promptly for financial cyber fraud, or file a report on the official portal.';
+
+  @override
+  String get descriptionTranslation => 'Translate description';
+
+  @override
+  String get descriptionTranslationUnavailable =>
+      'Translation is unavailable. The original description is below.';
+
+  @override
+  String get launcherApps => 'Apps you see';
+
+  @override
+  String get nonLauncherApps => 'Apps you don’t see';
+
+  @override
+  String get appInventoryCoverage =>
+      'Android shows only packages it makes visible to this app. A missing launcher icon or a granted permission alone does not establish misuse.';
+
+  @override
+  String get openAccessibilitySettings => 'Open Android Accessibility settings';
+
+  @override
+  String get systemApps => 'System apps';
+
+  @override
+  String get uncategorizedApps => 'Uncategorized apps';
+
+  @override
+  String get noMatchingApps => 'No matching apps.';
+
+  @override
+  String get otherPermissions => 'Other permissions';
 }

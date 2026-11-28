@@ -7,13 +7,14 @@ import 'firebase_options.dart';
 import 'remote_localization_service.dart';
 import 'remote_app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:uuid/uuid.dart';
 import 'reporting.dart';
 import 'report_voice.dart';
 import 'device_review.dart';
 import 'design.dart';
 import 'language.dart';
 import 'new_tabs.dart';
+import 'saved_chats.dart';
+import 'reports_dashboard.dart';
 import 'l10n/app_localizations.dart';
 
 Future<FirebaseApp> initializeFirebase() {
@@ -145,7 +146,9 @@ class _AnuvachAppState extends State<AnuvachApp> {
 
   Widget _home() {
     final auth = widget.auth;
-    final home = Home(
+    Home home([String? account]) => Home(
+      key: ValueKey(account),
+      account: account ?? 'local-demo',
       prefs: widget.prefs,
       api: widget.api,
       language: language,
@@ -155,7 +158,7 @@ class _AnuvachAppState extends State<AnuvachApp> {
       autoStartVoice: true,
       onRefreshTranslations: () => remoteTranslations.refresh(force: true),
     );
-    if (auth == null) return home;
+    if (auth == null) return home();
     return StreamBuilder<User?>(
       stream: auth.authStateChanges(),
       builder: (context, snapshot) {
@@ -165,7 +168,7 @@ class _AnuvachAppState extends State<AnuvachApp> {
           );
         }
         if (snapshot.data == null) return EmployeeSignIn(auth: auth);
-        return home;
+        return home(snapshot.data!.uid);
       },
     );
   }
@@ -182,6 +185,7 @@ class Home extends StatefulWidget {
     required this.onTheme,
     this.onRefreshTranslations,
     this.autoStartVoice = false,
+    this.account = 'local-demo',
   });
   final SharedPreferences prefs;
   final Api api;
@@ -191,6 +195,7 @@ class Home extends StatefulWidget {
   final ValueChanged<ThemeMode> onTheme;
   final Future<bool> Function()? onRefreshTranslations;
   final bool autoStartVoice;
+  final String account;
   @override
   State<Home> createState() => _HomeState();
 }
@@ -202,14 +207,16 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
   bool loading = false;
   int tab = 0;
   final pages = PageController();
-  bool showReports = true;
-  final chatMessages = <Json>[];
-  final String checkSessionId = const Uuid().v4();
+  bool showReports = false;
+  late final savedChats = SavedChats(widget.prefs, widget.account);
+  String? startupChat;
+  final scaffold = GlobalKey<ScaffoldState>();
   late bool consent = widget.prefs.getBool('consent') ?? false;
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    startupChat = savedChats.active.id;
     if (consent) load();
   }
 
@@ -257,12 +264,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
       );
     }
     draft.update('description', combined);
-    final code = widget.language;
-    draft.update('language', switch (code) {
-      'en' => 'english',
-      'hi' => 'hindi',
-      _ => code,
-    });
+    draft.update('language', 'english');
     await draft.save();
     if (mounted) await startReport();
   }
@@ -280,6 +282,29 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
     if (mounted) {
       setState(() {});
       load();
+    }
+  }
+
+  Future<void> saveChat(SavedChat chat) {
+    final write = savedChats.save(chat);
+    if (mounted) setState(() {});
+    return write;
+  }
+
+  Future<void> selectChat(SavedChat chat) async {
+    setState(() {
+      savedChats.active = chat;
+      startupChat = null;
+    });
+    Navigator.pop(context);
+    try {
+      await savedChats.save();
+    } catch (failure) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(failure.toString())));
+      }
     }
   }
 
@@ -388,7 +413,10 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
         ),
       ],
     );
+    final activeChat = savedChats.active;
     return Scaffold(
+      key: scaffold,
+      drawer: tab == 0 ? chatDrawer(strings) : null,
       appBar: AppBar(
         title: Row(
           children: [
@@ -404,12 +432,25 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
           ],
         ),
         actions: [
-          if (tab == 1 && showReports)
+          if (tab == 1)
             IconButton(
               tooltip: strings.refreshReports,
               onPressed: loading ? null : load,
               icon: const Icon(Icons.refresh_rounded),
             ),
+          IconButton(
+            tooltip: strings.theme,
+            icon: Icon(
+              theme.brightness == Brightness.dark
+                  ? Icons.light_mode_outlined
+                  : Icons.dark_mode_outlined,
+            ),
+            onPressed: () => widget.onTheme(
+              theme.brightness == Brightness.dark
+                  ? ThemeMode.light
+                  : ThemeMode.dark,
+            ),
+          ),
           IconButton(
             tooltip: strings.language,
             icon: const Icon(Icons.translate_rounded),
@@ -418,9 +459,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
               isScrollControlled: true,
               builder: (_) => PreferencesSheet(
                 language: widget.language,
-                theme: widget.mode,
                 onLanguage: widget.onLanguage,
-                onTheme: widget.onTheme,
                 onRefresh: kDebugMode ? widget.onRefreshTranslations : null,
               ),
             ),
@@ -436,18 +475,22 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
           onPageChanged: (value) {
             FocusManager.instance.primaryFocus?.unfocus();
             setState(() => tab = value);
-            if (value == 1 && showReports) load();
+            if (value == 1) load();
           },
           children: [
             CheckTab(
+              key: ValueKey(activeChat.id),
               language: widget.language,
-              messages: chatMessages,
+              messages: activeChat.messages,
               api: widget.api,
-              sessionId: checkSessionId,
+              sessionId: activeChat.id,
+              restoreContext: true,
+              onMessagesChanged: () => saveChat(activeChat),
               reviewStatement: reviewCheckStatement,
               reviewVoiceTicket: reviewVoiceTicket,
               active: tab == 0,
-              autoStartVoice: widget.autoStartVoice,
+              autoStartVoice:
+                  widget.autoStartVoice && activeChat.id == startupChat,
             ),
             reportHistory(strings),
             AccessTab(language: widget.language),
@@ -456,6 +499,34 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
       ),
     );
   }
+
+  Widget chatDrawer(AppLocalizations strings) => Drawer(
+    child: SafeArea(
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          ListTile(
+            leading: const Icon(Icons.edit_square),
+            title: Text(strings.newChat),
+            onTap: () => selectChat(SavedChat()),
+          ),
+          const Divider(),
+          heading(strings.chats),
+          for (final chat in savedChats.chats)
+            ListTile(
+              leading: const Icon(Icons.chat_bubble_outline_rounded),
+              title: Text(
+                chat.title ?? strings.chats,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              selected: chat == savedChats.active,
+              onTap: () => selectChat(chat),
+            ),
+        ],
+      ),
+    ),
+  );
 
   Widget reportHistory(AppLocalizations strings) {
     final theme = Theme.of(context);
@@ -487,6 +558,12 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
               ),
             ),
             if (draft.storageWarning != null) Text(draft.storageWarning!),
+            if (!showReports)
+              ReportsDashboard(
+                reports: reports,
+                loading: loading,
+                hasError: error != null,
+              ),
             if (showReports) ...[
               if (loading) const LinearProgressIndicator(minHeight: 2),
               if (error != null)
@@ -609,14 +686,10 @@ class _ReportFormState extends State<ReportForm> {
   );
 
   String get reportLanguage {
-    final selected = draft.fields['language'] as String;
-    final locale = Localizations.localeOf(context).languageCode;
-    return switch (selected) {
-      'english' => 'en',
-      'hindi' => 'hi',
-      'mixed' => languages.containsKey(locale) ? locale : 'en',
-      _ => selected,
-    };
+    final draftLanguage = draft.fields['language'];
+    if (draftLanguage == 'hindi') return 'hi';
+    if (languages.containsKey(draftLanguage)) return draftLanguage as String;
+    return Localizations.localeOf(context).languageCode;
   }
 
   @override
@@ -694,43 +767,13 @@ class _ReportFormState extends State<ReportForm> {
           children: [
             reportField('description', strings.descriptionLabel, 5000),
             const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              key: ValueKey(('language', voiceDraftRevision)),
-              isExpanded: true,
-              itemHeight: null,
-              initialValue: draft.fields['language'],
-              decoration: InputDecoration(
-                labelText: AppLocalizations.of(context)!.reportLanguageLabel,
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: Text(
+                '${strings.reportLanguageLabel}: ${strings.englishLanguage}',
               ),
-              items: [
-                DropdownMenuItem(
-                  value: 'english',
-                  child: Text(AppLocalizations.of(context)!.englishLanguage),
-                ),
-                DropdownMenuItem(
-                  value: 'hindi',
-                  child: Text(AppLocalizations.of(context)!.hindiLanguage),
-                ),
-                DropdownMenuItem(
-                  value: 'mixed',
-                  child: Text(AppLocalizations.of(context)!.mixedLanguage),
-                ),
-                for (final language in languages.entries)
-                  if (language.key != 'en' && language.key != 'hi')
-                    DropdownMenuItem(
-                      value: language.key,
-                      child: Text(language.value),
-                    ),
-              ],
-              onChanged: draft.locked
-                  ? null
-                  : (v) {
-                      draft.update('language', v);
-                      setState(() {});
-                      save();
-                    },
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               key: ValueKey(('incidentType', voiceDraftRevision)),
               isExpanded: true,
@@ -1026,6 +1069,28 @@ class ReportDetail extends StatefulWidget {
 
 class _ReportDetailState extends State<ReportDetail>
     with WidgetsBindingObserver {
+  String translationLanguage = 'en';
+  String? translated;
+  bool translating = false;
+  bool translationFailed = false;
+
+  Future<void> translate() async {
+    final requested = translationLanguage;
+    setState(() {
+      translating = true;
+      translated = null;
+      translationFailed = false;
+    });
+    try {
+      final text = await widget.api.translateDescription(widget.id, requested);
+      if (mounted) setState(() => translated = text);
+    } catch (_) {
+      if (mounted) setState(() => translationFailed = true);
+    } finally {
+      if (mounted) setState(() => translating = false);
+    }
+  }
+
   Json? report;
   String? error;
   bool loading = false;
@@ -1100,7 +1165,57 @@ class _ReportDetailState extends State<ReportDetail>
         icon: const Icon(Icons.refresh_rounded),
         label: Text(strings.refreshStatus),
       ),
-      if (current != null) facts(current['facts'] as Json),
+      if (current != null) ...[
+        SurfaceCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              heading(strings.descriptionTranslation),
+              const SizedBox(height: 10),
+              DropdownButtonFormField<String>(
+                initialValue: translationLanguage,
+                isExpanded: true,
+                itemHeight: null,
+                decoration: InputDecoration(labelText: strings.language),
+                items: [
+                  for (final language in languages.entries)
+                    DropdownMenuItem(
+                      value: language.key,
+                      child: Text(language.value),
+                    ),
+                ],
+                onChanged: translating
+                    ? null
+                    : (value) {
+                        if (value == null) return;
+                        setState(() {
+                          translationLanguage = value;
+                          translated = null;
+                          translationFailed = false;
+                        });
+                      },
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: translating ? null : translate,
+                icon: const Icon(Icons.translate_rounded),
+                label: Text(strings.descriptionTranslation),
+              ),
+              if (translating) const LinearProgressIndicator(minHeight: 2),
+              if (translationFailed)
+                Text(strings.descriptionTranslationUnavailable),
+              if (translated case final text?)
+                SelectableText(
+                  text,
+                  textDirection: translationLanguage == 'ur'
+                      ? TextDirection.rtl
+                      : TextDirection.ltr,
+                ),
+            ],
+          ),
+        ),
+        facts(current['facts'] as Json),
+      ],
     ]);
   }
 }

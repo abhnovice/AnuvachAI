@@ -489,4 +489,63 @@ class AppLocalizationsUr extends AppLocalizations {
   @override
   String get voiceStartupNotice =>
       'صرف فرضی تفصیلات استعمال کریں۔ Android پر مائیک کی اجازت پہلے سے ہو تو ایپ کھلتے ہی آواز شروع ہو جاتی ہے۔ آواز بند کرنے یا چیک اسکرین چھوڑنے تک مائیک کا آڈیو رپورٹنگ اسسٹنٹ کو بھیجا جاتا ہے۔';
+
+  @override
+  String get chats => 'چیٹس';
+
+  @override
+  String get newChat => 'نئی چیٹ';
+
+  @override
+  String get reportsOverview => 'رپورٹس کا جائزہ';
+
+  @override
+  String get reportCountsUnavailable => 'رپورٹس کی تعداد دستیاب نہیں۔';
+
+  @override
+  String get scamTips => 'دھوکا دہی سے بچنے کی تجاویز';
+
+  @override
+  String get protectCodes =>
+      'OTP اور PIN خفیہ رکھیں۔ کوئی کوڈ مانگے تو فون بند کر کے ادارے سے براہ راست رابطہ کریں۔';
+
+  @override
+  String get verifyRequests =>
+      'اگر پیغام فوری اقدام یا لنک کھولنے کو کہے تو ادارے کی سرکاری ایپ یا ویب سائٹ سے پہلے تصدیق کریں۔';
+
+  @override
+  String get reportFraudPrompt =>
+      'بھارت میں مالی سائبر دھوکا دہی کے لیے فوراً 1930 پر کال کریں یا سرکاری پورٹل پر رپورٹ کریں۔';
+
+  @override
+  String get descriptionTranslation => 'تفصیل کا ترجمہ کریں';
+
+  @override
+  String get descriptionTranslationUnavailable =>
+      'ترجمہ دستیاب نہیں۔ اصل تفصیل نیچے ہے۔';
+
+  @override
+  String get launcherApps => 'نظر آنے والی ایپس';
+
+  @override
+  String get nonLauncherApps => 'نظر نہ آنے والی ایپس';
+
+  @override
+  String get appInventoryCoverage =>
+      'صرف وہ ایپس درج ہیں جو Android دکھاتا ہے۔ آئیکن کا نہ ہونا یا اجازت ہونا غلط استعمال کا ثبوت نہیں۔';
+
+  @override
+  String get openAccessibilitySettings => 'Android کی رسائی کی ترتیبات کھولیں';
+
+  @override
+  String get systemApps => 'سسٹم ایپس';
+
+  @override
+  String get uncategorizedApps => 'بغیر زمرے کی ایپس';
+
+  @override
+  String get noMatchingApps => 'کوئی مماثل ایپ نہیں۔';
+
+  @override
+  String get otherPermissions => 'دیگر اجازتیں';
 }

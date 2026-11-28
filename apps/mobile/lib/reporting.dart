@@ -7,6 +7,38 @@ import 'package:uuid/uuid.dart';
 
 typedef Json = Map<String, dynamic>;
 
+List<Json> reportingContext(List<Json> messages) => [
+  for (final turn in messages.skip(
+    messages.length > 12 ? messages.length - 12 : 0,
+  ))
+    {
+      'speaker': turn['speaker'],
+      'text': String.fromCharCodes((turn['text'] as String).runes.take(600)),
+    },
+];
+
+class ApiRequestException implements Exception {
+  const ApiRequestException(this.status, this.message, this.details);
+  final int status;
+  final String message;
+  final Object? details;
+
+  bool get rejectsChatContext =>
+      status == 400 &&
+      details is List &&
+      (details as List).any(
+        (issue) =>
+            issue is Map &&
+            issue['code'] == 'unrecognized_keys' &&
+            issue['keys'] is List &&
+            (issue['keys'] as List).contains('context'),
+      );
+
+  @override
+  String toString() =>
+      'Request failed (HTTP $status). $message Your draft is preserved.';
+}
+
 class Api {
   Api({http.Client? client, String? base, this.token, this.voiceConnector})
     : client = client ?? http.Client(),
@@ -18,6 +50,7 @@ class Api {
                 'https://anuvachai-git-425459156696.asia-south1.run.app',
           );
   final http.Client client;
+  bool _sendChatContext = true;
   final String base;
   final Future<String?> Function()? token;
   final Future<WebSocket> Function(Uri, Map<String, String>)? voiceConnector;
@@ -68,11 +101,27 @@ class Api {
                   : client.post(uri, headers: headers, body: jsonEncode(body)))
               .timeout(Duration(seconds: path == '/reporting/turns' ? 38 : 12));
       if (response.statusCode >= 400) {
-        throw Exception(
-          jsonDecode(response.body)['error'] ?? 'Request rejected',
+        final Object? error;
+        try {
+          error = jsonDecode(response.body);
+        } on FormatException {
+          throw ApiRequestException(
+            response.statusCode,
+            'Request rejected.',
+            null,
+          );
+        }
+        throw ApiRequestException(
+          response.statusCode,
+          error is Map && error['error'] is String
+              ? error['error'] as String
+              : 'Request rejected.',
+          error is Map ? error['details'] : null,
         );
       }
       return response.statusCode == 204 ? null : jsonDecode(response.body);
+    } on ApiRequestException {
+      rethrow;
     } catch (e) {
       throw Exception(
         'Could not reach or complete the API request. Your draft is preserved. Check your connection and retry. ($e)',
@@ -80,9 +129,34 @@ class Api {
     }
   }
 
+  Future<Json> reportingTurn(Json body) async {
+    final message = {...body};
+    if (!_sendChatContext) message.remove('context');
+    try {
+      return await call('/reporting/turns', body: message) as Json;
+    } on ApiRequestException catch (failure) {
+      if (!message.containsKey('context') || !failure.rejectsChatContext) {
+        rethrow;
+      }
+      // Older deployments reject this optional field before invoking the agent.
+      // Retry only this exact validation failure, never an uncertain model call.
+      _sendChatContext = false;
+      message.remove('context');
+      return await call('/reporting/turns', body: message) as Json;
+    }
+  }
+
   Future<List<Json>> history() async =>
       (await call('/reports?employeeId=demo-employee') as List).cast<Json>();
   Future<Json> detail(String id) async => (await call('/reports/$id')) as Json;
+  Future<String> translateDescription(String id, String language) async {
+    final result =
+        await call(
+              '/reports/${Uri.encodeComponent(id)}?translate=${Uri.encodeQueryComponent(language)}',
+            )
+            as Json;
+    return result['translation'] as String;
+  }
 }
 
 class Draft extends ChangeNotifier {
@@ -172,11 +246,7 @@ class Draft extends ChangeNotifier {
         'appName': proposal['app_name'],
       if ((fields['evidenceNotes'] as String).trim().isEmpty)
         'evidenceNotes': proposal['evidence_notes'],
-      'language': switch (language) {
-        'en' => 'english',
-        'hi' => 'hindi',
-        _ => language,
-      },
+      'language': 'english',
       'reporting': {
         'language': language,
         'transcript': previousReporting?['transcript'] ?? <Json>[],
@@ -239,7 +309,12 @@ class Draft extends ChangeNotifier {
 
   Json review() {
     reviewed =
-        jsonDecode(jsonEncode(pending ?? {...fields, 'confirmed': true}))
+        jsonDecode(
+              jsonEncode(
+                pending ??
+                    {...fields, 'language': 'english', 'confirmed': true},
+              ),
+            )
             as Json;
     confirmed = false;
     return reviewed!;

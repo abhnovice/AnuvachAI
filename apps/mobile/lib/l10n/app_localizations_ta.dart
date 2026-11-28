@@ -507,4 +507,64 @@ class AppLocalizationsTa extends AppLocalizations {
   @override
   String get voiceStartupNotice =>
       'செயற்கை விவரங்களை மட்டும் பயன்படுத்தவும். Android-இல் மைக்ரோஃபோன் அனுமதி இருந்தால் செயலியைத் திறக்கும்போது குரல் தொடங்கும். குரலை நிறுத்தும் வரை அல்லது சரிபார்ப்பிலிருந்து வெளியேறும் வரை மைக்ரோஃபோன் ஒலி அறிக்கையிடும் உதவியாளருக்கு அனுப்பப்படும்.';
+
+  @override
+  String get chats => 'உரையாடல்கள்';
+
+  @override
+  String get newChat => 'புதிய உரையாடல்';
+
+  @override
+  String get reportsOverview => 'அறிக்கைகளின் கண்ணோட்டம்';
+
+  @override
+  String get reportCountsUnavailable => 'அறிக்கைகளின் எண்ணிக்கை கிடைக்கவில்லை.';
+
+  @override
+  String get scamTips => 'மோசடித் தடுப்புக் குறிப்புகள்';
+
+  @override
+  String get protectCodes =>
+      'OTP மற்றும் PIN ஆகியவற்றைப் பகிர வேண்டாம். அழைப்பவர் குறியீட்டைக் கேட்டால், அழைப்பை முடித்து நிறுவனத்தை நேரடியாகத் தொடர்புகொள்ளவும்.';
+
+  @override
+  String get verifyRequests =>
+      'உடனடியாகச் செயல்பட அல்லது இணைப்பைத் திறக்கச் சொன்னால், நிறுவனத்தின் அதிகாரப்பூர்வ செயலி அல்லது தளத்தில் முதலில் சரிபார்க்கவும்.';
+
+  @override
+  String get reportFraudPrompt =>
+      'இந்தியாவில் நிதி இணைய மோசடிக்கு உடனே 1930ஐ அழைக்கவும் அல்லது அதிகாரப்பூர்வ தளத்தில் புகாரளிக்கவும்.';
+
+  @override
+  String get descriptionTranslation => 'விவரத்தை மொழிபெயர்';
+
+  @override
+  String get descriptionTranslationUnavailable =>
+      'மொழிபெயர்ப்பு கிடைக்கவில்லை. அசல் விவரம் கீழே உள்ளது.';
+
+  @override
+  String get launcherApps => 'காணக்கூடிய செயலிகள்';
+
+  @override
+  String get nonLauncherApps => 'காண முடியாத செயலிகள்';
+
+  @override
+  String get appInventoryCoverage =>
+      'Android காட்டும் செயலிகள் மட்டுமே பட்டியலிடப்படுகின்றன. சின்னம் இல்லாததும் அனுமதி இருப்பதும் தவறான பயன்பாட்டுக்குச் சான்றல்ல.';
+
+  @override
+  String get openAccessibilitySettings =>
+      'Android அணுகல்தன்மை அமைப்புகளைத் திற';
+
+  @override
+  String get systemApps => 'கணினிச் செயலிகள்';
+
+  @override
+  String get uncategorizedApps => 'வகைப்படுத்தாத செயலிகள்';
+
+  @override
+  String get noMatchingApps => 'பொருந்தும் செயலிகள் இல்லை.';
+
+  @override
+  String get otherPermissions => 'பிற அனுமதிகள்';
 }

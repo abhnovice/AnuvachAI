@@ -195,10 +195,23 @@ void main() {
         await tester.pumpAndSettle();
       }
 
-      await select('Reports');
+      final pager = find.byType(PageView);
+      await tester.drag(pager, const Offset(-650, 0));
+      await tester.pumpAndSettle();
+      expect(tester.widget<NavigationBar>(navigation).selectedIndex, 1);
       expect(find.text('No reports yet'), findsOneWidget);
-      await select('Access');
+      await tester.tap(find.text('Show reports'));
+      await tester.pumpAndSettle();
+      expect(find.text('No reports yet'), findsNothing);
+      await tester.tap(find.text('Show reports'));
+      await tester.pumpAndSettle();
+      expect(find.text('No reports yet'), findsOneWidget);
+      await tester.drag(pager, const Offset(-650, 0));
+      await tester.pumpAndSettle();
       expect(tester.widget<NavigationBar>(navigation).selectedIndex, 2);
+      await tester.drag(pager, const Offset(650, 0));
+      await tester.pumpAndSettle();
+      expect(tester.widget<NavigationBar>(navigation).selectedIndex, 1);
       await select('Check');
       expect(find.text(statement), findsOneWidget);
       await tester.tap(find.text('Use in report'));

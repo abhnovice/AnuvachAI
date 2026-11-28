@@ -94,7 +94,7 @@ void main() {
       ),
     );
     expect(calls, isEmpty);
-    await tester.tap(find.byTooltip('Start voice'));
+    await tester.tap(find.byTooltip('Start voice with the Anuvach logo'));
     await tester.pump();
     expect(calls, contains('startVoice'));
     connection.emit({
@@ -131,4 +131,55 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     expect(calls, containsAllInOrder(['startVoice', 'stopMic', 'clearVoice']));
   });
+  for (final permitted in [true, false]) {
+    testWidgets(
+      'Opening Check respects existing microphone permission ($permitted)',
+      (tester) async {
+        const channel = MethodChannel('ai.anuvach/local_features');
+        final messenger =
+            TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+        final calls = <String>[];
+        messenger.setMockMethodCallHandler(channel, (call) async {
+          calls.add(call.method);
+          return switch (call.method) {
+            'hasVoicePermission' => permitted,
+            'startVoice' => true,
+            _ => null,
+          };
+        });
+        addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+        final connection = VoiceSocketFixture();
+        await tester.pumpWidget(
+          MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Scaffold(
+              body: CheckTab(
+                language: 'en',
+                messages: [],
+                api: Api(voiceConnector: (_, _) async => connection),
+                sessionId: 'c5a6866b-69ed-4d14-baf3-32d43093dfa0',
+                autoStartVoice: true,
+                reviewVoiceTicket: (_, _) async {},
+                reviewStatement: (_) async {},
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        if (permitted) {
+          expect(
+            calls,
+            containsAllInOrder(['hasVoicePermission', 'startVoice']),
+          );
+          expect(connection.sent, ['greet']);
+        } else {
+          expect(calls, ['hasVoicePermission']);
+          expect(connection.sent, isEmpty);
+        }
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+      },
+    );
+  }
 }

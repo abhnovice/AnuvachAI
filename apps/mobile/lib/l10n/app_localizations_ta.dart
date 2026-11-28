@@ -480,4 +480,31 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get tryAgain => 'மீண்டும் முயலவும்';
+
+  @override
+  String get showReports => 'அறிக்கைகளைக் காட்டு';
+
+  @override
+  String get callPrompt => 'என்னை அழைத்தவர் தன்னை இவ்வாறு அறிமுகப்படுத்தினார்';
+
+  @override
+  String get messagePrompt =>
+      'எனக்கு வந்த செய்தியில் இவ்வாறு செய்யச் சொன்னார்கள்';
+
+  @override
+  String get voiceLogoStart => 'அனுவாச் சின்னத்தைத் தொட்டு குரலைத் தொடங்கவும்';
+
+  @override
+  String get accessOverview => 'அணுகல் கண்ணோட்டம்';
+
+  @override
+  String get accessBriefing => 'Gemini · அணுகல்தன்மைச் சுருக்கம்';
+
+  @override
+  String get accessBriefingUnavailable =>
+      'Gemini சுருக்கம் இங்கே கிடைக்கவில்லை. செயலிகளையும் அமைப்புகளையும் சாதனத்தில் பார்க்கலாம்.';
+
+  @override
+  String get voiceStartupNotice =>
+      'செயற்கை விவரங்களை மட்டும் பயன்படுத்தவும். Android-இல் மைக்ரோஃபோன் அனுமதி இருந்தால் செயலியைத் திறக்கும்போது குரல் தொடங்கும். குரலை நிறுத்தும் வரை அல்லது சரிபார்ப்பிலிருந்து வெளியேறும் வரை மைக்ரோஃபோன் ஒலி அறிக்கையிடும் உதவியாளருக்கு அனுப்பப்படும்.';
 }

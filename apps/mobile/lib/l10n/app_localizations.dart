@@ -975,6 +975,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Try again'**
   String get tryAgain;
+
+  /// No description provided for @showReports.
+  ///
+  /// In en, this message translates to:
+  /// **'Show reports'**
+  String get showReports;
+
+  /// No description provided for @callPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'I got a call from someone claiming to be'**
+  String get callPrompt;
+
+  /// No description provided for @messagePrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'I received a message asking me to'**
+  String get messagePrompt;
+
+  /// No description provided for @voiceLogoStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start voice with the Anuvach logo'**
+  String get voiceLogoStart;
+
+  /// No description provided for @accessOverview.
+  ///
+  /// In en, this message translates to:
+  /// **'Your access overview'**
+  String get accessOverview;
+
+  /// No description provided for @accessBriefing.
+  ///
+  /// In en, this message translates to:
+  /// **'Gemini · accessibility briefing'**
+  String get accessBriefing;
+
+  /// No description provided for @accessBriefingUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Gemini briefing is unavailable here. You can still review apps and settings locally.'**
+  String get accessBriefingUnavailable;
+
+  /// No description provided for @voiceStartupNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Use synthetic details only. On Android, voice starts on opening if microphone access is already granted. Live voice sends microphone audio to the reporting assistant until you stop voice or leave Check.'**
+  String get voiceStartupNotice;
 }
 
 class _AppLocalizationsDelegate

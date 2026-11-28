@@ -464,4 +464,30 @@ class AppLocalizationsKn extends AppLocalizations {
 
   @override
   String get tryAgain => 'ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ';
+
+  @override
+  String get showReports => 'ವರದಿಗಳನ್ನು ತೋರಿಸಿ';
+
+  @override
+  String get callPrompt => 'ನನಗೆ ಕರೆ ಮಾಡಿದವರು ತಮ್ಮನ್ನು ಹೀಗೆ ಪರಿಚಯಿಸಿಕೊಂಡರು';
+
+  @override
+  String get messagePrompt => 'ನನಗೆ ಬಂದ ಸಂದೇಶದಲ್ಲಿ ಹೀಗೆ ಮಾಡಲು ಕೇಳಿದರು';
+
+  @override
+  String get voiceLogoStart => 'ಅನುವಾಚ್ ಲೋಗೋ ಮೂಲಕ ಧ್ವನಿ ಪ್ರಾರಂಭಿಸಿ';
+
+  @override
+  String get accessOverview => 'ಅಪ್ಲಿಕೇಶನ್ ಪ್ರವೇಶದ ಅವಲೋಕನ';
+
+  @override
+  String get accessBriefing => 'Gemini · ಪ್ರವೇಶಿಸುವಿಕೆ ಸಾರಾಂಶ';
+
+  @override
+  String get accessBriefingUnavailable =>
+      'Gemini ಸಾರಾಂಶ ಇಲ್ಲಿ ಲಭ್ಯವಿಲ್ಲ. ಅಪ್ಲಿಕೇಶನ್‌ಗಳು ಮತ್ತು ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಸಾಧನದಲ್ಲಿ ನೋಡಬಹುದು.';
+
+  @override
+  String get voiceStartupNotice =>
+      'ಕೃತಕ ವಿವರಗಳನ್ನು ಮಾತ್ರ ಬಳಸಿ. Android ನಲ್ಲಿ ಮೈಕ್ರೊಫೋನ್ ಅನುಮತಿ ಇದ್ದರೆ ಆ್ಯಪ್ ತೆರೆದಾಗ ಧ್ವನಿ ಪ್ರಾರಂಭವಾಗುತ್ತದೆ. ಧ್ವನಿಯನ್ನು ನಿಲ್ಲಿಸುವವರೆಗೆ ಅಥವಾ ಪರಿಶೀಲನೆ ಪರದೆಯಿಂದ ಹೊರಡುವವರೆಗೆ ಮೈಕ್ರೊಫೋನ್ ಆಡಿಯೊ ವರದಿ ಸಹಾಯಕನಿಗೆ ಕಳುಹಿಸಲಾಗುತ್ತದೆ.';
 }

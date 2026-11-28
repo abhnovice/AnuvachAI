@@ -476,4 +476,30 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get tryAgain => 'फिर कोशिश करें';
+
+  @override
+  String get showReports => 'रिपोर्ट दिखाएँ';
+
+  @override
+  String get callPrompt => 'मुझे किसी का फ़ोन आया जिसने खुद को बताया';
+
+  @override
+  String get messagePrompt => 'मुझे एक संदेश मिला जिसमें मुझसे कहा गया';
+
+  @override
+  String get voiceLogoStart => 'अनुवाच लोगो से आवाज़ शुरू करें';
+
+  @override
+  String get accessOverview => 'ऐप एक्सेस का अवलोकन';
+
+  @override
+  String get accessBriefing => 'Gemini · सुलभता सारांश';
+
+  @override
+  String get accessBriefingUnavailable =>
+      'Gemini सारांश यहाँ उपलब्ध नहीं है। ऐप और सेटिंग डिवाइस पर देख सकते हैं।';
+
+  @override
+  String get voiceStartupNotice =>
+      'केवल कृत्रिम विवरण इस्तेमाल करें। Android पर, माइक्रोफ़ोन की अनुमति होने पर ऐप खुलते ही आवाज़ शुरू होती है। लाइव आवाज़ का ऑडियो रिपोर्टिंग सहायक को तब तक भेजा जाता है, जब तक आप उसे बंद नहीं करते या जाँच स्क्रीन से बाहर नहीं जाते।';
 }

@@ -57,6 +57,9 @@ class LocalFeatures(private val activity: FlutterActivity, private val channel: 
         channel.setMethodCallHandler { call, result ->
             when (call.method) {
                 "startMic" -> startMic(result, call.argument<String>("language") ?: "en", false)
+                "hasVoicePermission" -> result.success(
+                    activity.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+                )
                 "startVoice" -> {
                     trace = call.argument<Boolean>("trace") == true
                     startMic(result, call.argument<String>("language") ?: "en", true)

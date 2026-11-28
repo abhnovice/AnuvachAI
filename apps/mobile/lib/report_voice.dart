@@ -40,8 +40,10 @@ class ReportVoice extends StatefulWidget {
     required this.reviewTicket,
     this.conversation,
     this.onTurn,
+    this.autoStart = false,
   });
   final Api api;
+  final bool autoStart;
   final String language;
   final bool enabled;
   final Future<void> Function(Json, String) reviewTicket;
@@ -95,6 +97,34 @@ class _ReportVoiceState extends State<ReportVoice>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    if (widget.autoStart && canRecord) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => startIfPermitted());
+    }
+  }
+
+  bool get canRecord =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+
+  Future<void> startIfPermitted() async {
+    if (!mounted || !widget.enabled) return;
+    bool granted;
+    try {
+      granted = await channel.invokeMethod<bool>('hasVoicePermission') ?? false;
+    } on PlatformException {
+      return;
+    } on MissingPluginException {
+      return;
+    }
+    if (granted &&
+        mounted &&
+        widget.enabled &&
+        attempt == null &&
+        !stopping &&
+        (WidgetsBinding.instance.lifecycleState == null ||
+            WidgetsBinding.instance.lifecycleState ==
+                AppLifecycleState.resumed)) {
+      unawaited(start());
+    }
   }
 
   @override
@@ -457,8 +487,6 @@ class _ReportVoiceState extends State<ReportVoice>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final canRecord =
-        !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
     final VoidCallback? microphone =
         !canRecord ||
             !widget.enabled ||

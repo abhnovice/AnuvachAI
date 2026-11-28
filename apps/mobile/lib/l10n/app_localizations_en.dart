@@ -473,4 +473,30 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tryAgain => 'Try again';
+
+  @override
+  String get showReports => 'Show reports';
+
+  @override
+  String get callPrompt => 'I got a call from someone claiming to be';
+
+  @override
+  String get messagePrompt => 'I received a message asking me to';
+
+  @override
+  String get voiceLogoStart => 'Start voice with the Anuvach logo';
+
+  @override
+  String get accessOverview => 'Your access overview';
+
+  @override
+  String get accessBriefing => 'Gemini · accessibility briefing';
+
+  @override
+  String get accessBriefingUnavailable =>
+      'Gemini briefing is unavailable here. You can still review apps and settings locally.';
+
+  @override
+  String get voiceStartupNotice =>
+      'Use synthetic details only. On Android, voice starts on opening if microphone access is already granted. Live voice sends microphone audio to the reporting assistant until you stop voice or leave Check.';
 }

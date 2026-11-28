@@ -473,4 +473,31 @@ class AppLocalizationsTe extends AppLocalizations {
 
   @override
   String get tryAgain => 'మళ్లీ ప్రయత్నించండి';
+
+  @override
+  String get showReports => 'నివేదికలు చూపించు';
+
+  @override
+  String get callPrompt =>
+      'నాకు ఫోన్ చేసిన వ్యక్తి తనను ఇలా పరిచయం చేసుకున్నారు';
+
+  @override
+  String get messagePrompt => 'నాకు వచ్చిన సందేశం ఇలా చేయమని కోరింది';
+
+  @override
+  String get voiceLogoStart => 'అనువాచ్ లోగోతో వాయిస్ ప్రారంభించండి';
+
+  @override
+  String get accessOverview => 'యాప్ యాక్సెస్ అవలోకనం';
+
+  @override
+  String get accessBriefing => 'Gemini · ప్రాప్యత సారాంశం';
+
+  @override
+  String get accessBriefingUnavailable =>
+      'Gemini సారాంశం ఇక్కడ అందుబాటులో లేదు. యాప్‌లు, సెట్టింగ్‌లను పరికరంలో చూడవచ్చు.';
+
+  @override
+  String get voiceStartupNotice =>
+      'కృత్రిమ వివరాలను మాత్రమే ఉపయోగించండి. Android లో మైక్రోఫోన్ అనుమతి ఉంటే యాప్ తెరవగానే వాయిస్ ప్రారంభమవుతుంది. మీరు వాయిస్ ఆపే వరకు లేదా చెక్ నుంచి బయటకు వెళ్లే వరకు మైక్రోఫోన్ ఆడియో రిపోర్టింగ్ సహాయకుడికి వెళ్తుంది.';
 }

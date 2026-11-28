@@ -462,4 +462,31 @@ class AppLocalizationsBn extends AppLocalizations {
 
   @override
   String get tryAgain => 'আবার চেষ্টা করুন';
+
+  @override
+  String get showReports => 'রিপোর্ট দেখান';
+
+  @override
+  String get callPrompt =>
+      'যিনি আমাকে ফোন করেছিলেন তিনি নিজের পরিচয় দিয়েছিলেন';
+
+  @override
+  String get messagePrompt => 'আমি একটি বার্তা পেয়েছি যেখানে আমাকে বলা হয়েছে';
+
+  @override
+  String get voiceLogoStart => 'অনুবাচ লোগো দিয়ে ভয়েস চালু করুন';
+
+  @override
+  String get accessOverview => 'অ্যাপ অ্যাক্সেসের সারাংশ';
+
+  @override
+  String get accessBriefing => 'Gemini · অ্যাক্সেসিবিলিটি সারাংশ';
+
+  @override
+  String get accessBriefingUnavailable =>
+      'Gemini সারাংশ এখানে পাওয়া যায় না। অ্যাপ ও সেটিংস ডিভাইসেই দেখা যায়।';
+
+  @override
+  String get voiceStartupNotice =>
+      'শুধু কৃত্রিম তথ্য ব্যবহার করুন। Android-এ মাইক্রোফোনের অনুমতি আগে থেকে থাকলে অ্যাপ খুললেই ভয়েস চালু হয়। ভয়েস বন্ধ করা বা চেক ছেড়ে যাওয়ার আগ পর্যন্ত মাইক্রোফোনের অডিও রিপোর্টিং সহকারীর কাছে যায়।';
 }

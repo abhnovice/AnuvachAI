@@ -464,4 +464,31 @@ class AppLocalizationsMl extends AppLocalizations {
 
   @override
   String get tryAgain => 'വീണ്ടും ശ്രമിക്കുക';
+
+  @override
+  String get showReports => 'റിപ്പോർട്ടുകൾ കാണിക്കുക';
+
+  @override
+  String get callPrompt => 'എന്നെ വിളിച്ചയാൾ സ്വയം ഇങ്ങനെ പരിചയപ്പെടുത്തി';
+
+  @override
+  String get messagePrompt =>
+      'എനിക്ക് ലഭിച്ച സന്ദേശത്തിൽ ഇങ്ങനെ ചെയ്യാൻ ആവശ്യപ്പെട്ടു';
+
+  @override
+  String get voiceLogoStart => 'അനുവാച് ലോഗോ ഉപയോഗിച്ച് ശബ്ദം തുടങ്ങുക';
+
+  @override
+  String get accessOverview => 'ആപ്പ് ആക്‌സസ് അവലോകനം';
+
+  @override
+  String get accessBriefing => 'Gemini · ആക്‌സസിബിലിറ്റി സംഗ്രഹം';
+
+  @override
+  String get accessBriefingUnavailable =>
+      'Gemini സംഗ്രഹം ഇവിടെ ലഭ്യമല്ല. ആപ്പുകളും ക്രമീകരണങ്ങളും ഉപകരണത്തിൽ കാണാം.';
+
+  @override
+  String get voiceStartupNotice =>
+      'കൃത്രിമ വിവരങ്ങൾ മാത്രം ഉപയോഗിക്കുക. Android-ൽ മൈക്രോഫോൺ അനുമതി നേരത്തേ നൽകിയിട്ടുണ്ടെങ്കിൽ ആപ്പ് തുറക്കുമ്പോൾ ശബ്ദം തുടങ്ങും. ശബ്ദം നിർത്തുകയോ ചെക്ക് സ്ക്രീൻ വിടുകയോ ചെയ്യുന്നതുവരെ മൈക്രോഫോൺ ഓഡിയോ റിപ്പോർട്ടിങ് സഹായിയിലേക്ക് അയയ്ക്കും.';
 }

@@ -463,4 +463,30 @@ class AppLocalizationsUr extends AppLocalizations {
 
   @override
   String get tryAgain => 'دوبارہ کوشش کریں';
+
+  @override
+  String get showReports => 'رپورٹس دکھائیں';
+
+  @override
+  String get callPrompt => 'مجھے فون کرنے والے نے اپنا تعارف یوں کروایا';
+
+  @override
+  String get messagePrompt => 'مجھے ایک پیغام ملا جس میں مجھ سے کہا گیا';
+
+  @override
+  String get voiceLogoStart => 'انوواچ لوگو سے آواز شروع کریں';
+
+  @override
+  String get accessOverview => 'ایپ رسائی کا جائزہ';
+
+  @override
+  String get accessBriefing => 'Gemini · قابل رسائی ترتیبات کا خلاصہ';
+
+  @override
+  String get accessBriefingUnavailable =>
+      'Gemini خلاصہ یہاں دستیاب نہیں۔ آپ ایپس اور ترتیبات اپنے آلے پر دیکھ سکتے ہیں۔';
+
+  @override
+  String get voiceStartupNotice =>
+      'صرف فرضی تفصیلات استعمال کریں۔ Android پر مائیک کی اجازت پہلے سے ہو تو ایپ کھلتے ہی آواز شروع ہو جاتی ہے۔ آواز بند کرنے یا چیک اسکرین چھوڑنے تک مائیک کا آڈیو رپورٹنگ اسسٹنٹ کو بھیجا جاتا ہے۔';
 }

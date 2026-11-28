@@ -152,6 +152,7 @@ class _AnuvachAppState extends State<AnuvachApp> {
       mode: mode,
       onLanguage: setLanguage,
       onTheme: setMode,
+      autoStartVoice: true,
       onRefreshTranslations: () => remoteTranslations.refresh(force: true),
     );
     if (auth == null) return home;
@@ -180,6 +181,7 @@ class Home extends StatefulWidget {
     required this.onLanguage,
     required this.onTheme,
     this.onRefreshTranslations,
+    this.autoStartVoice = false,
   });
   final SharedPreferences prefs;
   final Api api;
@@ -188,6 +190,7 @@ class Home extends StatefulWidget {
   final ValueChanged<String> onLanguage;
   final ValueChanged<ThemeMode> onTheme;
   final Future<bool> Function()? onRefreshTranslations;
+  final bool autoStartVoice;
   @override
   State<Home> createState() => _HomeState();
 }
@@ -198,6 +201,8 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
   String? error;
   bool loading = false;
   int tab = 0;
+  final pages = PageController();
+  bool showReports = true;
   final chatMessages = <Json>[];
   final String checkSessionId = const Uuid().v4();
   late bool consent = widget.prefs.getBool('consent') ?? false;
@@ -211,6 +216,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    pages.dispose();
     draft.dispose();
     super.dispose();
   }
@@ -325,7 +331,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                strings.consentNotice,
+                strings.voiceStartupNotice,
                 style: theme.textTheme.bodySmall,
               ),
             ),
@@ -352,14 +358,23 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
           : const Duration(milliseconds: 200),
       selectedIndex: tab,
       onDestinationSelected: (value) {
-        setState(() => tab = value);
-        if (value == 1) load();
+        FocusManager.instance.primaryFocus?.unfocus();
+        // Skip intermediate tabs when selecting a non-adjacent destination.
+        if (reduceMotion || (value - tab).abs() > 1) {
+          pages.jumpToPage(value);
+        } else {
+          pages.animateToPage(
+            value,
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+          );
+        }
       },
       destinations: [
         NavigationDestination(
-          icon: const Icon(Icons.chat_bubble_outline_rounded),
-          selectedIcon: const Icon(Icons.chat_bubble_rounded),
-          label: AppLocalizations.of(context)!.check,
+          icon: const Icon(Icons.graphic_eq_outlined),
+          selectedIcon: const Icon(Icons.graphic_eq_rounded),
+          label: strings.check,
         ),
         NavigationDestination(
           icon: const Icon(Icons.article_outlined),
@@ -373,159 +388,185 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
         ),
       ],
     );
-    if (tab != 1) {
-      return Scaffold(
-        appBar: AppBar(
-          title: Row(
-            children: [
-              const ExcludeSemantics(child: BrandMark(size: 36)),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  tab == 0 ? 'Anuvach.AI' : strings.apps,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            if (kDebugMode && widget.onRefreshTranslations != null)
-              IconButton(
-                tooltip: 'Refresh translations (debug)',
-                icon: const Icon(Icons.translate),
-                onPressed: () => widget.onRefreshTranslations!(),
-              ),
-            IconButton(
-              tooltip: AppLocalizations.of(context)!.settings,
-              icon: const Icon(Icons.tune),
-              onPressed: () => showModalBottomSheet<void>(
-                context: context,
-                isScrollControlled: true,
-                builder: (context) => StatefulBuilder(
-                  builder: (context, setSheetState) => PreferencesSheet(
-                    language: widget.language,
-                    theme: widget.mode,
-                    onLanguage: (v) {
-                      widget.onLanguage(v);
-                      setSheetState(() {});
-                    },
-                    onTheme: (v) {
-                      widget.onTheme(v);
-                      setSheetState(() {});
-                    },
-                  ),
-                ),
-              ),
+    return Scaffold(
+      appBar: AppBar(
+        title: Row(
+          children: [
+            const ExcludeSemantics(child: BrandMark(size: 36)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(switch (tab) {
+                1 => strings.reports,
+                2 => strings.apps,
+                _ => 'Anuvach.AI',
+              }),
             ),
           ],
         ),
-        bottomNavigationBar:
-            tab == 0 && MediaQuery.viewInsetsOf(context).bottom > 0
-            ? null
-            : navigation,
-        body: SafeArea(
-          child: tab == 0
-              ? CheckTab(
-                  key: const ValueKey('check'),
-                  language: widget.language,
-                  messages: chatMessages,
-                  api: widget.api,
-                  sessionId: checkSessionId,
-                  reviewStatement: reviewCheckStatement,
-                  reviewVoiceTicket: reviewVoiceTicket,
-                )
-              : AccessTab(
-                  key: const ValueKey('access'),
-                  language: widget.language,
-                ),
-        ),
-      );
-    }
-    return page(
-      context,
-      'Anuvach.AI',
-      [
-        heading(strings.reports),
-        OutlinedButton.icon(
-          onPressed: startReport,
-          icon: const Icon(Icons.add_rounded, size: 19),
-          label: Text(
-            draft.locked ? strings.pendingSubmission : strings.describeIncident,
-          ),
-        ),
-        if (draft.storageWarning != null) Text(draft.storageWarning!),
-        if (loading) const LinearProgressIndicator(minHeight: 2),
-        if (error != null)
-          Semantics(
-            liveRegion: true,
-            child: SurfaceCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.cloud_off_outlined, color: colors.error),
-                  const SizedBox(height: 8),
-                  Text(error!, style: theme.textTheme.bodySmall),
-                  TextButton(onPressed: load, child: Text(strings.tryAgain)),
-                ],
+        actions: [
+          if (tab == 1 && showReports)
+            IconButton(
+              tooltip: strings.refreshReports,
+              onPressed: loading ? null : load,
+              icon: const Icon(Icons.refresh_rounded),
+            ),
+          IconButton(
+            tooltip: strings.language,
+            icon: const Icon(Icons.translate_rounded),
+            onPressed: () => showModalBottomSheet<void>(
+              context: context,
+              isScrollControlled: true,
+              builder: (_) => PreferencesSheet(
+                language: widget.language,
+                theme: widget.mode,
+                onLanguage: widget.onLanguage,
+                onTheme: widget.onTheme,
+                onRefresh: kDebugMode ? widget.onRefreshTranslations : null,
               ),
             ),
           ),
-        if (!loading && error == null && reports.isEmpty)
-          InfoRow(
-            icon: Icons.inbox_outlined,
-            title: strings.noReports,
-            text: strings.reportHistoryHint,
-          ),
-        for (final r in reports)
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.article_outlined),
-              trailing: const Icon(Icons.chevron_right_rounded),
-              title: Text(
-                incidentLabel(strings, r['facts']['incidentType'] as String),
-              ),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 4),
-                  Text(r['id'], style: theme.textTheme.bodySmall),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 6,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      statusPill(r['status'] as String),
-                      Text(
-                        (r['createdAt'] as String).split('T').first,
-                        style: theme.textTheme.bodySmall,
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              onTap: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute<void>(
-                    builder: (_) => ReportDetail(api: widget.api, id: r['id']),
-                  ),
-                );
-                if (mounted) load();
+        ],
+      ),
+      bottomNavigationBar: MediaQuery.viewInsetsOf(context).bottom > 0
+          ? null
+          : navigation,
+      body: SafeArea(
+        child: PageView(
+          controller: pages,
+          onPageChanged: (value) {
+            FocusManager.instance.primaryFocus?.unfocus();
+            setState(() => tab = value);
+            if (value == 1 && showReports) load();
+          },
+          children: [
+            CheckTab(
+              language: widget.language,
+              messages: chatMessages,
+              api: widget.api,
+              sessionId: checkSessionId,
+              reviewStatement: reviewCheckStatement,
+              reviewVoiceTicket: reviewVoiceTicket,
+              active: tab == 0,
+              autoStartVoice: widget.autoStartVoice,
+            ),
+            reportHistory(strings),
+            AccessTab(language: widget.language),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget reportHistory(AppLocalizations strings) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 720),
+        child: ListView(
+          key: const PageStorageKey('employee-reports'),
+          padding: const EdgeInsets.all(20),
+          children: [
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(strings.showReports),
+              value: showReports,
+              onChanged: (value) {
+                setState(() => showReports = value);
+                if (value) load();
               },
             ),
-          ),
-      ],
-      navigation: navigation,
-      storageId: 'employee:$tab',
-      actions: [
-        IconButton(
-          tooltip: strings.refreshReports,
-          onPressed: loading ? null : load,
-          icon: const Icon(Icons.refresh_rounded),
+            OutlinedButton.icon(
+              onPressed: startReport,
+              icon: const Icon(Icons.add_rounded, size: 19),
+              label: Text(
+                draft.locked
+                    ? strings.pendingSubmission
+                    : strings.describeIncident,
+              ),
+            ),
+            if (draft.storageWarning != null) Text(draft.storageWarning!),
+            if (showReports) ...[
+              if (loading) const LinearProgressIndicator(minHeight: 2),
+              if (error != null)
+                Semantics(
+                  liveRegion: true,
+                  child: SurfaceCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.cloud_off_outlined, color: colors.error),
+                        const SizedBox(height: 8),
+                        Text(error!, style: theme.textTheme.bodySmall),
+                        TextButton(
+                          onPressed: load,
+                          child: Text(strings.tryAgain),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              if (!loading && error == null && reports.isEmpty)
+                InfoRow(
+                  icon: Icons.inbox_outlined,
+                  title: strings.noReports,
+                  text: strings.reportHistoryHint,
+                ),
+              for (final r in reports)
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.article_outlined),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    title: Text(
+                      incidentLabel(
+                        strings,
+                        r['facts']['incidentType'] as String,
+                      ),
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 4),
+                        Text(
+                          r['facts']['description'] as String? ?? '',
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                        const SizedBox(height: 6),
+                        Text(r['id'], style: theme.textTheme.bodySmall),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 6,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            statusPill(r['status'] as String),
+                            Text(
+                              r['createdAt'] as String,
+                              style: theme.textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    onTap: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (_) =>
+                              ReportDetail(api: widget.api, id: r['id']),
+                        ),
+                      );
+                      if (mounted) load();
+                    },
+                  ),
+                ),
+            ],
+          ],
         ),
-      ],
+      ),
     );
   }
 }

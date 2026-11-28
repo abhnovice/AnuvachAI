@@ -87,7 +87,6 @@ export function AuthGate({
           alt=""
         />
         <div>
-          <p className="admin-auth-brand">Anuvach.AI</p>
           <h1>Admin sign-in</h1>
         </div>
       </header>

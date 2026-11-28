@@ -163,10 +163,12 @@ function Trend({
   label,
   brush,
   onBrush,
+  onSelectPoint,
 }: {
   rows: { label: string; values: number[] }[];
   brush: [number, number] | null;
   onBrush: (range: [number, number]) => void;
+  onSelectPoint: (index: number) => void;
   series: { name: string; color: string }[];
   label: string;
 }) {
@@ -328,6 +330,15 @@ function Trend({
                 strokeWidth="2"
                 tabIndex={0}
                 aria-label={r.label + ", " + s.name + ": " + r.values[j]}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onSelectPoint(i);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key !== "Enter" && event.key !== " ") return;
+                  event.preventDefault();
+                  onSelectPoint(i);
+                }}
               >
                 <title>
                   {r.label} · {s.name}: {r.values[j]}
@@ -435,6 +446,7 @@ export function AnalyticsOverview({
   onDays,
   onType,
   onStatus,
+  onPeriod,
 }: {
   data: DashboardData | null;
   loading: boolean;
@@ -443,6 +455,7 @@ export function AnalyticsOverview({
   onDays: (value: string) => void;
   onType: (value: string) => void;
   onStatus: (status: string, type?: string) => void;
+  onPeriod: (start: string, end: string) => void;
 }) {
   const { t, enumLabel, locale } = useLocalization();
   const names = new Proxy({} as Record<string, string>, {
@@ -750,6 +763,9 @@ export function AnalyticsOverview({
                 series={[{ name: t("receivedLabel"), color: "#006b60" }]}
                 brush={effectiveBrush}
                 onBrush={setBrush}
+                onSelectPoint={(index) =>
+                  onPeriod(data.weekly[index].date, data.weekly[index].endDate)
+                }
                 label="Weekly incoming report counts"
               />
             </ChartCard>
@@ -1089,6 +1105,9 @@ export function AnalyticsOverview({
                 ]}
                 brush={effectiveBrush}
                 onBrush={setBrush}
+                onSelectPoint={(index) =>
+                  onPeriod(data.weekly[index].date, data.weekly[index].endDate)
+                }
                 label="Open and closed report workload over time"
               />
             </ChartCard>

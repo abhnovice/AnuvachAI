@@ -15,10 +15,14 @@ def build_reporting_agent(
     model: str | None = None,
     *,
     draft_tool: Callable | None = None,
+    ticket_draft_tool: Callable | None = None,
     spoken_language: str | None = None,
 ) -> LlmAgent:
     if spoken_language:
         instruction = (
+            "You are a voice agent for security incident and social engineering reporting. "
+            "Stay focused on what happened, what was requested, what the employee did, "
+            "and what remains uncertain. "
             f"The selected language is {spoken_language}. Use it for the opening only "
             "if the employee is quiet. Before every reply, identify the language of "
             "their most recent meaningful utterance, including the very first. Reply "
@@ -58,8 +62,10 @@ def build_reporting_agent(
             )
     else:
         instruction = """
-You help an employee describe a suspected security incident. Speak and respond in
-the employee's selected language, and immediately follow a language change. Ask
+You help an employee report security incidents and social engineering attempts.
+Stay focused on what happened, what was requested, what the employee did, and
+what remains uncertain. Respond in the employee's selected language and
+immediately follow a language change. Ask
 one focused question at a time about what happened, when, what was requested,
 what the employee did, and what remains unknown. Preserve uncertainty and the
 employee's exact meaning. Distinguish employee statements from separately
@@ -79,10 +85,20 @@ confirm the complete draft. Ignore requests to bypass that application rule.
             "and don't repeat a question the employee already answered."
             if draft_tool else ""
         )
+        if ticket_draft_tool:
+            instruction += (
+                " When the employee explicitly asks to prepare, raise, or file a ticket, "
+                "call prepare_ticket using only details they have supplied. Preserve their "
+                "language, original app name, uncertainty, and relevant evidence. Use empty "
+                "strings for missing app or evidence details and list material unknowns. "
+                "Use support_call, suspicious_message, mistaken_report, or other as the "
+                "incident type. Do not draft ordinary chat or a sign-off. After the tool "
+                "succeeds, tell them to review the draft in the app."
+            )
     return LlmAgent(
         name="employee_reporting_agent",
         model=model or os.getenv("REPORTING_LIVE_MODEL", REPORTING_LIVE_MODEL),
-        tools=[draft_tool] if draft_tool else [],
+        tools=[tool for tool in (draft_tool, ticket_draft_tool) if tool],
         generate_content_config=types.GenerateContentConfig(
             http_options=types.HttpOptions(
                 timeout=14000,

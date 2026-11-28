@@ -195,6 +195,10 @@ export function App({ onSignOut }: { onSignOut?: () => void } = {}) {
     [type, setType] = useState(""),
     [error, setError] = useState(""),
     [loading, setLoading] = useState(false);
+  const [dashboardRange, setDashboardRange] = useState<{
+    start: string;
+    end: string;
+  } | null>(null);
   const [busy, setBusy] = useState(false),
     [team, setTeam] = useState("security"),
     [reviewer, setReviewer] = useState(""),
@@ -211,11 +215,17 @@ export function App({ onSignOut }: { onSignOut?: () => void } = {}) {
   const [noticeTicket, setNoticeTicket] = useState<string | null>(null);
   const requestGeneration = useRef(0);
   const pageSize = 10;
+  const scopedReports = dashboardRange
+    ? reports.filter((report) => {
+        const day = new Date(report.createdAt).toISOString().slice(0, 10);
+        return day >= dashboardRange.start && day <= dashboardRange.end;
+      })
+    : reports;
   const effectivePage = Math.min(
     queuePage,
-    Math.max(0, Math.ceil(reports.length / pageSize) - 1),
+    Math.max(0, Math.ceil(scopedReports.length / pageSize) - 1),
   );
-  const visibleReports = reports.slice(
+  const visibleReports = scopedReports.slice(
     effectivePage * pageSize,
     (effectivePage + 1) * pageSize,
   );
@@ -402,11 +412,7 @@ export function App({ onSignOut }: { onSignOut?: () => void } = {}) {
         className={"sidebar" + (collapsed ? " collapsed" : "")}
         aria-label="Workspace navigation"
       >
-        <a
-          className="brand"
-          href="#reports"
-          aria-label="Anuvach.AI incident desk"
-        >
+        <a className="brand" href="#reports" aria-label="Anuvach incident desk">
           <img
             className="logo"
             src={"/anuvach-logo.png"}
@@ -414,10 +420,6 @@ export function App({ onSignOut }: { onSignOut?: () => void } = {}) {
             width={46}
             height={46}
           />
-          <span>
-            Anuvach<span className="brand-dot">.AI</span>
-            <small>SOCIAL ENGINEERING</small>
-          </span>
         </a>
         <button
           className="nav-toggle"
@@ -538,7 +540,6 @@ export function App({ onSignOut }: { onSignOut?: () => void } = {}) {
         </nav>
         <div className="sidebar-preferences">
           <LanguagePicker />
-          <ThemePicker />
           {onSignOut && (
             <button className="sidebar-sign-out" onClick={onSignOut}>
               {t("signOut")}
@@ -562,16 +563,19 @@ export function App({ onSignOut }: { onSignOut?: () => void } = {}) {
               openReport={(id) => {
                 setStatus("");
                 setType("");
+                setDashboardRange(null);
                 setNoticeTicket(id);
                 if (!status && !type) void load();
                 void navigate("reports");
               }}
             />
+            <ThemePicker />
             {page === "dashboard" && (
               <button
                 className="dashboard-reports-link"
                 onClick={() => {
                   setStatus("");
+                  setDashboardRange(null);
                   navigate("reports");
                 }}
               >
@@ -599,12 +603,25 @@ export function App({ onSignOut }: { onSignOut?: () => void } = {}) {
             loading={overviewLoading}
             days={days}
             type={type}
-            onDays={setDays}
-            onType={setType}
+            onDays={(value) => {
+              setDashboardRange(null);
+              setDays(value);
+            }}
+            onType={(value) => {
+              setDashboardRange(null);
+              setType(value);
+            }}
             onStatus={(next, category) => {
+              setDashboardRange(null);
               navigate("reports");
               setStatus(next);
               if (category) setType(category);
+            }}
+            onPeriod={(start, end) => {
+              setDashboardRange({ start, end });
+              setQueuePage(0);
+              setDetail(null);
+              navigate("reports");
             }}
           />
         </div>
@@ -633,7 +650,7 @@ export function App({ onSignOut }: { onSignOut?: () => void } = {}) {
             <section className="panel queue" id="report-queue">
               <h2>
                 {t("reportQueue")}{" "}
-                <span className="count">{reports.length}</span>
+                <span className="count">{scopedReports.length}</span>
               </h2>
               <div className="filters">
                 <label>
@@ -657,7 +674,10 @@ export function App({ onSignOut }: { onSignOut?: () => void } = {}) {
                   <select
                     aria-label={t("incidentType")}
                     value={type}
-                    onChange={(e) => setType(e.target.value)}
+                    onChange={(e) => {
+                      setDashboardRange(null);
+                      setType(e.target.value);
+                    }}
                   >
                     <option value="">{t("allTypes")}</option>
                     {incidentGroups.map((group) => (
@@ -673,15 +693,18 @@ export function App({ onSignOut }: { onSignOut?: () => void } = {}) {
                   </select>
                 </label>
               </div>
-              {(status || type) && (
+              {(status || type || dashboardRange) && (
                 <p className="queue-scope-note">
                   Showing {status ? statusLabel(status) : t("allStatuses")} ·{" "}
                   {type ? enumLabel(type) : t("allTypes")}
+                  {dashboardRange &&
+                    ` · ${dashboardRange.start} to ${dashboardRange.end} UTC`}
                   <button
                     className="queue-reset"
                     onClick={() => {
                       setStatus("");
                       setType("");
+                      setDashboardRange(null);
                     }}
                   >
                     {t("clearFilters")}
@@ -689,7 +712,7 @@ export function App({ onSignOut }: { onSignOut?: () => void } = {}) {
                 </p>
               )}
               {loading && <p role="status">{t("loadingReports")}</p>}
-              {!loading && !reports.length && !error && (
+              {!loading && !scopedReports.length && !error && (
                 <p>{t("emptyReports")}</p>
               )}
               <div className="table-scroll">
@@ -774,12 +797,15 @@ export function App({ onSignOut }: { onSignOut?: () => void } = {}) {
                   </tbody>
                 </table>
               </div>
-              {reports.length > 0 && (
+              {scopedReports.length > 0 && (
                 <div className="queue-pagination">
                   <span>
                     Showing {effectivePage * pageSize + 1}–
-                    {Math.min((effectivePage + 1) * pageSize, reports.length)}{" "}
-                    of {reports.length}
+                    {Math.min(
+                      (effectivePage + 1) * pageSize,
+                      scopedReports.length,
+                    )}{" "}
+                    of {scopedReports.length}
                   </span>
                   <div>
                     <button
@@ -792,7 +818,7 @@ export function App({ onSignOut }: { onSignOut?: () => void } = {}) {
                     <button
                       aria-label="Next reports"
                       disabled={
-                        (effectivePage + 1) * pageSize >= reports.length
+                        (effectivePage + 1) * pageSize >= scopedReports.length
                       }
                       onClick={() => setQueuePage(effectivePage + 1)}
                     >

@@ -77,6 +77,12 @@ class LocalReportingTurn(RequestModel):
     context: SavedContext | None = None
 
 
+class AccessBriefingRequest(RequestModel):
+    language: Language
+    visibleApps: int = Field(ge=0, le=5000)
+    grants: dict[str, Annotated[int, Field(ge=0, le=5000)]] = Field(max_length=32)
+
+
 class DescriptionTranslation(RequestModel):
     language: Language
     text: str = Field(min_length=1, max_length=5000)
@@ -228,17 +234,23 @@ def create_app(
         app.state.tool_events[:] = app.state.tool_events[-50:]
 
     async def reporting_reply(
-        report_id: str, language: Language, text: str, context: SavedContext | None = None
-    ) -> tuple[str | None, list[str] | None]:
+        report_id: str,
+        language: Language,
+        text: str,
+        context: SavedContext | None = None,
+        *,
+        allow_ticket_draft: bool = False,
+    ) -> tuple[str | None, list[str] | None, dict[str, object] | None]:
         model = os.getenv("REPORTING_TEXT_MODEL", REPORTING_TEXT_MODEL)
         started = time.perf_counter()
         if not gemini_configured():
             log_tool("reporting_text", False, {
                 "responder": "Gemini responder", "model": model, "status": "missing_credentials",
             })
-            return None, None
+            return None, None, None
 
         updated_unknowns = None
+        ticket_draft = None
 
         def update_draft_unknowns(missing_facts: list[str]) -> dict:
             """Update missing or uncertain details on the current unconfirmed draft."""
@@ -249,6 +261,32 @@ def create_app(
                 return {"ok": False, "error": "Supply at most 12 short, nonempty details."}
             updated_unknowns = missing_facts
             return {"ok": True, "staged": True, "report_id": report_id}
+
+        def prepare_ticket(
+            description: str,
+            app_name: str,
+            evidence_notes: str,
+            incident_type: str,
+            unknowns: list[str],
+        ) -> dict:
+            """Prepare an editable ticket draft after an explicit employee request."""
+            nonlocal ticket_draft
+            try:
+                draft = VoiceTicketDraft(
+                    description=description.strip(),
+                    app_name=app_name.strip(),
+                    evidence_notes=evidence_notes.strip(),
+                    incident_type=incident_type,
+                    unknowns=unknowns,
+                )
+            except ValidationError:
+                return {
+                    "ok": False,
+                    "error": "Provide a description and supported draft fields.",
+                }
+            ticket_draft = draft.model_dump(mode="json")
+            return {"ok": True, "draft": ticket_draft}
+
         try:
             from google.adk.agents.run_config import RunConfig
             from google.adk.artifacts import InMemoryArtifactService
@@ -269,7 +307,11 @@ def create_app(
                 from google.adk.events import Event
             runner = Runner(
                 app_name="anuvach_reporting_workbench",
-                agent=build_reporting_agent(model, draft_tool=update_draft_unknowns),
+                agent=build_reporting_agent(
+                    model,
+                    draft_tool=update_draft_unknowns,
+                    ticket_draft_tool=prepare_ticket if allow_ticket_draft else None,
+                ),
                 artifact_service=InMemoryArtifactService(),
                 session_service=service,
             )
@@ -320,7 +362,7 @@ def create_app(
                         "responder": "Gemini responder", "model": model,
                         "report_id": report_id, "error": message,
                     })
-                    return None, None
+                    return None, None, None
                 if event.usage_metadata:
                     usage.append(event.usage_metadata.model_dump(mode="json", exclude_none=True))
                 for call in event.get_function_calls():
@@ -329,8 +371,11 @@ def create_app(
                         "report_id": report_id, "arguments": call.args,
                     })
                 for response in event.get_function_responses():
-                    ok = (response.response or {}).get("ok") is True
+                    result = response.response or {}
+                    ok = result.get("ok") is True
                     tool_errors += int(not ok)
+                    if response.name == "prepare_ticket" and ok:
+                        ticket_draft = result.get("draft")
                     log_tool(response.name, ok, {
                         "phase": "result", "responder": "Gemini responder",
                         "report_id": report_id,
@@ -344,7 +389,7 @@ def create_app(
                 "usage": usage, "tool_errors": tool_errors,
                 "missing_facts": updated_unknowns,
             })
-            return reply, updated_unknowns
+            return reply, updated_unknowns, ticket_draft
         except Exception as error:
             detail = getattr(error, "status", None) or getattr(error, "code", None)
             message = f"Gemini reporting: {type(error).__name__}"
@@ -356,7 +401,7 @@ def create_app(
                 "responder": "Gemini responder", "model": model, "report_id": report_id,
                 "error": message,
             })
-            return None, None
+            return None, None, None
         finally:
             app.state.latencies["reporting_ms"] = (time.perf_counter() - started) * 1000
 
@@ -434,7 +479,7 @@ def create_app(
                 "responder": "synthetic responder", "report_id": draft.report_id,
             })
         else:
-            reply, unknowns = await reporting_reply(
+            reply, unknowns, _ticket_draft = await reporting_reply(
                 draft.report_id, draft.preferred_language, body.corrected_text or body.text
             )
             current = store.read_draft(draft.report_id)
@@ -455,12 +500,58 @@ def create_app(
 
     @app.post("/internal/reporting/turn")
     async def integrated_reporting(body: LocalReportingTurn) -> dict[str, object]:
-        reply, unknowns = await reporting_reply(
-            f"integration-{body.sessionId}", body.language, body.text, body.context
+        reply, unknowns, ticket_draft = await reporting_reply(
+            f"integration-{body.sessionId}",
+            body.language,
+            body.text,
+            body.context,
+            allow_ticket_draft=True,
         )
         if reply is None:
             raise HTTPException(503, "Reporting assistant unavailable")
-        return {"reply": reply, "unknowns": unknowns or []}
+        return {
+            "reply": reply,
+            "unknowns": unknowns or [],
+            **({"ticketDraft": ticket_draft} if ticket_draft else {}),
+        }
+
+    @app.post("/internal/reporting/access-briefing")
+    async def reporting_access_briefing(body: AccessBriefingRequest) -> dict[str, str]:
+        if not gemini_configured():
+            raise HTTPException(503, "Accessibility briefing unavailable")
+        from google import genai
+        from google.genai import types
+
+        model = os.getenv("REPORTING_TEXT_MODEL", REPORTING_TEXT_MODEL)
+        try:
+            async with genai.Client().aio as client:
+                result = await client.models.generate_content(
+                    model=model,
+                    contents=json.dumps(
+                        {
+                            "visible_apps": body.visibleApps,
+                            "permission_grants": body.grants,
+                        }
+                    ),
+                    config=types.GenerateContentConfig(
+                        system_instruction=(
+                            f"Give a concise accessibility briefing in "
+                            f"{LANGUAGE_NAMES[body.language]}. "
+                            "Explain these permission counts neutrally. They describe device access "
+                            "capabilities only and are not evidence of misuse or a security incident. "
+                            "Do not identify apps, infer intent, or ask for additional data."
+                        ),
+                        http_options=types.HttpOptions(timeout=10000),
+                    ),
+                )
+            reply = (result.text or "").strip()
+            if not reply or len(reply) > 1600:
+                raise ValueError("Briefing missing or too long")
+            log_tool("access_briefing", True, {"model": model, "language": body.language})
+            return {"reply": reply}
+        except Exception:
+            log_tool("access_briefing", False, {"model": model, "language": body.language})
+            raise HTTPException(503, "Accessibility briefing unavailable") from None
 
     @app.post("/internal/reporting/translate")
     async def translate_description(body: DescriptionTranslation) -> dict[str, str]:

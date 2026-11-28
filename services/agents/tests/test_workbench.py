@@ -180,6 +180,83 @@ def test_language_switch_and_required_synthetic_scenarios(tmp_path) -> None:
     limited = client.post("/api/scenarios/limited-observation", json={}).json()["draft"]
     assert all(fact["source"] == "employee_statement" for fact in limited["facts"])
 
+
+def test_reporting_agent_supports_language_switches_and_text_ticket_drafts() -> None:
+    from anuvach_agents.reporting_agent import build_reporting_agent
+
+    def update_unknowns(missing_facts: list[str]) -> dict:
+        return {"ok": True, "missing_facts": missing_facts}
+
+    def prepare_ticket(
+        description: str,
+        app_name: str,
+        evidence_notes: str,
+        incident_type: str,
+        unknowns: list[str],
+    ) -> dict:
+        return {"ok": True}
+
+    text_agent = build_reporting_agent(
+        model="test-model",
+        draft_tool=update_unknowns,
+        ticket_draft_tool=prepare_ticket,
+    )
+    assert "security incidents and social engineering attempts" in text_agent.instruction
+    assert "explicitly asks to prepare, raise, or file a ticket" in text_agent.instruction
+    assert [tool.__name__ for tool in text_agent.tools] == [
+        "update_unknowns",
+        "prepare_ticket",
+    ]
+
+    voice_agent = build_reporting_agent(
+        model="test-model",
+        spoken_language="Hindi",
+        draft_tool=prepare_ticket,
+    )
+    assert "most recent meaningful utterance" in voice_agent.instruction
+    assert "Follow a switch immediately" in voice_agent.instruction
+
+
+def test_accessibility_briefing_uses_reporting_text_model(tmp_path, monkeypatch) -> None:
+    from types import SimpleNamespace
+
+    from google import genai
+
+    calls = []
+
+    class FakeClient:
+        def __init__(self) -> None:
+            self.aio = self
+            self.models = self
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_args):
+            return None
+
+        async def generate_content(self, **kwargs):
+            calls.append(kwargs)
+            return SimpleNamespace(text="These counts describe device capabilities only.")
+
+    monkeypatch.setenv("GOOGLE_API_KEY", "test-key")
+    monkeypatch.setenv("REPORTING_TEXT_MODEL", "configured-reporting-model")
+    monkeypatch.setattr(genai, "Client", FakeClient)
+    client = TestClient(create_app(SQLiteFakeAdapters(tmp_path / "briefing.sqlite")))
+    response = client.post(
+        "/internal/reporting/access-briefing",
+        json={
+            "language": "en",
+            "visibleApps": 4,
+            "grants": {"android.permission.CAMERA": 2},
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["reply"].startswith("These counts")
+    assert calls[0]["model"] == "configured-reporting-model"
+    assert "visible_apps" in calls[0]["contents"]
+
+
 def test_voice_ticket_tool_returns_a_draft_without_creating_a_ticket(tmp_path, monkeypatch) -> None:
     from google.adk.events import Event
     from google.adk.runners import Runner

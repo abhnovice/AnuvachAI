@@ -15,6 +15,7 @@ test("existing ticket survives peer outage, restart, and duplicate submission", 
     { speaker: "employee", text: "A caller claimed to be from IT." },
   ];
   const reportingRequests: unknown[] = [];
+  const briefingRequests: unknown[] = [];
   const translations: unknown[] = [];
   const assistantRequests: any[] = [];
   const peer = createServer(async (request, response) => {
@@ -24,7 +25,26 @@ test("existing ticket survives peer outage, restart, and duplicate submission", 
     if (request.url === "/internal/reporting/turn") {
       reportingRequests.push(JSON.parse(body).context);
       response.end(
-        JSON.stringify({ reply: "When did it happen?", unknowns: ["Time"] }),
+        JSON.stringify({
+          reply: "When did it happen?",
+          unknowns: ["Time"],
+          ticketDraft: {
+            description: "A caller asked for a code.",
+            app_name: "ExampleApp",
+            evidence_notes: "",
+            incident_type: "support_call",
+            unknowns: ["Time"],
+          },
+        }),
+      );
+      return;
+    }
+    if (request.url === "/internal/reporting/access-briefing") {
+      briefingRequests.push(JSON.parse(body));
+      response.end(
+        JSON.stringify({
+          reply: "Permission counts are not evidence of misuse.",
+        }),
       );
       return;
     }
@@ -95,6 +115,28 @@ test("existing ticket survives peer outage, restart, and duplicate submission", 
     });
     assert.equal(draft.statusCode, 200);
     assert.deepEqual(reportingRequests, [context]);
+    assert.equal(draft.json().ticketDraft.app_name, "ExampleApp");
+    const briefing = await app.inject({
+      method: "POST",
+      url: "/api/v1/reporting/access-briefing",
+      payload: {
+        language: "en",
+        visibleApps: 4,
+        grants: { "android.permission.CAMERA": 2 },
+      },
+    });
+    assert.equal(briefing.statusCode, 200);
+    assert.equal(
+      briefing.json().reply,
+      "Permission counts are not evidence of misuse.",
+    );
+    assert.deepEqual(briefingRequests, [
+      {
+        language: "en",
+        visibleApps: 4,
+        grants: { "android.permission.CAMERA": 2 },
+      },
+    ]);
     assert.equal((await app.inject("/api/v1/reports")).json().length, 0);
     const submission = {
       method: "POST" as const,

@@ -60,6 +60,59 @@ void main() {
     },
   );
 
+  testWidgets('text reporting turns open a generated ticket in review', (
+    tester,
+  ) async {
+    final drafts = <Json>[];
+    final languages = <String>[];
+    final api = Api(
+      client: MockClient(
+        (request) async => http.Response(
+          jsonEncode({
+            'reply': 'Review this report before submitting.',
+            'unknowns': ['When it happened'],
+            'ticketDraft': {
+              'description': 'A caller asked for an access code.',
+              'app_name': 'ExampleApp',
+              'evidence_notes': '',
+              'incident_type': 'support_call',
+              'unknowns': ['When it happened'],
+            },
+          }),
+          200,
+        ),
+      ),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: CheckTab(
+            language: 'hi',
+            messages: [],
+            api: api,
+            sessionId: 'c5a6866b-69ed-4d14-baf3-32d43093dfa0',
+            reviewVoiceTicket: (draft, language) async {
+              drafts.add(draft);
+              languages.add(language);
+            },
+            reviewStatement: (_) async {},
+          ),
+        ),
+      ),
+    );
+    await tester.enterText(
+      find.byType(TextField),
+      'Prepare a ticket for this call',
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Send'));
+    await tester.pumpAndSettle();
+    expect(drafts.single['app_name'], 'ExampleApp');
+    expect(languages, ['hi']);
+  });
+
   testWidgets('Check microphone starts on demand and stops when leaving', (
     tester,
   ) async {

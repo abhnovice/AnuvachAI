@@ -16,7 +16,13 @@ export function IncidentNotifications({
   const [notices, setNotices] = useState<Notice[]>([]);
   const [open, setOpen] = useState(false);
   const [failed, setFailed] = useState(false);
-  const [seen, setSeen] = useState("");
+  const [seen, setSeen] = useState(() => {
+    try {
+      return localStorage.getItem("anuvach-notice-seen") ?? "";
+    } catch {
+      return "";
+    }
+  });
   const anchor = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
 
@@ -71,6 +77,7 @@ export function IncidentNotifications({
   }, [open]);
 
   const unread = notices.filter(({ createdAt }) => createdAt > seen).length;
+  if (!failed && unread === 0 && !open) return null;
   return (
     <div ref={anchor} className="incident-notifications">
       <button
@@ -83,7 +90,15 @@ export function IncidentNotifications({
         aria-expanded={open}
         aria-controls="incident-notices"
         onClick={() => {
-          if (!open && notices[0]) setSeen(notices[0].createdAt);
+          if (!open && notices[0]) {
+            const latest = notices[0].createdAt;
+            setSeen(latest);
+            try {
+              localStorage.setItem("anuvach-notice-seen", latest);
+            } catch {
+              // Keep read state for this session when storage is unavailable.
+            }
+          }
           setOpen(!open);
         }}
       >

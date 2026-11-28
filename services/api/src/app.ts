@@ -3,6 +3,8 @@ import Fastify from "fastify";
 import { registerVoice } from "./voice.js";
 import {
   AgentError,
+  accessBriefing,
+  accessBriefingResult,
   agentLanguage,
   agentPost,
   analyze,
@@ -173,6 +175,28 @@ export async function buildApp(
       return reply.code(503).send({
         error: "Reporting assistant is unavailable. Continue with text.",
       });
+    }
+  });
+
+  app.post("/api/v1/reporting/access-briefing", async (req, reply) => {
+    const body = accessBriefing.parse(req.body);
+    if (!agentBase)
+      return reply
+        .code(503)
+        .send({ error: "Accessibility briefing unavailable." });
+    try {
+      return accessBriefingResult.parse(
+        await agentPost(
+          agentBase,
+          "/internal/reporting/access-briefing",
+          body,
+          15_000,
+        ),
+      );
+    } catch {
+      return reply
+        .code(503)
+        .send({ error: "Accessibility briefing unavailable." });
     }
   });
 

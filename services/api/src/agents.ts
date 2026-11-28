@@ -70,7 +70,34 @@ export const reportingTurn = z
 export const reportingResult = z.object({
   reply: z.string().min(1).max(5000),
   unknowns: z.array(z.string().max(500)).max(12),
+  ticketDraft: z
+    .object({
+      description: z.string().min(10).max(5000),
+      app_name: z.string().max(200),
+      evidence_notes: z.string().max(5000),
+      incident_type: z.enum([
+        "support_call",
+        "suspicious_message",
+        "mistaken_report",
+        "other",
+      ]),
+      unknowns: z.array(z.string().max(500)).max(12),
+    })
+    .strict()
+    .optional(),
 });
+export const accessBriefing = z
+  .object({
+    language: agentLanguage,
+    visibleApps: z.number().int().min(0).max(5000),
+    grants: z
+      .record(z.string().max(100), z.number().int().min(0).max(5000))
+      .refine((grants) => Object.keys(grants).length <= 32),
+  })
+  .strict();
+export const accessBriefingResult = z
+  .object({ reply: z.string().min(1).max(1600) })
+  .strict();
 
 export type Triage = {
   status: "pending" | "completed" | "human_review";

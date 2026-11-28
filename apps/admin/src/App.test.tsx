@@ -1,6 +1,7 @@
 import { afterEach, expect, it, vi } from "vitest";
 import {
   cleanup,
+  fireEvent,
   render,
   screen,
   waitFor,
@@ -166,6 +167,9 @@ it("groups dashboard categories, opens notices in All Reports and chats about a 
       name: /Caller asked for an access code.*ANV-alert/,
     }),
   );
+  expect(
+    screen.queryByRole("button", { name: /Incident notifications/ }),
+  ).toBeNull();
   const detail = await screen.findByRole("region", { name: "Report detail" });
   expect(await within(detail).findByText("ANV-alert")).toBeTruthy();
   expect(screen.getAllByRole("columnheader")[0].textContent).toBe(
@@ -193,5 +197,52 @@ it("groups dashboard categories, opens notices in All Reports and chats about a 
     ),
   ).toBeTruthy();
   expect(requests[0]).toMatchObject({ ticketId: "ANV-alert", view: "reports" });
+  history.replaceState(null, "", "#reports");
+});
+
+it("filters the report queue to tickets in the selected dashboard week", async () => {
+  history.replaceState(null, "", "#dashboard");
+  vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+  const createdAt = new Date().toISOString();
+  const report: Report = {
+    id: "ANV-weekly",
+    status: "submitted",
+    createdAt,
+    updatedAt: createdAt,
+    version: 1,
+    assignment: null,
+    facts: {
+      employeeId: "demo-employee",
+      confirmed: true,
+      description: "Synthetic caller requested an access code",
+      incidentType: "voice_phishing",
+      language: "english",
+      appName: "",
+      evidenceNotes: "",
+      observations: [],
+    },
+  };
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (path: string) => {
+      const json = path.includes("/dashboard")
+        ? buildDashboard([report], [], new Date())
+        : path.includes("&translate=")
+          ? { translation: "A caller requested an access code." }
+          : [report];
+      return { ok: true, json: async () => json };
+    }),
+  );
+  const user = userEvent.setup();
+  const { container } = render(<App />);
+  await screen.findByRole("img", { name: "Weekly incoming report counts" });
+  const points = container.querySelectorAll(".trend-chart circle[tabindex]");
+  fireEvent.click(points.item(points.length - 1));
+  expect(
+    await screen.findByRole("button", { name: "ANV-weekly" }),
+  ).toBeTruthy();
+  expect(container.querySelector(".queue-scope-note")?.textContent).toContain(
+    "UTC",
+  );
   history.replaceState(null, "", "#reports");
 });

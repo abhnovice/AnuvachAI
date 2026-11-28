@@ -38,7 +38,7 @@ export function ThemePicker() {
   return (
     <button
       type="button"
-      className="sidebar-preference-button"
+      className="workspace-icon-button"
       aria-label={isDark ? t("light") : t("dark")}
       title={t("appearance")}
       onClick={() =>

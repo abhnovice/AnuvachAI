@@ -104,6 +104,10 @@ class _CheckTabState extends State<CheckTab>
       if (mounted) {
         setState(() {});
         scrollToLatest();
+        final ticketDraft = response['ticketDraft'];
+        if (ticketDraft is Map<String, dynamic>) {
+          await widget.reviewVoiceTicket(ticketDraft, widget.language);
+        }
       }
     } catch (failure) {
       if (mounted) {
@@ -799,8 +803,6 @@ class _AccessTabState extends State<AccessTab>
       if (mounted) setState(() => briefingBusy = false);
     }
   }
-  bool showLauncherApps = true;
-  bool showNonLauncherApps = false;
   final features = LocalFeatures();
   List<Map<String, dynamic>>? apps;
   String search = '';
@@ -876,7 +878,6 @@ class _AccessTabState extends State<AccessTab>
           ),
         )
         .toList();
-    final showApps = showLauncherApps || showNonLauncherApps;
     return RefreshIndicator(
       onRefresh: scan,
       child: ListView(
@@ -939,59 +940,34 @@ class _AccessTabState extends State<AccessTab>
             ],
           )),
           const SizedBox(height: 14),
-          Card(
-            child: Column(
-              children: [
-                SwitchListTile(
-                  title: Text(strings.launcherApps),
-                  secondary: const Icon(Icons.apps_outlined),
-                  value: showLauncherApps,
-                  onChanged: (value) =>
-                      setState(() => showLauncherApps = value),
-                ),
-                SwitchListTile(
-                  title: Text(strings.nonLauncherApps),
-                  secondary: const Icon(Icons.layers_outlined),
-                  value: showNonLauncherApps,
-                  onChanged: (value) =>
-                      setState(() => showNonLauncherApps = value),
-                ),
-              ],
-            ),
+          OutlinedButton.icon(
+            onPressed: loading ? null : scan,
+            icon: const Icon(Icons.manage_search),
+            label: Text(strings.scan),
           ),
-          if (showApps) ...[
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: loading ? null : scan,
-              icon: const Icon(Icons.manage_search),
-              label: Text(strings.scan),
+          const SizedBox(height: 12),
+          if (loading) const LinearProgressIndicator(),
+          if (error != null)
+            Text(error!, style: TextStyle(color: scheme.error)),
+          if (apps != null) ...[
+            TextField(
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.search),
+                labelText: AppLocalizations.of(context)!.search,
+              ),
+              onChanged: (value) => setState(() => search = value),
             ),
             const SizedBox(height: 12),
-            if (loading) const LinearProgressIndicator(),
-            if (error != null)
-              Text(error!, style: TextStyle(color: scheme.error)),
-            if (apps != null) ...[
-              TextField(
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.search),
-                  labelText: AppLocalizations.of(context)!.search,
-                ),
-                onChanged: (value) => setState(() => search = value),
-              ),
-              const SizedBox(height: 12),
-              if (showLauncherApps)
-                appGroup(
-                  strings.launcherApps,
-                  results.where((app) => app['launcherVisible'] == true),
-                  strings,
-                ),
-              if (showNonLauncherApps)
-                appGroup(
-                  strings.nonLauncherApps,
-                  results.where((app) => app['launcherVisible'] == false),
-                  strings,
-                ),
-            ],
+            appGroup(
+              strings.launcherApps,
+              results.where((app) => app['launcherVisible'] == true),
+              strings,
+            ),
+            appGroup(
+              strings.nonLauncherApps,
+              results.where((app) => app['launcherVisible'] == false),
+              strings,
+            ),
           ],
         ],
       ),
